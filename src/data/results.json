@@ -1,7 +1,7 @@
 {
   "name": "RealBench",
-  "methodology": "One-shot, same prompt, no repair, self-contained HTML, no external assets",
-  "generated_at": "2026-09-04T12:08:08.402005+00:00",
+  "methodology": "Same prompt; original one-shot responses archived. Truncated outputs regenerated once with a larger output budget and explicitly labeled repaired.",
+  "generated_at": "2026-09-04T13:48:21.311816+00:00",
   "models": {
     "grok-4.6": {
       "id": "x-ai/grok-4.6",
@@ -20,6 +20,36 @@
       "name": "Gemini 3.8 Flash",
       "vendor": "Google",
       "color": "#4285f4"
+    },
+    "glm-5.3-flash": {
+      "id": "z-ai/glm-5.3-flash",
+      "name": "GLM 5.3 Flash",
+      "vendor": "Z.ai",
+      "color": "#7c3aed"
+    },
+    "hy4-preview": {
+      "id": "tencent/hy4-preview",
+      "name": "HY 4 Preview",
+      "vendor": "Tencent",
+      "color": "#00a4ef"
+    },
+    "deepseek-v4-flash-0731": {
+      "id": "deepseek/deepseek-v4-flash-0731",
+      "name": "DeepSeek V4 Flash 0731",
+      "vendor": "DeepSeek",
+      "color": "#4d6bfe"
+    },
+    "kimi-k3": {
+      "id": "moonshotai/kimi-k3",
+      "name": "Kimi K3",
+      "vendor": "Moonshot AI",
+      "color": "#111827"
+    },
+    "gpt-5.6-sol": {
+      "id": "openai/gpt-5.6-sol",
+      "name": "GPT-5.6 Sol",
+      "vendor": "OpenAI",
+      "color": "#0f9d7a"
     }
   },
   "scenarios": {
@@ -188,6 +218,226 @@
       "generated_at": "2026-09-04T11:56:24.495416+00:00"
     },
     {
+      "scenario": "solar-system",
+      "model": "glm-5.3-flash",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 559.19,
+      "provider": "GMICloud",
+      "usage": {
+        "prompt_tokens": 216,
+        "completion_tokens": 48221,
+        "total_tokens": 48437,
+        "cost": 0.01207145,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.01207145,
+          "upstream_inference_prompt_cost": 1.62e-05,
+          "upstream_inference_completions_cost": 0.01205525
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 38227,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 25381,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": true,
+        "uses_raf": true,
+        "animation_signals": 4,
+        "dom_nodes_approx": 20
+      },
+      "path": "/runs/solar-system/glm-5.3-flash.html",
+      "generated_at": "2026-09-04T12:55:50.229209+00:00"
+    },
+    {
+      "scenario": "solar-system",
+      "model": "hy4-preview",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 389.14,
+      "provider": "Tencent",
+      "usage": {
+        "prompt_tokens": 226,
+        "completion_tokens": 28414,
+        "total_tokens": 28640,
+        "cost": 0.071251898,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.071251898,
+          "upstream_inference_prompt_cost": 0.000188484,
+          "upstream_inference_completions_cost": 0.071063414
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 25141,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 11146,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 3,
+        "dom_nodes_approx": 9
+      },
+      "path": "/runs/solar-system/hy4-preview.html",
+      "generated_at": "2026-09-04T12:53:00.178631+00:00"
+    },
+    {
+      "scenario": "solar-system",
+      "model": "deepseek-v4-flash-0731",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 545.86,
+      "provider": "Relace",
+      "usage": {
+        "prompt_tokens": 290,
+        "completion_tokens": 26680,
+        "total_tokens": 26970,
+        "cost": 0.00482125,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00482125,
+          "upstream_inference_prompt_cost": 1.885e-05,
+          "upstream_inference_completions_cost": 0.0048024
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 18327,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 15667,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 3,
+        "dom_nodes_approx": 9
+      },
+      "path": "/runs/solar-system/deepseek-v4-flash-0731.html",
+      "generated_at": "2026-09-04T12:55:36.896317+00:00"
+    },
+    {
+      "scenario": "solar-system",
+      "model": "kimi-k3",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 571.46,
+      "provider": "Sail Research",
+      "usage": {
+        "prompt_tokens": 338,
+        "completion_tokens": 38757,
+        "total_tokens": 39095,
+        "cost": 0.5047198,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.5047198,
+          "upstream_inference_prompt_cost": 0.0008788,
+          "upstream_inference_completions_cost": 0.503841
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 27818,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 26392,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 11
+      },
+      "path": "/runs/solar-system/kimi-k3.html",
+      "generated_at": "2026-09-04T12:56:02.494355+00:00"
+    },
+    {
+      "scenario": "solar-system",
+      "model": "gpt-5.6-sol",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 81.35,
+      "provider": "OpenAI",
+      "usage": {
+        "prompt_tokens": 213,
+        "completion_tokens": 8737,
+        "total_tokens": 8950,
+        "cost": 0.087796,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.087796,
+          "upstream_inference_prompt_cost": 0.000426,
+          "upstream_inference_completions_cost": 0.08737
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 1468,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 20631,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 10
+      },
+      "path": "/runs/solar-system/gpt-5.6-sol.html",
+      "generated_at": "2026-09-04T12:47:52.387090+00:00"
+    },
+    {
       "scenario": "city-traffic",
       "model": "grok-4.6",
       "status": "ok",
@@ -280,13 +530,13 @@
       "model": "gemini-3.8-flash",
       "status": "ok",
       "error": null,
-      "duration_seconds": 93.89,
+      "duration_seconds": 83.2,
       "provider": "Google",
       "usage": {
         "prompt_tokens": 189,
-        "completion_tokens": 15996,
-        "total_tokens": 16185,
-        "cost": 0.06012675,
+        "completion_tokens": 15945,
+        "total_tokens": 16134,
+        "cost": 0.0599355,
         "is_byok": false,
         "prompt_tokens_details": {
           "cached_tokens": 0,
@@ -295,29 +545,253 @@
           "video_tokens": 0
         },
         "cost_details": {
-          "upstream_inference_cost": 0.06012675,
+          "upstream_inference_cost": 0.0599355,
           "upstream_inference_prompt_cost": 0.00014175,
-          "upstream_inference_completions_cost": 0.059985
+          "upstream_inference_completions_cost": 0.05979375
         },
         "completion_tokens_details": {
-          "reasoning_tokens": 9422,
+          "reasoning_tokens": 1367,
           "image_tokens": 0,
           "audio_tokens": 0
         }
       },
       "metrics": {
-        "valid_html": false,
+        "valid_html": true,
         "self_contained": true,
-        "bytes": 17077,
+        "bytes": 39202,
         "uses_canvas": true,
         "uses_svg": false,
         "uses_css_animation": true,
-        "uses_raf": false,
-        "animation_signals": 1,
-        "dom_nodes_approx": 32
+        "uses_raf": true,
+        "animation_signals": 4,
+        "dom_nodes_approx": 20
       },
       "path": "/runs/city-traffic/gemini-3.8-flash.html",
-      "generated_at": "2026-09-04T11:58:29.080124+00:00"
+      "generated_at": "2026-09-04T12:40:15.929859+00:00",
+      "repaired": true,
+      "attempt": 2,
+      "repair_reason": "Original one-shot response was truncated at the output-token limit",
+      "original_preserved_at": "/benchmark/raw/city-traffic/gemini-3.8-flash.txt"
+    },
+    {
+      "scenario": "city-traffic",
+      "model": "glm-5.3-flash",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 2538.55,
+      "provider": "GMICloud",
+      "usage": {
+        "prompt_tokens": 193,
+        "completion_tokens": 98956,
+        "total_tokens": 99149,
+        "cost": 0.024753475,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.024753475,
+          "upstream_inference_prompt_cost": 1.4475e-05,
+          "upstream_inference_completions_cost": 0.024739
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 84925,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 35044,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": true,
+        "uses_raf": true,
+        "animation_signals": 3,
+        "dom_nodes_approx": 18
+      },
+      "path": "/runs/city-traffic/glm-5.3-flash.html",
+      "generated_at": "2026-09-04T13:30:10.941943+00:00"
+    },
+    {
+      "scenario": "city-traffic",
+      "model": "hy4-preview",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 451.26,
+      "provider": "Tencent",
+      "usage": {
+        "prompt_tokens": 202,
+        "completion_tokens": 32425,
+        "total_tokens": 32627,
+        "cost": 0.081263393,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.081263393,
+          "upstream_inference_prompt_cost": 0.000168468,
+          "upstream_inference_completions_cost": 0.081094925
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 26597,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 19813,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9
+      },
+      "path": "/runs/city-traffic/hy4-preview.html",
+      "generated_at": "2026-09-04T13:00:31.440228+00:00"
+    },
+    {
+      "scenario": "city-traffic",
+      "model": "deepseek-v4-flash-0731",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 875.85,
+      "provider": "OpenInference",
+      "usage": {
+        "prompt_tokens": 188,
+        "completion_tokens": 29193,
+        "total_tokens": 29381,
+        "cost": 0.00468028,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00468028,
+          "upstream_inference_prompt_cost": 9.4e-06,
+          "upstream_inference_completions_cost": 0.00467088
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 23257,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 23200,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 3,
+        "dom_nodes_approx": 8
+      },
+      "path": "/runs/city-traffic/deepseek-v4-flash-0731.html",
+      "generated_at": "2026-09-04T13:10:12.750603+00:00"
+    },
+    {
+      "scenario": "city-traffic",
+      "model": "kimi-k3",
+      "status": "error",
+      "error": "Model returned empty content",
+      "duration_seconds": 1804.72,
+      "provider": "DeepInfra",
+      "usage": {
+        "prompt_tokens": 278,
+        "completion_tokens": 16384,
+        "total_tokens": 16662,
+        "cost": 0.2342643,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.2342643,
+          "upstream_inference_prompt_cost": 0.0007923,
+          "upstream_inference_completions_cost": 0.233472
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 178,
+        "uses_canvas": false,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": false,
+        "animation_signals": 0,
+        "dom_nodes_approx": 4
+      },
+      "path": "/runs/city-traffic/kimi-k3.html",
+      "generated_at": "2026-09-04T13:25:54.952054+00:00"
+    },
+    {
+      "scenario": "city-traffic",
+      "model": "gpt-5.6-sol",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 72.53,
+      "provider": "OpenAI",
+      "usage": {
+        "prompt_tokens": 189,
+        "completion_tokens": 7781,
+        "total_tokens": 7970,
+        "cost": 0.078188,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.078188,
+          "upstream_inference_prompt_cost": 0.000378,
+          "upstream_inference_completions_cost": 0.07781
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 985,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 19857,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9
+      },
+      "path": "/runs/city-traffic/gpt-5.6-sol.html",
+      "generated_at": "2026-09-04T12:57:15.023315+00:00"
     },
     {
       "scenario": "aquarium",
@@ -452,6 +926,226 @@
       "generated_at": "2026-09-04T12:00:26.145808+00:00"
     },
     {
+      "scenario": "aquarium",
+      "model": "glm-5.3-flash",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 314.78,
+      "provider": "Z.AI",
+      "usage": {
+        "prompt_tokens": 203,
+        "completion_tokens": 29524,
+        "total_tokens": 29727,
+        "cost": 0.007396225,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.007396225,
+          "upstream_inference_prompt_cost": 1.5225e-05,
+          "upstream_inference_completions_cost": 0.007381
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 22529,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 16651,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9
+      },
+      "path": "/runs/aquarium/glm-5.3-flash.html",
+      "generated_at": "2026-09-04T13:02:29.808756+00:00"
+    },
+    {
+      "scenario": "aquarium",
+      "model": "hy4-preview",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 368.82,
+      "provider": "Tencent",
+      "usage": {
+        "prompt_tokens": 211,
+        "completion_tokens": 27626,
+        "total_tokens": 27837,
+        "cost": 0.0692686,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.0692686,
+          "upstream_inference_prompt_cost": 0.000175974,
+          "upstream_inference_completions_cost": 0.069092626
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 21957,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 17714,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 3,
+        "dom_nodes_approx": 9
+      },
+      "path": "/runs/aquarium/hy4-preview.html",
+      "generated_at": "2026-09-04T13:06:40.265157+00:00"
+    },
+    {
+      "scenario": "aquarium",
+      "model": "deepseek-v4-flash-0731",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 105.8,
+      "provider": "Relace",
+      "usage": {
+        "prompt_tokens": 196,
+        "completion_tokens": 17146,
+        "total_tokens": 17342,
+        "cost": 0.00309902,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00309902,
+          "upstream_inference_prompt_cost": 1.274e-05,
+          "upstream_inference_completions_cost": 0.00308628
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 11324,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 14665,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 7
+      },
+      "path": "/runs/aquarium/deepseek-v4-flash-0731.html",
+      "generated_at": "2026-09-04T13:04:15.612246+00:00"
+    },
+    {
+      "scenario": "aquarium",
+      "model": "kimi-k3",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 339.31,
+      "provider": "Sail Research",
+      "usage": {
+        "prompt_tokens": 322,
+        "completion_tokens": 24862,
+        "total_tokens": 25184,
+        "cost": 0.3240432,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.3240432,
+          "upstream_inference_prompt_cost": 0.0008372,
+          "upstream_inference_completions_cost": 0.323206
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 16457,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 21381,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9
+      },
+      "path": "/runs/aquarium/kimi-k3.html",
+      "generated_at": "2026-09-04T13:09:54.920747+00:00"
+    },
+    {
+      "scenario": "aquarium",
+      "model": "gpt-5.6-sol",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 87.91,
+      "provider": "OpenAI",
+      "usage": {
+        "prompt_tokens": 199,
+        "completion_tokens": 6288,
+        "total_tokens": 6487,
+        "cost": 0.063278,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.063278,
+          "upstream_inference_prompt_cost": 0.000398,
+          "upstream_inference_completions_cost": 0.06288
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 849,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 16134,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9
+      },
+      "path": "/runs/aquarium/gpt-5.6-sol.html",
+      "generated_at": "2026-09-04T13:08:08.176380+00:00"
+    },
+    {
       "scenario": "rube-goldberg",
       "model": "grok-4.6",
       "status": "ok",
@@ -584,48 +1278,272 @@
       "generated_at": "2026-09-04T12:02:40.302478+00:00"
     },
     {
-      "scenario": "factory",
-      "model": "grok-4.6",
+      "scenario": "rube-goldberg",
+      "model": "glm-5.3-flash",
       "status": "ok",
       "error": null,
-      "duration_seconds": 368.39,
-      "provider": "xAI",
+      "duration_seconds": 1485.86,
+      "provider": "Z.AI",
       "usage": {
-        "prompt_tokens": 409,
-        "completion_tokens": 23764,
-        "total_tokens": 24173,
-        "cost": 0.14321,
+        "prompt_tokens": 202,
+        "completion_tokens": 122620,
+        "total_tokens": 122822,
+        "cost": 0.03067015,
         "is_byok": false,
         "prompt_tokens_details": {
-          "cached_tokens": 128,
+          "cached_tokens": 0,
           "cache_write_tokens": 0,
           "audio_tokens": 0,
           "video_tokens": 0
         },
         "cost_details": {
-          "upstream_inference_cost": 0.14321,
-          "upstream_inference_prompt_cost": 0.000626,
-          "upstream_inference_completions_cost": 0.142584
+          "upstream_inference_cost": 0.03067015,
+          "upstream_inference_prompt_cost": 1.515e-05,
+          "upstream_inference_completions_cost": 0.030655
         },
         "completion_tokens_details": {
-          "reasoning_tokens": 7764,
+          "reasoning_tokens": 111609,
           "image_tokens": 0,
           "audio_tokens": 0
         }
       },
       "metrics": {
-        "valid_html": false,
+        "valid_html": true,
         "self_contained": true,
-        "bytes": 35338,
+        "bytes": 29906,
         "uses_canvas": true,
         "uses_svg": false,
         "uses_css_animation": false,
-        "uses_raf": false,
-        "animation_signals": 0,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9
+      },
+      "path": "/runs/rube-goldberg/glm-5.3-flash.html",
+      "generated_at": "2026-09-04T13:32:54.035380+00:00"
+    },
+    {
+      "scenario": "rube-goldberg",
+      "model": "hy4-preview",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 457.24,
+      "provider": "Tencent",
+      "usage": {
+        "prompt_tokens": 210,
+        "completion_tokens": 32480,
+        "total_tokens": 32690,
+        "cost": 0.08140762,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.08140762,
+          "upstream_inference_prompt_cost": 0.00017514,
+          "upstream_inference_completions_cost": 0.08123248
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 26640,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 18996,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 3,
+        "dom_nodes_approx": 9
+      },
+      "path": "/runs/rube-goldberg/hy4-preview.html",
+      "generated_at": "2026-09-04T13:17:32.161683+00:00"
+    },
+    {
+      "scenario": "rube-goldberg",
+      "model": "deepseek-v4-flash-0731",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 914.59,
+      "provider": "Relace",
+      "usage": {
+        "prompt_tokens": 276,
+        "completion_tokens": 41782,
+        "total_tokens": 42058,
+        "cost": 0.0075387,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.0075387,
+          "upstream_inference_prompt_cost": 1.794e-05,
+          "upstream_inference_completions_cost": 0.00752076
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 27825,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 24215,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 8
+      },
+      "path": "/runs/rube-goldberg/deepseek-v4-flash-0731.html",
+      "generated_at": "2026-09-04T13:25:27.346578+00:00"
+    },
+    {
+      "scenario": "rube-goldberg",
+      "model": "kimi-k3",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 1509.52,
+      "provider": "Sail Research",
+      "usage": {
+        "prompt_tokens": 323,
+        "completion_tokens": 66077,
+        "total_tokens": 66400,
+        "cost": 0.8598408,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.8598408,
+          "upstream_inference_prompt_cost": 0.0008398,
+          "upstream_inference_completions_cost": 0.859001
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 55893,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 24890,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9
+      },
+      "path": "/runs/rube-goldberg/kimi-k3.html",
+      "generated_at": "2026-09-04T13:42:41.680890+00:00"
+    },
+    {
+      "scenario": "rube-goldberg",
+      "model": "gpt-5.6-sol",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 98.58,
+      "provider": "OpenAI",
+      "usage": {
+        "prompt_tokens": 197,
+        "completion_tokens": 10084,
+        "total_tokens": 10281,
+        "cost": 0.101234,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.101234,
+          "upstream_inference_prompt_cost": 0.000394,
+          "upstream_inference_completions_cost": 0.10084
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 1904,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 23288,
+        "uses_canvas": false,
+        "uses_svg": true,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 226
+      },
+      "path": "/runs/rube-goldberg/gpt-5.6-sol.html",
+      "generated_at": "2026-09-04T13:27:05.929783+00:00"
+    },
+    {
+      "scenario": "factory",
+      "model": "grok-4.6",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 403.14,
+      "provider": "xAI",
+      "usage": {
+        "prompt_tokens": 409,
+        "completion_tokens": 28363,
+        "total_tokens": 28772,
+        "cost": 0.17042,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 384,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.17042,
+          "upstream_inference_prompt_cost": 0.000242,
+          "upstream_inference_completions_cost": 0.170178
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 13033,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 31055,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
         "dom_nodes_approx": 9
       },
       "path": "/runs/factory/grok-4.6.html",
-      "generated_at": "2026-09-04T12:08:08.401465+00:00"
+      "generated_at": "2026-09-04T12:45:35.862418+00:00",
+      "repaired": true,
+      "attempt": 2,
+      "repair_reason": "Original one-shot response was truncated at the output-token limit",
+      "original_preserved_at": "/benchmark/raw/factory/grok-4.6.txt"
     },
     {
       "scenario": "factory",
@@ -676,13 +1594,13 @@
       "model": "gemini-3.8-flash",
       "status": "ok",
       "error": null,
-      "duration_seconds": 80.95,
+      "duration_seconds": 85.75,
       "provider": "Google",
       "usage": {
         "prompt_tokens": 201,
-        "completion_tokens": 15996,
-        "total_tokens": 16197,
-        "cost": 0.06013575,
+        "completion_tokens": 16491,
+        "total_tokens": 16692,
+        "cost": 0.061992,
         "is_byok": false,
         "prompt_tokens_details": {
           "cached_tokens": 0,
@@ -691,29 +1609,254 @@
           "video_tokens": 0
         },
         "cost_details": {
-          "upstream_inference_cost": 0.06013575,
+          "upstream_inference_cost": 0.061992,
           "upstream_inference_prompt_cost": 0.00015075,
-          "upstream_inference_completions_cost": 0.059985
+          "upstream_inference_completions_cost": 0.06184125
         },
         "completion_tokens_details": {
-          "reasoning_tokens": 2328,
+          "reasoning_tokens": 1842,
           "image_tokens": 0,
           "audio_tokens": 0
         }
       },
       "metrics": {
-        "valid_html": false,
+        "valid_html": true,
         "self_contained": true,
-        "bytes": 36476,
+        "bytes": 35450,
         "uses_canvas": true,
         "uses_svg": false,
         "uses_css_animation": true,
-        "uses_raf": false,
-        "animation_signals": 1,
-        "dom_nodes_approx": 20
+        "uses_raf": true,
+        "animation_signals": 4,
+        "dom_nodes_approx": 18
       },
       "path": "/runs/factory/gemini-3.8-flash.html",
-      "generated_at": "2026-09-04T12:04:41.807964+00:00"
+      "generated_at": "2026-09-04T12:40:18.475371+00:00",
+      "repaired": true,
+      "attempt": 2,
+      "repair_reason": "Original one-shot response was truncated at the output-token limit",
+      "original_preserved_at": "/benchmark/raw/factory/gemini-3.8-flash.txt"
+    },
+    {
+      "scenario": "factory",
+      "model": "glm-5.3-flash",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 1281.47,
+      "provider": "Z.AI",
+      "usage": {
+        "prompt_tokens": 206,
+        "completion_tokens": 113960,
+        "total_tokens": 114166,
+        "cost": 0.02850545,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.02850545,
+          "upstream_inference_prompt_cost": 1.545e-05,
+          "upstream_inference_completions_cost": 0.02849
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 90862,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 50541,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9
+      },
+      "path": "/runs/factory/glm-5.3-flash.html",
+      "generated_at": "2026-09-04T13:47:16.424861+00:00"
+    },
+    {
+      "scenario": "factory",
+      "model": "hy4-preview",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 523.59,
+      "provider": "Tencent",
+      "usage": {
+        "prompt_tokens": 216,
+        "completion_tokens": 39931,
+        "total_tokens": 40147,
+        "cost": 0.100047575,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.100047575,
+          "upstream_inference_prompt_cost": 0.000180144,
+          "upstream_inference_completions_cost": 0.099867431
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 31513,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 22652,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 8
+      },
+      "path": "/runs/factory/hy4-preview.html",
+      "generated_at": "2026-09-04T13:35:49.521011+00:00"
+    },
+    {
+      "scenario": "factory",
+      "model": "deepseek-v4-flash-0731",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 1090.37,
+      "provider": "Sail Research",
+      "usage": {
+        "prompt_tokens": 283,
+        "completion_tokens": 28190,
+        "total_tokens": 28473,
+        "cost": 0.005092595,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.005092595,
+          "upstream_inference_prompt_cost": 1.8395e-05,
+          "upstream_inference_completions_cost": 0.0050742
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 21266,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 22506,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 8
+      },
+      "path": "/runs/factory/deepseek-v4-flash-0731.html",
+      "generated_at": "2026-09-04T13:48:21.310780+00:00"
+    },
+    {
+      "scenario": "factory",
+      "model": "kimi-k3",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 805.46,
+      "provider": "Sail Research",
+      "usage": {
+        "prompt_tokens": 326,
+        "completion_tokens": 70353,
+        "total_tokens": 70679,
+        "cost": 0.9154366,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.9154366,
+          "upstream_inference_prompt_cost": 0.0008476,
+          "upstream_inference_completions_cost": 0.914589
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 58379,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 25422,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9
+      },
+      "path": "/runs/factory/kimi-k3.html",
+      "generated_at": "2026-09-04T13:46:19.498674+00:00"
+    },
+    {
+      "scenario": "factory",
+      "model": "gpt-5.6-sol",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 83.4,
+      "provider": "OpenAI",
+      "usage": {
+        "prompt_tokens": 202,
+        "completion_tokens": 9035,
+        "total_tokens": 9237,
+        "cost": 0.090754,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.090754,
+          "upstream_inference_prompt_cost": 0.000404,
+          "upstream_inference_completions_cost": 0.09035
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 597,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 21992,
+        "uses_canvas": false,
+        "uses_svg": true,
+        "uses_css_animation": true,
+        "uses_raf": false,
+        "animation_signals": 18,
+        "dom_nodes_approx": 285
+      },
+      "path": "/runs/factory/gpt-5.6-sol.html",
+      "generated_at": "2026-09-04T13:37:12.916858+00:00"
     }
-  ]
+  ],
+  "repaired_at": "2026-09-04T12:45:35.863073+00:00"
 }

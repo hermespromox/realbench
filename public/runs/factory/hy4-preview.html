@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Futuristic Automated Factory</title>
+<style>
+    body, html {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #0f111a;
+        font-family: sans-serif;
+    }
+    canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+    }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let cw, ch;
+
+function resize() {
+    cw = canvas.width = window.innerWidth;
+    ch = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// Isometric Projection Constants
+const tw = 48; // tile width
+const th = 24; // tile height
+const tz = 36; // z height
+
+function pt(x, y, z) {
+    return {
+        x: (x - y) * tw / 2,
+        y: (x + y) * th / 2 - z * tz
+    };
+}
+
+function shadeColor(color, percent) {
+    let R = parseInt(color.substring(1,3),16);
+    let G = parseInt(color.substring(3,5),16);
+    let B = parseInt(color.substring(5,7),16);
+
+    R = parseInt(R * (100 + percent) / 100);
+    G = parseInt(G * (100 + percent) / 100);
+    B = parseInt(B * (100 + percent) / 100);
+
+    R = (R<255)?R:255;  
+    G = (G<255)?G:255;  
+    B = (B<255)?B:255;  
+
+    let RR = ((R.toString(16).length==1)?"0"+R.toString(16):R.toString(16));
+    let GG = ((G.toString(16).length==1)?"0"+G.toString(16):G.toString(16));
+    let BB = ((B.toString(16).length==1)?"0"+B.toString(16):B.toString(16));
+
+    return "#"+RR+GG+BB;
+}
+
+function drawPoly(ctx, points, color, strokeColor = '#111') {
+    ctx.fillStyle = color;
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for(let i=1; i<points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+}
+
+// Global Render List for Depth Sorting
+let renderList = [];
+
+function addBox3D(x, y, z, dx, dy, dz, color) {
+    renderList.push({
+        type: 'box',
+        x, y, z, dx, dy, dz, color,
+        depth: (x + dx/2) + (y + dy/2) + (z + dz/2)
+    });
+}
+
+function addLine3D(x1, y1, z1, x2, y2, z2, width, color) {
+    renderList.push({
+        type: 'line',
+        x1, y1, z1, x2, y2, z2, width, color,
+        depth: (x1 + x2)/2 + (y1 + y2)/2 + (z1 + z2)/2
+    });
+}
+
+function addSprite3D(x, y, z, drawFunc) {
+    renderList.push({
+        type: 'sprite',
+        x, y, z, drawFunc,
+        depth: x + y + z
+    });
+}
+
+function drawBox(ctx, x, y, z, dx, dy, dz, color) {
+    let t1 = pt(x, y, z+dz);
+    let t2 = pt(x+dx, y, z+dz);
+    let t3 = pt(x+dx, y+dy, z+dz);
+    let t4 = pt(x, y+dy, z+dz);
+    
+    let l1 = pt(x, y+dy, z);
+    let l2 = pt(x+dx, y+dy, z);
+    let l3 = pt(x+dx, y+dy, z+dz);
+    let l4 = pt(x, y+dy, z+dz);
+    
+    let r1 = pt(x+dx, y, z);
+    let r2 = pt(x+dx, y+dy, z);
+    let r3 = pt(x+dx, y+dy, z+dz);
+    let r4 = pt(x+dx, y, z+dz);
+    
+    drawPoly(ctx, [l1, l2, l3, l4], shadeColor(color, -20));
+    drawPoly(ctx, [r1, r2, r3, r4], shadeColor(color, -40));
+    drawPoly(ctx, [t1, t2, t3, t4], color);
+}
+
+// Factory Entities
+let products = [];
+let palletCount = 0;
+
+class Product {
+    constructor(id) {
+        this.id = id;
+        this.state = 'input';
+        this.timer = 0;
+        this.x = 3; this.y = 3; this.z = 0.4;
+        this.color = '#1e90ff'; // Blue raw
+        this.stackIndex = 0;
+    }
+    
+    update(dt) {
+        this.timer += dt;
+        switch(this.state) {
+            case 'input':
+                let p = Math.min(this.timer / 2.0, 1.0);
+                this.x = 3; this.y = 3 + p * 4; this.z = 0.4;
+                if (p === 1.0) { this.state = 'wait_arm1'; this.timer = 0; }
+                break;
+            case 'wait_arm1':
+                this.x = 3; this.y = 7; this.z = 0.4;
+                break;
+            case 'stamping':
+                this.x = 5; this.y = 8; this.z = 0.4;
+                if (this.timer > 1.0) this.color = '#ffa502'; // Orange stamped
+                if (this.timer >= 1.5) { this.state = 'mid'; this.timer = 0; }
+                break;
+            case 'mid':
+                let p2 = Math.min(this.timer / 2.0, 1.0);
+                this.x = 5 + p2 * 4; this.y = 8; this.z = 0.4;
+                if (p2 === 1.0) { this.state = 'wait_arm2'; this.timer = 0; }
+                break;
+            case 'wait_arm2':
+                this.x = 9; this.y = 8; this.z = 0.4;
+                break;
+            case 'assembling':
+                this.x = 10; this.y = 5; this.z = 0.4;
+                if (this.timer > 1.5) this.color = '#2ed573'; // Green finished
+                if (this.timer >= 2.0) { this.state = 'out1'; this.timer = 0; }
+                break;
+            case 'out1':
+                let p3 = Math.min(this.timer / 1.0, 1.0);
+                this.x = 10; this.y = 5 - p3 * 2; this.z = 0.4;
+                if (p3 === 1.0) { this.state = 'out2'; this.timer = 0; }
+                break;
+            case 'out2':
+                let p4 = Math.min(this.timer / 1.5, 1.0);
+                this.x = 10 + p4 * 3; this.y = 3; this.z = 0.4;
+                if (p4 === 1.0) { this.state = 'out3'; this.timer = 0; }
+                break;
+            case 'out3':
+                let p5 = Math.min(this.timer / 4.5, 1.0);
+                this.x = 13; this.y = 3 + p5 * 9; this.z = 0.4;
+                if (p5 === 1.0) { this.state = 'pallet'; this.timer = 0; }
+                break;
+            case 'pallet':
+                let p6 = Math.min(this.timer / 1.0, 1.0);
+                this.x = 13; this.y = 12 + p6 * 1; this.z = 0.4 - p6 * 0.2;
+                if (p6 === 1.0) { 
+                    this.state = 'stacked'; 
+                    this.timer = 0; 
+                    this.stackIndex = palletCount;
+                    palletCount++;
+                }
+                break;
+            case 'stacked':
+                this.x = 13; this.y = 13; this.z = 0.2 + this.stackIndex * 0.4;
+                break;
+        }
+    }
+}
+
+function getIK(Bx, By, Bz, Tx, Ty, Tz, L1, L2) {
+    let dx = Tx - Bx;
+    let dy = Ty - By;
+    let dz = Tz - Bz;
+    let L = Math.sqrt(dx*dx + dy*dy);
+    let D = Math.sqrt(L*L + dz*dz);
+    
+    if (D > L1 + L2 - 0.001) D = L1 + L2 - 0.001;
+    if (D < Math.abs(L1 - L2) + 0.001) D = Math.abs(L1 - L2) + 0.001;
+    
+    let alpha = Math.acos((L1*L1 + D*D - L2*L2) / (2 * L1 * D));
+    let beta = Math.atan2(dz, L);
+    let theta = beta + alpha;
+    
+    let ux = L === 0 ? 0 : dx / L;
+    let uy = L === 0 ? 0 : dy / L;
+    
+    let Ex = Bx + ux * L1 * Math.cos(theta);
+    let Ey = By + uy * L1 * Math.cos(theta);
+    let Ez = Bz + L1 * Math.sin(theta);
+    
+    return {Ex, Ey, Ez};
+}
+
+class Arm {
+    constructor(id, Bx, By, pickPos, dropPos) {
+        this.id = id;
+        this.Bx = Bx; this.By = By; this.Bz = 0;
+        this.pickPos = pickPos; 
+        this.dropPos = dropPos;
+        this.idlePos = { x: (pickPos.x + dropPos.x)/2, y: (pickPos.y + dropPos.y)/2, z: 1.8 };
+        
+        this.state = 'idle';
+        this.timer = 0;
+        this.heldProduct = null;
+        this.clawPos = { ...this.idlePos };
+        
+        this.states = {
+            'idle': { next: 'to_p1', dur: 0.1 },
+            'to_p1': { start: () => this.idlePos, end: () => ({x: this.pickPos.x, y: this.pickPos.y, z: 1.2}), dur: 0.5, next: 'to_p2' },
+            'to_p2': { start: () => ({x: this.pickPos.x, y: this.pickPos.y, z: 1.2}), end: () => ({x: this.pickPos.x, y: this.pickPos.y, z: this.pickPos.z + 0.6}), dur: 0.3, next: 'grip' },
+            'grip': { dur: 0.2, next: 'to_p3', onEnd: () => this.pickUp() },
+            'to_p3': { start: () => ({x: this.pickPos.x, y: this.pickPos.y, z: this.pickPos.z + 0.6}), end: () => ({x: this.dropPos.x, y: this.dropPos.y, z: 1.2}), dur: 0.8, next: 'to_p4' },
+            'to_p4': { start: () => ({x: this.dropPos.x, y: this.dropPos.y, z: 1.2}), end: () => ({x: this.dropPos.x, y: this.dropPos.y, z: this.dropPos.z + 0.6}), dur: 0.3, next: 'release' },
+            'release': { dur: 0.2, next: 'to_p0', onStart: () => this.drop() },
+            'to_p0': { start: () => ({x: this.dropPos.x, y: this.dropPos.y, z: this.dropPos.z + 0.6}), end: () => this.idlePos, dur: 0.7, next: 'idle' }
+        };
+    }
+    
+    update(dt) {
+        if (this.state === 'idle') return;
+        
+        let st = this.states[this.state];
+        
+        if (this.timer === 0 && st.onStart) st.onStart();
+        
+        this.timer += dt;
+        let p = Math.min(this.timer / st.dur, 1.0);
+        let ease = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p;
+        
+        if (st.start && st.end) {
+            let s = st.start();
+            let e = st.end();
+            this.clawPos.x = s.x + (e.x - s.x) * ease;
+            this.clawPos.y = s.y + (e.y - s.y) * ease;
+            this.clawPos.z = s.z + (e.z - s.z) * ease;
+        }
+        
+        if (this.heldProduct) {
+            this.heldProduct.x = this.clawPos.x;
+            this.heldProduct.y = this.clawPos.y;
+            this.heldProduct.z = this.clawPos.z - 0.6;
+        }
+        
+        if (this.timer >= st.dur) {
+            if (st.onEnd) st.onEnd();
+            this.state = st.next;
+            this.timer = 0;
+        }
+    }
+
+    draw() {
+        let Bx = this.Bx, By = this.By, Bz = this.Bz;
+        let Tx = this.clawPos.x, Ty = this.clawPos.y, Tz = this.clawPos.z;
+        
+        addBox3D(Bx - 0.4, By - 0.4, 0, 0.8, 0.8, 0.5, '#2f3640');
+        
+        let ik = getIK(Bx, By, Bz + 0.5, Tx, Ty, Tz, 1.5, 1.5);
+        
+        addLine3D(Bx, By, Bz + 0.5, ik.Ex, ik.Ey, ik.Ez, 8, '#747d8c');
+        addLine3D(ik.Ex, ik.Ey, ik.Ez, Tx, Ty, Tz, 6, '#747d8c');
+        
+        addSprite3D(Bx, By, Bz + 0.5, (ctx) => {
+            let p = pt(Bx, By, Bz + 0.5);
+            ctx.fillStyle = '#ffa502';
+            ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI*2); ctx.fill();
+        });
+        addSprite3D(ik.Ex, ik.Ey, ik.Ez, (ctx) => {
+            let p = pt(ik.Ex, ik.Ey, ik.Ez);
+            ctx.fillStyle = '#ffa502';
+            ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI*2); ctx.fill();
+        });
+        
+        addBox3D(Tx - 0.2, Ty - 0.2, Tz, 0.4, 0.4, 0.2, '#576574');
+        let isGripping = this.state === 'grip' || this.state === 'to_p3' || this.state === 'to_p4';
+        let fingerOffset = isGripping ? 0.1 : 0.3;
+        addBox3D(Tx - fingerOffset, Ty - 0.1, Tz - 0.3, 0.1, 0.2, 0.3, '#ced6e0');
+        addBox3D(Tx + fingerOffset - 0.1, Ty - 0.1, Tz - 0.3, 0.1, 0.2, 0.3, '#ced6e0');
+    }
+}
+
+class Cart {
+    constructor(speed, offset) {
+        this.speed = speed;
+        this.dist = offset;
+        this.x = 1; this.y = 1; this.z = 0;
+        this.crateColor = '#ced6e0';
+    }
+    update(dt) {
+        this.dist += this.speed * dt;
+        let d = this.dist % 56; 
+        if (d < 0) d += 56;
+        if (d < 14) { this.x = 1 + d; this.y = 1; }
+        else if (d < 28) { this.x = 15; this.y = 1 + (d - 14); }
+        else if (d < 42) { this.x = 15 - (d - 28); this.y = 15; }
+        else { this.x = 1; this.y = 15 - (d - 42); }
+    }
+    draw() {
+        addBox3D(this.x - 0.4, this.y - 0.4, 0.05, 0.8, 0.8, 0.2, '#2f3542'); 
+        addBox3D(this.x - 0.3, this.y - 0.3, 0.25, 0.6, 0.6, 0.5, this.crateColor);
+    }
+}
+
+class SpecialCart {
+    constructor() {
+        this.state = 'idle';
+        this.timer = 0;
+        this.x = 16; this.y = 13; this.z = 0;
+        this.carriedProducts = [];
+    }
+    
+    update(dt) {
+        if (this.state === 'idle') {
+            if (palletCount >= 4) {
+                this.state = 'move_to_pallet';
+                this.timer = 0;
+            }
+            return;
+        }
+        
+        this.timer += dt;
+        
+        if (this.state === 'move_to_pallet') {
+            let p = Math.min(this.timer / 2.0, 1.0);
+            let ease = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p;
+            this.x = 16 - ease * 3.0; 
+            this.y = 13;
+            if (p === 1.0) { this.state = 'pick_up'; this.timer = 0; }
+        } else if (this.state === 'pick_up') {
+            this.carriedProducts = products.filter(p => p.state === 'stacked');
+            let p = Math.min(this.timer / 0.5, 1.0);
+            this.carriedProducts.forEach((prod, i) => {
+                prod.z = 0.2 + i * 0.4 + p * 0.2; 
+            });
+            
+            if (p === 1.0) {
+                this.carriedProducts.forEach((prod, i) => {
+                    prod.state = 'on_cart';
+                    prod.stackIndex = i;
+                });
+                products = products.filter(p => p.state !== 'stacked');
+                palletCount = 0;
+                this.state = 'move_away';
+                this.timer = 0;
+            }
+        } else if (this.state === 'move_away') {
+            let p = Math.min(this.timer / 2.0, 1.0);
+            let ease = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p;
+            this.x = 13 + ease * 3.0; 
+            this.y = 13;
+            
+            this.carriedProducts.forEach(prod => {
+                prod.x = this.x;
+                prod.y = this.y;
+                prod.z = 0.4 + prod.stackIndex * 0.4; 
+            });
+            
+            if (p === 1.0) { 
+                this.state = 'idle'; 
+                this.timer = 0; 
+                this.carriedProducts = []; 
+            }
+        }
+    }
+    
+    draw() {
+        if (this.state === 'idle' && palletCount < 4) return;
+        addBox3D(this.x - 0.8, this.y - 0.6, 0.1, 1.6, 1.2, 0.2, '#e74c3c');
+        addBox3D(this.x - 0.7, this.y - 0.5, 0, 0.2, 0.2, 0.1, '#111');
+        addBox3D(this.x + 0.5, this.y - 0.5, 0, 0.2, 0.2, 0.1, '#111');
+        addBox3D(this.x - 0.7, this.y + 0.3, 0, 0.2, 0.2, 0.1, '#111');
+        addBox3D(this.x + 0.5, this.y + 0.3, 0, 0.2, 0.2, 0.1, '#111');
+        
+        for(let p of this.carriedProducts) {
+            addBox3D(p.x - 0.3, p.y - 0.3, p.z, 0.6, 0.6, 0.6, p.color);
+        }
+    }
+}
+
+let arm1 = new Arm('arm1', 3, 8, {x:3, y:7, z:0.4}, {x:5, y:8, z:0.4});
+let arm2 = new Arm('arm2', 10, 7, {x:9, y:8, z:0.4}, {x:10, y:5, z:0.4});
+let carts = [new Cart(2.0, 0), new Cart(2.0, 28)];
+let specialCart = new SpecialCart();
+
+arm1.pickUp = () => {
+    let p = products.find(p => p.state === 'arm1_moving');
+    if (p) arm1.heldProduct = p;
+};
+arm1.drop = () => {
+    if (arm1.heldProduct) {
+        arm1.heldProduct.state = 'stamping';
+        arm1.heldProduct.timer = 0;
+        arm1.heldProduct = null;
+    }
+};
+arm2.pickUp = () => {
+    let p = products.find(p => p.state === 'arm2_moving');
+    if (p) arm2.heldProduct = p;
+};
+arm2.drop = () => {
+    if (arm2.heldProduct) {
+        arm2.heldProduct.state = 'assembling';
+        arm2.heldProduct.timer = 0;
+        arm2.heldProduct = null;
+    }
+};
+
+function addConveyor(x, y, dx, dy, time) {
+    addBox3D(x, y, 0, dx, dy, 0.4, '#2c3e50');
+    
+    addSprite3D(x + dx/2, y + dy/2, 0.41, (ctx) => {
+        let t1 = pt(x, y, 0.41);
+        let t2 = pt(x+dx, y, 0.41);
+        let t3 = pt(x+dx, y+dy, 0.41);
+        let t4 = pt(x, y+dy, 0.41);
+        drawPoly(ctx, [t1, t2, t3, t4], '#34495e');
+        
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(t1.x, t1.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(t3.x, t3.y); ctx.lineTo(t4.x, t4.y);
+        ctx.clip();
+        
+        ctx.strokeStyle = '#00f3ff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        let len = Math.max(dx, dy);
+        let offset = (time * 1.5) % 1;
+        for(let i=-1; i<len; i++) {
+            let p = i + offset;
+            if (dx > dy) {
+                let sx = x + p;
+                if (sx >= x && sx <= x + dx) {
+                    let l1 = pt(sx, y, 0.41); let l2 = pt(sx, y+dy, 0.41);
+                    ctx.moveTo(l1.x, l1.y); ctx.lineTo(l2.x, l2.y);
+                }
+            } else {
+                let sy = y + p;
+                if (sy >= y && sy <= y + dy) {
+                    let l1 = pt(x, sy, 0.41); let l2 = pt(x+dx, sy, 0.41);
+                    ctx.moveTo(l1.x, l1.y); ctx.lineTo(l2.x, l2.y);
+                }
+            }
+        }
+        ctx.stroke();
+        ctx.restore();
+    });
+}
+
+function drawFloor(ctx) {
+    let p1 = pt(0, 0, 0);
+    let p2 = pt(16, 0, 0);
+    let p3 = pt(16, 16, 0);
+    let p4 = pt(0, 16, 0);
+    drawPoly(ctx, [p1, p2, p3, p4], '#1e272e', '#111');
+    
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#2f3640';
+    ctx.beginPath();
+    for(let i=0; i<=16; i++) {
+        let a = pt(i, 0, 0); let b = pt(i, 16, 0);
+        ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+        let c = pt(0, i, 0); let d = pt(16, i, 0);
+        ctx.moveTo(c.x, c.y); ctx.lineTo(d.x, d.y);
+    }
+    ctx.stroke();
+    
+    ctx.strokeStyle = '#2a2e3d';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    let t1 = pt(1, 1, 0); let t2 = pt(15, 1, 0);
+    let t3 = pt(15, 15, 0); let t4 = pt(1, 15, 0);
+    ctx.moveTo(t1.x, t1.y); ctx.lineTo(t2.x, t2.y);
+    ctx.lineTo(t3.x, t3.y); ctx.lineTo(t4.x, t4.y);
+    ctx.closePath();
+    ctx.stroke();
+    
+    ctx.strokeStyle = '#57606f';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([10, 10]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+}
+
+let spawnTimer = 3.0;
+let lastTime = 0;
+let time = 0;
+
+function update(dt) {
+    time += dt;
+    
+    spawnTimer += dt;
+    if (spawnTimer > 3.5) {
+        let clear = true;
+        for(let p of products) {
+            if (p.state === 'input' && p.timer < 1.0) clear = false;
+        }
+        if (clear) {
+            products.push(new Product(Date.now()));
+            spawnTimer = 0;
+        }
+    }
+    
+    for(let p of products) p.update(dt);
+    
+    if (arm1.state === 'idle') {
+        let p = products.find(p => p.state === 'wait_arm1');
+        if (p) {
+            arm1.state = 'to_p1';
+            arm1.timer = 0;
+            p.state = 'arm1_moving';
+        }
+    }
+    arm1.update(dt);
+    
+    if (arm2.state === 'idle') {
+        let p = products.find(p => p.state === 'wait_arm2');
+        if (p) {
+            arm2.state = 'to_p1';
+            arm2.timer = 0;
+            p.state = 'arm2_moving';
+        }
+    }
+    arm2.update(dt);
+    
+    for(let c of carts) c.update(dt);
+    specialCart.update(dt);
+}
+
+function draw() {
+    ctx.fillStyle = '#0f111a';
+    ctx.fillRect(0, 0, cw, ch);
+    
+    ctx.save();
+    let scale = Math.min(cw / 800, ch / 600);
+    ctx.translate(cw / 2, ch / 2 - 100 * scale);
+    ctx.scale(scale, scale);
+    
+    drawFloor(ctx);
+    
+    addConveyor(3, 3, 1, 4, time);
+    addConveyor(5, 8, 4, 1, time);
+    addConveyor(10, 3, 3, 1, time);
+    addConveyor(13, 3, 1, 9, time);
+    
+    // Stamping Machine
+    addBox3D(4, 7, 0, 2, 2, 0.4, '#222f3e');
+    addBox3D(4.2, 7.2, 0.4, 0.2, 0.2, 2, '#576574');
+    addBox3D(5.6, 7.2, 0.4, 0.2, 0.2, 2, '#576574');
+    addBox3D(4.2, 8.6, 0.4, 0.2, 0.2, 2, '#576574');
+    addBox3D(5.6, 8.6, 0.4, 0.2, 0.2, 2, '#576574');
+    addBox3D(4, 7, 2.4, 2, 2, 0.5, '#222f3e');
+    
+    let stampingProduct = products.find(p => p.state === 'stamping');
+    let pistonZ = 1.5;
+    if (stampingProduct && stampingProduct.timer > 0.5 && stampingProduct.timer < 1.0) {
+        let p = (stampingProduct.timer - 0.5) / 0.5;
+        pistonZ = 1.5 - Math.sin(p * Math.PI) * 0.5;
+    }
+    addBox3D(4.6, 7.6, pistonZ, 0.8, 0.8, 1.0, '#ff4757');
+    let rodH = 2.4 - (pistonZ + 1.0);
+    if (rodH > 0) addBox3D(4.8, 7.8, pistonZ + 1.0, 0.4, 0.4, rodH, '#bdc3c7');
+    
+    let stampLight = stampingProduct ? '#ff4757' : '#2ed573';
+    addSprite3D(4.2, 7.2, 2.4, (ctx) => {
+        let p = pt(4.2, 7.2, 2.4);
+        ctx.fillStyle = stampLight;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill();
+    });
+
+    // Assembly Machine
+    addBox3D(9, 4, 0, 2, 2, 0.4, '#222f3e');
+    addBox3D(9.2, 4.2, 0.4, 1.6, 1.6, 1.5, '#2f3640');
+    
+    let asmProduct = products.find(p => p.state === 'assembling');
+    let asmActive = asmProduct && asmProduct.timer > 0.5 && asmProduct.timer < 1.5;
+    
+    addSprite3D(10, 5, 1.0, (ctx) => {
+        let p = pt(10, 5, 1.0);
+        let grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 20);
+        grad.addColorStop(0, 'rgba(46, 213, 115, 0.8)');
+        grad.addColorStop(1, 'rgba(46, 213, 115, 0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 20, 0, Math.PI*2); ctx.fill();
+    });
+    
+    addSprite3D(10, 5, 1.9, (ctx) => {
+        let c = pt(10, 5, 1.9);
+        ctx.fillStyle = asmActive ? '#f1c40f' : '#f39c12';
+        ctx.beginPath(); ctx.arc(c.x, c.y, 8, 0, Math.PI*2); ctx.fill();
+        
+        if (asmActive) {
+            ctx.strokeStyle = '#2ed573';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            let r = 12 + Math.sin(time * 15) * 4;
+            ctx.arc(c.x, c.y, r, 0, Math.PI*2);
+            ctx.stroke();
+            
+            let pLeft = pt(10 - 0.3, 5 - 0.3, 0.4);
+            let pRight = pt(10 + 0.3, 5 + 0.3, 0.4);
+            ctx.beginPath();
+            ctx.moveTo(c.x - 4, c.y); ctx.lineTo(pLeft.x, pLeft.y);
+            ctx.moveTo(c.x + 4, c.y); ctx.lineTo(pRight.x, pRight.y);
+            ctx.stroke();
+        }
+    });
+
+    // Pallet
+    addBox3D(12.5, 12.5, 0, 1, 1, 0.2, '#d35400');
+
+    for(let p of products) {
+        if(p.state !== 'stacked' && p.state !== 'on_cart') {
+            addBox3D(p.x - 0.3, p.y - 0.3, p.z, 0.6, 0.6, 0.6, p.color);
+        }
+    }
+    
+    arm1.draw();
+    arm2.draw();
+    for(let c of carts) c.draw();
+    specialCart.draw();
+    
+    renderList.sort((a, b) => a.depth - b.depth);
+    
+    for(let item of renderList) {
+        if (item.type === 'box') {
+            drawBox(ctx, item.x, item.y, item.z, item.dx, item.dy, item.dz, item.color);
+        } else if (item.type === 'line') {
+            let p1 = pt(item.x1, item.y1, item.z1);
+            let p2 = pt(item.x2, item.y2, item.z2);
+            ctx.strokeStyle = item.color;
+            ctx.lineWidth = item.width;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+        } else if (item.type === 'sprite') {
+            let p = pt(item.x, item.y, item.z);
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            item.drawFunc(ctx);
+            ctx.restore();
+        }
+    }
+    
+    renderList = [];
+    ctx.restore();
+}
+
+function loop(timestamp) {
+    if (!lastTime) lastTime = timestamp;
+    let dt = (timestamp - lastTime) / 1000;
+    lastTime = timestamp;
+    if (dt > 0.1) dt = 0.1;
+    
+    update(dt);
+    draw();
+    
+    requestAnimationFrame(loop);
+}
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

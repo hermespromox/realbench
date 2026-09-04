@@ -61,13 +61,13 @@ export default function Home() {
         <div className={styles.eyebrow}>FRONTEND CAPABILITY EVALUATION / RUN 001</div>
         <h1>See what models<br />can actually build.</h1>
         <p className={styles.lead}>
-          Same prompt. One shot. No repair. Fifteen seconds of autonomous animation,
+          Same prompt. One generation per published artifact. Fifteen seconds of autonomous animation,
           rendered side by side in your browser.
         </p>
         <div className={styles.heroStats}>
-          <div><strong>3</strong><span>Frontier models</span></div>
-          <div><strong>5</strong><span>Visual challenges</span></div>
-          <div><strong>15</strong><span>One-shot builds</span></div>
+          <div><strong>{modelOrder.length}</strong><span>Frontier models</span></div>
+          <div><strong>{scenarioOrder.length}</strong><span>Visual challenges</span></div>
+          <div><strong>{data.results.length}</strong><span>Published builds</span></div>
           <div><strong>0</strong><span>Human edits</span></div>
         </div>
       </section>
@@ -168,7 +168,7 @@ export default function Home() {
         <div className={styles.sectionTop}><div><span className={styles.sectionIndex}>03</span><h2>Methodology</h2></div></div>
         <div className={styles.methodGrid}>
           <article><span>01</span><h3>Identical prompt</h3><p>Every model receives the exact same task and system constraints.</p></article>
-          <article><span>02</span><h3>Single generation</h3><p>No retries, follow-up prompts, repairs, or cherry-picked variants.</p></article>
+          <article><span>02</span><h3>Transparent generation</h3><p>No cherry-picked variants. Any token-limit rerun is preserved and labeled in the benchmark manifest.</p></article>
           <article><span>03</span><h3>Native web only</h3><p>One HTML file. Vanilla HTML, CSS, SVG, Canvas, and JavaScript.</p></article>
           <article><span>04</span><h3>Passive evaluation</h3><p>No clicks required. Every scene runs autonomously for visual comparison.</p></article>
         </div>

@@ -1,0 +1,659 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Rube Goldberg Machine</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            overflow: hidden;
+            background: #0a0a1a;
+            font-family: sans-serif;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="c"></canvas>
+    <script>
+        const canvas = document.getElementById('c');
+        const ctx = canvas.getContext('2d');
+        const VW = 1200,
+            VH = 800;
+        let W, H;
+
+        function resize() {
+            W = canvas.width = window.innerWidth;
+            H = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const TOTAL = 16;
+        const T = {
+            ball1Start: 0,
+            ball1HitDomino: 2.0,
+            dominoStart: 2.0,
+            dominoInterval: 0.18,
+            dominoDuration: 0.25,
+            leverStart: 2.0 + 9 * 0.18 + 0.25,
+            leverDuration: 0.4,
+            ball2Release: 2.0 + 9 * 0.18 + 0.25 + 0.4,
+            ball2FallDuration: 0.3,
+            ball2RollDuration: 0.8,
+            wheelStart: 2.0 + 9 * 0.18 + 0.25 + 0.4 + 0.3 + 0.8,
+            wheelDuration: 2.0,
+            catapultTrigger: 7.0,
+            catapultDuration: 0.4,
+            ball3Launch: 7.1,
+            ball3Flight: 0.9,
+            bellHit: 8.15,
+            titleStart: 12.0,
+            fadeStart: 15.0,
+        };
+
+        function clamp01(t) { return Math.max(0, Math.min(1, t)); }
+
+        function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+        function easeInQuad(t) { return t * t; }
+
+        const ramp1Start = { x: 60, y: 120 };
+        const ramp1End = { x: 330, y: 300 };
+        const ball1Radius = 14;
+
+        function getBall1(t) {
+            if (t < 0 || t > 3) return null;
+            if (t < 2.0) {
+                const p = clamp01(t / 2.0);
+                const eased = easeInQuad(p);
+                const dx = ramp1End.x - ramp1Start.x;
+                const dy = ramp1End.y - ramp1Start.y;
+                const len = Math.sqrt(dx * dx + dy * dy);
+                const nx = -dy / len,
+                    ny = dx / len;
+                return {
+                    x: ramp1Start.x + dx * eased + nx * ball1Radius,
+                    y: ramp1Start.y + dy * eased + ny * ball1Radius,
+                    r: ball1Radius
+                };
+            }
+            if (t < 2.3) {
+                const p = clamp01((t - 2.0) / 0.3);
+                return {
+                    x: ramp1End.x + (350 - ramp1End.x) * p,
+                    y: ramp1End.y + (300 - ramp1End.y) * p,
+                    r: ball1Radius
+                };
+            }
+            return null;
+        }
+
+        const dominoes = [];
+        for (let i = 0; i < 10; i++) {
+            dominoes.push({ x: 350 + i * 32, y: 300, w: 10, h: 55 });
+        }
+
+        function getDominoAngle(i, t) {
+            const start = T.dominoStart + i * T.dominoInterval;
+            const dur = T.dominoDuration;
+            const maxAngle = Math.PI / 2.5;
+            if (t < start) return 0;
+            if (t < start + dur) {
+                const p = clamp01((t - start) / dur);
+                return maxAngle * easeOutCubic(p);
+            }
+            return maxAngle;
+        }
+
+        const leverPivot = { x: 680, y: 300 };
+        const leverHalfLen = 45;
+
+        function getLeverAngle(t) {
+            const start = T.leverStart;
+            const dur = T.leverDuration;
+            const maxAngle = 0.25;
+            if (t < start) return 0;
+            if (t < start + dur) {
+                const p = clamp01((t - start) / dur);
+                return maxAngle * easeOutCubic(p);
+            }
+            return maxAngle;
+        }
+
+        function getBall2(t) {
+            const release = T.ball2Release;
+            if (t < release) {
+                const angle = getLeverAngle(t);
+                const x = leverPivot.x + leverHalfLen * Math.cos(angle);
+                const y = leverPivot.y - leverHalfLen * Math.sin(angle) - 14;
+                return { x, y, r: 14, visible: true };
+            }
+            const fallDur = T.ball2FallDuration;
+            const rollDur = T.ball2RollDuration;
+            const slideStart = { x: 700, y: 350 };
+            const slideEnd = { x: 570, y: 450 };
+            if (t < release + fallDur) {
+                const p = clamp01((t - release) / fallDur);
+                return {
+                    x: 724 + (700 - 724) * p,
+                    y: 275 + (350 - 275) * p,
+                    r: 14,
+                    visible: true
+                };
+            }
+            if (t < release + fallDur + rollDur) {
+                const p = clamp01((t - release - fallDur) / rollDur);
+                const eased = easeInQuad(p);
+                return {
+                    x: slideStart.x + (slideEnd.x - slideStart.x) * eased,
+                    y: slideStart.y + (slideEnd.y - slideStart.y) * eased,
+                    r: 14,
+                    visible: true
+                };
+            }
+            return { x: 550, y: 440, r: 14, visible: t < 8 };
+        }
+
+        const wheelCenter = { x: 550, y: 490 };
+        const wheelRadius = 50;
+
+        function getWheelAngle(t) {
+            const start = T.wheelStart;
+            const dur = T.wheelDuration;
+            const totalRotations = 2.5;
+            const maxAngle = totalRotations * 2 * Math.PI;
+            if (t < start) return 0;
+            if (t < start + dur) {
+                const p = clamp01((t - start) / dur);
+                return maxAngle * easeOutCubic(p);
+            }
+            return maxAngle;
+        }
+
+        const catapultPivot = { x: 800, y: 490 };
+        const catapultLen = 80;
+
+        function getCatapultAngle(t) {
+            const start = T.catapultTrigger;
+            const dur = T.catapultDuration;
+            const maxAngle = -Math.PI / 2;
+            if (t < start) return 0;
+            if (t < start + dur) {
+                const p = clamp01((t - start) / dur);
+                return maxAngle * easeOutCubic(p);
+            }
+            return maxAngle;
+        }
+
+        function getBall3(t) {
+            const launch = T.ball3Launch;
+            if (t < launch) {
+                const angle = getCatapultAngle(t);
+                const x = catapultPivot.x + catapultLen * Math.cos(angle);
+                const y = catapultPivot.y + catapultLen * Math.sin(angle) - 10;
+                return { x, y, r: 12, visible: true };
+            }
+            const launchAngle = getCatapultAngle(launch);
+            const x0 = catapultPivot.x + catapultLen * Math.cos(launchAngle);
+            const y0 = catapultPivot.y + catapultLen * Math.sin(launchAngle) - 10;
+            const x1 = 950,
+                y1 = 100;
+            const x2 = 1050,
+                y2 = 160;
+            const flight = T.ball3Flight;
+            const tFlight = t - launch;
+            if (tFlight < flight) {
+                const p = clamp01(tFlight / flight);
+                const u = 1 - p;
+                return {
+                    x: u * u * x0 + 2 * u * p * x1 + p * p * x2,
+                    y: u * u * y0 + 2 * u * p * y1 + p * p * y2,
+                    r: 12,
+                    visible: true
+                };
+            }
+            return { x: 1050, y: 160, r: 12, visible: t < 13 };
+        }
+
+        const bellPos = { x: 1050, y: 160 };
+
+        function getBellAngle(t) {
+            const hit = T.bellHit;
+            if (t < hit) return 0;
+            const dt = t - hit;
+            const amplitude = 0.3;
+            const decay = Math.exp(-dt * 0.8);
+            return amplitude * Math.sin(dt * 5) * decay;
+        }
+
+        function drawBackground(t) {
+            const grad = ctx.createLinearGradient(0, 0, 0, VH);
+            grad.addColorStop(0, '#0b0b2a');
+            grad.addColorStop(0.5, '#141438');
+            grad.addColorStop(1, '#1a1a3e');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, VW, VH);
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            for (let i = 0; i < 60; i++) {
+                const x = (i * 137.5 + 50) % VW;
+                const y = (i * 73.1 + 20) % (VH * 0.6);
+                const s = 1 + (i % 3);
+                const twinkle = 0.5 + 0.5 * Math.sin(t * 2 + i);
+                ctx.globalAlpha = 0.3 + 0.7 * twinkle;
+                ctx.beginPath();
+                ctx.arc(x, y, s, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = '#15152a';
+            ctx.fillRect(0, VH - 80, VW, 80);
+            ctx.fillStyle = 'rgba(255,255,255,0.04)';
+            for (let i = 0; i < VW; i += 40) {
+                ctx.fillRect(i, VH - 80, 20, 80);
+            }
+        }
+
+        function drawRamp1() {
+            ctx.strokeStyle = '#8B6F47';
+            ctx.lineWidth = 10;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(ramp1Start.x, ramp1Start.y);
+            ctx.lineTo(ramp1End.x, ramp1End.y);
+            ctx.stroke();
+            ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+            ctx.lineWidth = 1;
+            for (let i = 1; i < 6; i++) {
+                const p = i / 6;
+                const x = ramp1Start.x + (ramp1End.x - ramp1Start.x) * p;
+                const y = ramp1Start.y + (ramp1End.y - ramp1Start.y) * p;
+                ctx.beginPath();
+                ctx.moveTo(x - 5, y - 5);
+                ctx.lineTo(x + 15, y + 10);
+                ctx.stroke();
+            }
+            ctx.fillStyle = '#5a4030';
+            ctx.fillRect(ramp1Start.x - 4, ramp1Start.y, 8, 50);
+            ctx.fillRect(ramp1End.x - 4, ramp1End.y, 8, 50);
+            ctx.fillRect(ramp1Start.x - 15, ramp1Start.y + 50, 30, 8);
+            ctx.fillRect(ramp1End.x - 15, ramp1End.y + 50, 30, 8);
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.moveTo(ramp1Start.x + 20, ramp1Start.y - 20);
+            ctx.lineTo(ramp1Start.x + 20, ramp1Start.y - 2);
+            ctx.lineTo(ramp1Start.x + 38, ramp1Start.y - 11);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#888';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(ramp1Start.x + 20, ramp1Start.y - 2);
+            ctx.lineTo(ramp1Start.x + 20, ramp1Start.y + 10);
+            ctx.stroke();
+        }
+
+        function drawDominoes(t) {
+            for (let i = 0; i < 10; i++) {
+                const d = dominoes[i];
+                const angle = getDominoAngle(i, t);
+                ctx.save();
+                ctx.translate(d.x, d.y);
+                ctx.rotate(angle);
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                ctx.fillRect(-d.w / 2 + 2, -d.h + 2, d.w, d.h);
+                ctx.fillStyle = i % 2 === 0 ? '#f0f0f0' : '#e0e0e0';
+                ctx.fillRect(-d.w / 2, -d.h, d.w, d.h);
+                ctx.strokeStyle = '#bbb';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(-d.w / 2, -d.h, d.w, d.h);
+                ctx.fillStyle = '#333';
+                ctx.beginPath();
+                ctx.arc(0, -d.h / 2, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function drawLever(t) {
+            const angle = getLeverAngle(t);
+            ctx.fillStyle = '#555';
+            ctx.fillRect(leverPivot.x - 4, leverPivot.y, 8, 40);
+            ctx.fillStyle = '#444';
+            ctx.fillRect(leverPivot.x - 15, leverPivot.y + 35, 30, 8);
+            ctx.save();
+            ctx.translate(leverPivot.x, leverPivot.y);
+            ctx.rotate(angle);
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(-leverHalfLen, -5, leverHalfLen * 2, 10);
+            ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(-leverHalfLen + 10, 0);
+            ctx.lineTo(leverHalfLen - 10, 0);
+            ctx.stroke();
+            ctx.fillStyle = '#888';
+            ctx.beginPath();
+            ctx.arc(0, 0, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.fillStyle = '#a0522d';
+            ctx.fillRect(-leverHalfLen - 5, -7, 10, 14);
+            ctx.fillRect(leverHalfLen - 5, -7, 10, 14);
+            ctx.restore();
+        }
+
+        function drawSlide() {
+            ctx.strokeStyle = '#4a7a9a';
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(700, 350);
+            ctx.lineTo(570, 450);
+            ctx.stroke();
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(705, 340);
+            ctx.lineTo(575, 440);
+            ctx.stroke();
+            ctx.strokeStyle = '#3a5a6a';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(635, 400);
+            ctx.lineTo(635, 470);
+            ctx.stroke();
+        }
+
+        function drawWheel(t) {
+            const angle = getWheelAngle(t);
+            ctx.fillStyle = '#444';
+            ctx.fillRect(wheelCenter.x - 3, wheelCenter.y + wheelRadius, 6, 30);
+            ctx.fillRect(wheelCenter.x - 25, wheelCenter.y + wheelRadius + 25, 50, 8);
+            ctx.save();
+            ctx.translate(wheelCenter.x, wheelCenter.y);
+            ctx.rotate(angle);
+            ctx.strokeStyle = '#c0392b';
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.arc(0, 0, wheelRadius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.strokeStyle = '#e67e22';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(0, 0, wheelRadius - 12, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.strokeStyle = '#d35400';
+            ctx.lineWidth = 3;
+            for (let i = 0; i < 6; i++) {
+                const a = (i / 6) * Math.PI * 2;
+                ctx.beginPath();
+                ctx.moveTo(Math.cos(a) * 10, Math.sin(a) * 10);
+                ctx.lineTo(Math.cos(a) * (wheelRadius - 12), Math.sin(a) * (wheelRadius - 12));
+                ctx.stroke();
+            }
+            ctx.fillStyle = '#f39c12';
+            ctx.beginPath();
+            ctx.arc(0, 0, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#e67e22';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.fillStyle = '#2ecc71';
+            ctx.beginPath();
+            ctx.arc(wheelRadius * 0.85, 0, 7, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#27ae60';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawCatapult(t) {
+            const angle = getCatapultAngle(t);
+            ctx.fillStyle = '#5d4037';
+            ctx.fillRect(catapultPivot.x - 25, catapultPivot.y, 50, 15);
+            ctx.fillStyle = '#4e342e';
+            ctx.fillRect(catapultPivot.x - 15, catapultPivot.y + 15, 30, 10);
+            ctx.fillStyle = '#777';
+            ctx.fillRect(catapultPivot.x - 3, catapultPivot.y - 5, 6, 10);
+            ctx.save();
+            ctx.translate(catapultPivot.x, catapultPivot.y);
+            ctx.rotate(angle);
+            ctx.fillStyle = '#795548';
+            ctx.fillRect(0, -4, catapultLen, 8);
+            ctx.fillStyle = 'rgba(255,255,255,0.1)';
+            ctx.fillRect(0, -4, catapultLen, 3);
+            ctx.fillStyle = '#4e342e';
+            ctx.beginPath();
+            ctx.arc(catapultLen, 0, 12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#3e2723';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.restore();
+            ctx.strokeStyle = '#e53935';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(catapultPivot.x - 20, catapultPivot.y + 10);
+            ctx.lineTo(catapultPivot.x + 15, catapultPivot.y - 5);
+            ctx.stroke();
+        }
+
+        function drawBell(t) {
+            const angle = getBellAngle(t);
+            ctx.strokeStyle = '#999';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(bellPos.x - 30, bellPos.y - 50);
+            ctx.lineTo(bellPos.x + 30, bellPos.y - 50);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(bellPos.x, bellPos.y - 50);
+            ctx.lineTo(bellPos.x, bellPos.y - 40);
+            ctx.stroke();
+            ctx.save();
+            ctx.translate(bellPos.x, bellPos.y);
+            ctx.rotate(angle);
+            ctx.fillStyle = '#f1c40f';
+            ctx.beginPath();
+            ctx.arc(0, 0, 40, Math.PI, 0);
+            ctx.quadraticCurveTo(40, 20, 30, 35);
+            ctx.lineTo(-30, 35);
+            ctx.quadraticCurveTo(-40, 20, -40, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.beginPath();
+            ctx.arc(-10, -5, 15, Math.PI, 0);
+            ctx.fill();
+            ctx.strokeStyle = '#d4a017';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(-30, 35);
+            ctx.lineTo(30, 35);
+            ctx.stroke();
+            ctx.fillStyle = '#8B4513';
+            ctx.beginPath();
+            ctx.arc(0, 32, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#6B3410';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.restore();
+            const hit = T.bellHit;
+            if (t > hit && t < hit + 2) {
+                const dt = t - hit;
+                for (let i = 0; i < 8; i++) {
+                    const a = (i / 8) * Math.PI * 2 + dt * 2;
+                    const dist = 40 + dt * 80;
+                    const x = bellPos.x + Math.cos(a) * dist;
+                    const y = bellPos.y + Math.sin(a) * dist;
+                    const alpha = Math.max(0, 1 - dt / 2);
+                    ctx.fillStyle = `rgba(255, 220, 100, ${alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        function drawBall(x, y, r, color, highlight) {
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(x + 2, y + 2, r * 0.9, r * 0.7, 0, 0, Math.PI * 2);
+            ctx.fill();
+            const grad = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r);
+            grad.addColorStop(0, highlight || '#fff');
+            grad.addColorStop(0.3, color);
+            grad.addColorStop(1, 'rgba(0,0,0,0.3)');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+
+        function drawConnectingRod(t) {
+            const wheelAngle = getWheelAngle(t);
+            const pegX = wheelCenter.x + wheelRadius * 0.85 * Math.cos(wheelAngle);
+            const pegY = wheelCenter.y + wheelRadius * 0.85 * Math.sin(wheelAngle);
+            ctx.strokeStyle = '#7f8c8d';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(wheelCenter.x + wheelRadius, wheelCenter.y);
+            ctx.lineTo(catapultPivot.x - 25, catapultPivot.y - 10);
+            ctx.stroke();
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(wheelCenter.x + wheelRadius, wheelCenter.y - 2);
+            ctx.lineTo(catapultPivot.x - 25, catapultPivot.y - 12);
+            ctx.stroke();
+            ctx.fillStyle = '#2ecc71';
+            ctx.beginPath();
+            ctx.arc(pegX, pegY, 6, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawFlowArrows(t) {
+            const alpha = 0.3 + 0.1 * Math.sin(t * 3);
+            ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+            ctx.font = '22px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('➔', 340, 280);
+            ctx.fillText('⬇', 720, 330);
+            ctx.fillText('➔', 620, 450);
+            ctx.fillText('➔', 780, 480);
+            ctx.fillText('↗', 920, 450);
+        }
+
+        function drawImpactEffects(t) {
+            const impact1Time = 2.0;
+            if (t > impact1Time && t < impact1Time + 0.3) {
+                const dt = t - impact1Time;
+                const a = 1 - dt / 0.3;
+                ctx.fillStyle = `rgba(255,255,255,${a * 0.5})`;
+                ctx.beginPath();
+                ctx.arc(350, 300, 10 + dt * 30, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            const impact2Time = T.wheelStart;
+            if (t > impact2Time && t < impact2Time + 0.3) {
+                const dt = t - impact2Time;
+                const a = 1 - dt / 0.3;
+                ctx.fillStyle = `rgba(255,255,255,${a * 0.5})`;
+                ctx.beginPath();
+                ctx.arc(550, 440, 10 + dt * 30, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            const impact3Time = T.bellHit;
+            if (t > impact3Time && t < impact3Time + 0.3) {
+                const dt = t - impact3Time;
+                const a = 1 - dt / 0.3;
+                ctx.fillStyle = `rgba(255,255,255,${a * 0.5})`;
+                ctx.beginPath();
+                ctx.arc(1050, 160, 10 + dt * 30, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function drawTitle(t) {
+            if (t < T.titleStart) return;
+            const alpha = Math.min((t - T.titleStart) * 1.5, 1) * Math.max(0, Math.min(1, (T.total - t) * 2));
+            if (alpha <= 0) return;
+            ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+            ctx.font = 'bold 40px Georgia, serif';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = 'rgba(255,215,0,0.5)';
+            ctx.shadowBlur = 20;
+            ctx.fillText('✦ Rube Goldberg Machine ✦', VW / 2, VH / 2 - 20);
+            ctx.shadowBlur = 0;
+            ctx.font = '16px sans-serif';
+            ctx.fillStyle = `rgba(255,255,255,${alpha * 0.7})`;
+            ctx.fillText('Ball → Dominoes → Lever → Wheel → Catapult → Bell', VW / 2, VH / 2 + 25);
+        }
+
+        let masterClock = 0;
+        let lastTimestamp = performance.now();
+
+        function update(dt) {
+            masterClock += dt;
+            if (masterClock >= TOTAL) masterClock -= TOTAL;
+        }
+
+        function render() {
+            const t = masterClock;
+            ctx.save();
+            ctx.scale(W / VW, H / VH);
+            drawBackground(t);
+            drawRamp1();
+            drawDominoes(t);
+            drawLever(t);
+            drawSlide();
+            drawWheel(t);
+            drawCatapult(t);
+            drawBell(t);
+            drawConnectingRod(t);
+            const b1 = getBall1(t);
+            if (b1) drawBall(b1.x, b1.y, b1.r, '#e74c3c', '#ff8a80');
+            const b2 = getBall2(t);
+            if (b2 && b2.visible) drawBall(b2.x, b2.y, b2.r, '#3498db', '#82d4f7');
+            const b3 = getBall3(t);
+            if (b3 && b3.visible) drawBall(b3.x, b3.y, b3.r, '#e67e22', '#ffb74d');
+            drawImpactEffects(t);
+            drawFlowArrows(t);
+            drawTitle(t);
+            const fadeOut = Math.max(0, Math.min(1, (t - T.fadeStart) / 1));
+            if (fadeOut > 0) {
+                ctx.fillStyle = `rgba(10,10,26,${fadeOut})`;
+                ctx.fillRect(0, 0, VW, VH);
+            }
+            ctx.restore();
+        }
+
+        function loop(now) {
+            const dt = Math.min((now - lastTimestamp) / 1000, 0.05);
+            lastTimestamp = now;
+            update(dt);
+            render();
+            requestAnimationFrame(loop);
+        }
+        requestAnimationFrame(loop);
+    </script>
+</body>
+</html>
+```

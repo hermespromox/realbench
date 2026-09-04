@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Living City</title>
+<style>
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#081218}
+  canvas{display:block;width:100%;height:100%}
+</style>
+</head>
+<body>
+<canvas id="city"></canvas>
+<script>
+(() => {
+  "use strict";
+
+  const canvas = document.getElementById("city");
+  const ctx = canvas.getContext("2d");
+  const staticCanvas = document.createElement("canvas");
+  const sctx = staticCanvas.getContext("2d");
+
+  let W=0,H=0,DPR=1, roadW=100;
+  let roadsX=[], roadsY=[], buildings=[], windows=[], trees=[], cars=[];
+  let last=performance.now(), trafficTimer=0, sparkleTimer=0;
+  let seed=9137281;
+
+  const TAU=Math.PI*2;
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const lerp=(a,b,t)=>a+(b-a)*t;
+
+  function rand(){
+    seed=(seed*1664525+1013904223)>>>0;
+    return seed/4294967296;
+  }
+  function pick(a){ return a[(rand()*a.length)|0]; }
+
+  function resize(){
+    W=innerWidth; H=innerHeight;
+    DPR=Math.min(devicePixelRatio||1,2);
+    canvas.width=Math.floor(W*DPR);
+    canvas.height=Math.floor(H*DPR);
+    staticCanvas.width=canvas.width;
+    staticCanvas.height=canvas.height;
+    canvas.style.width=W+"px";
+    canvas.style.height=H+"px";
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    sctx.setTransform(DPR,0,0,DPR,0,0);
+
+    roadW=clamp(Math.min(W,H)*0.115,74,134);
+    roadsX=[W*.18,W*.5,W*.82];
+    roadsY=[H*.19,H*.51,H*.83];
+
+    seed=9137281;
+    buildScene();
+    buildStaticLayer();
+    cars=[];
+    for(let i=0;i<58;i++) spawnCar(true);
+  }
+
+  function roundedRect(c,x,y,w,h,r){
+    r=Math.min(r,w*.5,h*.5);
+    c.beginPath();
+    c.moveTo(x+r,y);
+    c.arcTo(x+w,y,x+w,y+h,r);
+    c.arcTo(x+w,y+h,x,y+h,r);
+    c.arcTo(x,y+h,x,y,r);
+    c.arcTo(x,y,x+w,y,r);
+    c.closePath();
+  }
+
+  function buildScene(){
+    buildings=[]; windows=[]; trees=[];
+
+    const xEdges=[-18, roadsX[0]-roadW/2, roadsX[0]+roadW/2,
+      roadsX[1]-roadW/2, roadsX[1]+roadW/2,
+      roadsX[2]-roadW/2, roadsX[2]+roadW/2,W+18];
+    const yEdges=[-18, roadsY[0]-roadW/2, roadsY[0]+roadW/2,
+      roadsY[1]-roadW/2, roadsY[1]+roadW/2,
+      roadsY[2]-roadW/2, roadsY[2]+roadW/2,H+18];
+
+    const blocksX=[[xEdges[0],xEdges[1]],[xEdges[2],xEdges[3]],[xEdges[4],xEdges[5]],[xEdges[6],xEdges[7]]];
+    const blocksY=[[yEdges[0],yEdges[1]],[yEdges[2],yEdges[3]],[yEdges[4],yEdges[5]],[yEdges[6],yEdges[7]]];
+
+    for(let by=0;by<4;by++){
+      for(let bx=0;bx<4;bx++){
+        const x0=blocksX[bx][0]+12, x1=blocksX[bx][1]-12;
+        const y0=blocksY[by][0]+12, y1=blocksY[by][1]-12;
+        const bw=x1-x0, bh=y1-y0;
+        if(bw<30||bh<30) continue;
+
+        const park=(bx===1&&by===2)||(bx===3&&by===0);
+        if(park){
+          const count=Math.max(5,Math.floor(bw*bh/2300));
+          for(let i=0;i<count;i++){
+            trees.push({
+              x:x0+12+rand()*Math.max(1,bw-24),
+              y:y0+12+rand()*Math.max(1,bh-24),
+              r:4+rand()*5,
+              hue:rand()
+            });
+          }
+          continue;
+        }
+
+        const cols=bw>190?3:bw>95?2:1;
+        const rows=bh>180?3:bh>92?2:1;
+        const gap=8;
+        const cellW=bw/cols, cellH=bh/rows;
+
+        for(let ry=0;ry<rows;ry++){
+          for(let rx=0;rx<cols;rx++){
+            if(rand()<.08) continue;
+            const inset=6+rand()*7;
+            const x=x0+rx*cellW+inset;
+            const y=y0+ry*cellH+inset;
+            const w=Math.max(22,cellW-inset*2-gap*.25);
+            const h=Math.max(22,cellH-inset*2-gap*.25);
+            const height=8+rand()*25;
+            const style=(rand()*4)|0;
+            const b={x,y,w,h,height,style,tint:rand(),roof:rand()};
+            buildings.push(b);
+
+            const spacing=clamp(Math.min(w,h)/5,8,15);
+            const nx=Math.max(1,Math.floor((w-12)/spacing));
+            const ny=Math.max(1,Math.floor((h-12)/spacing));
+            for(let iy=0;iy<ny;iy++){
+              for(let ix=0;ix<nx;ix++){
+                if(rand()<.33) continue;
+                windows.push({
+                  x:x+7+(ix+.5)*(w-14)/nx,
+                  y:y+7+(iy+.5)*(h-14)/ny,
+                  r:1.1+rand()*1.1,
+                  phase:rand()*TAU,
+                  speed:.18+rand()*.55,
+                  warm:rand()>.38,
+                  on:rand()>.24
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  function buildStaticLayer(){
+    sctx.clearRect(0,0,W,H);
+
+    const bg=sctx.createLinearGradient(0,0,W,H);
+    bg.addColorStop(0,"#10252a");
+    bg.addColorStop(.52,"#0b1d23");
+    bg.addColorStop(1,"#07161d");
+    sctx.fillStyle=bg;
+    sctx.fillRect(0,0,W,H);
+
+    sctx.globalAlpha=.18;
+    sctx.strokeStyle="#34515a";
+    sctx.lineWidth=1;
+    for(let x=0;x<W;x+=32){
+      sctx.beginPath(); sctx.moveTo(x,0); sctx.lineTo(x,H); sctx.stroke();
+    }
+    for(let y=0;y<H;y+=32){
+      sctx.beginPath(); sctx.moveTo(0,y); sctx.lineTo(W,y); sctx.stroke();
+    }
+    sctx.globalAlpha=1;
+
+    drawParks(sctx);
+    drawRoads(sctx);
+    drawBuildings(sctx);
+    drawStreetDetails(sctx);
+  }
+
+  function drawParks(c){
+    const parkRects=[
+      {
+        x:roadsX[0]+roadW/2+12,
+        y:roadsY[1]+roadW/2+12,
+        w:roadsX[1]-roadsX[0]-roadW-24,
+        h:roadsY[2]-roadsY[1]-roadW-24
+      },
+      {
+        x:roadsX[2]+roadW/2+12,
+        y:12,
+        w:W-roadsX[2]-roadW/2-24,
+        h:roadsY[0]-roadW/2-24
+      }
+    ];
+    for(const p of parkRects){
+      if(p.w<10||p.h<10) continue;
+      roundedRect(c,p.x,p.y,p.w,p.h,7);
+      c.fillStyle="#12362f"; c.fill();
+      c.strokeStyle="#245248"; c.lineWidth=2; c.stroke();
+
+      c.strokeStyle="rgba(137,191,154,.18)";
+      c.lineWidth=5;
+      c.beginPath();
+      c.moveTo(p.x+8,p.y+p.h*.5);
+      c.bezierCurveTo(p.x+p.w*.3,p.y+p.h*.22,p.x+p.w*.7,p.y+p.h*.78,p.x+p.w-8,p.y+p.h*.5);
+      c.stroke();
+    }
+
+    for(const t of trees){
+      c.fillStyle="rgba(0,0,0,.28)";
+      c.beginPath(); c.arc(t.x+2.5,t.y+3,t.r+1,0,TAU); c.fill();
+      c.fillStyle=t.hue>.5?"#277052":"#326744";
+      c.beginPath(); c.arc(t.x,t.y,t.r,0,TAU); c.fill();
+      c.fillStyle="rgba(113,181,119,.35)";
+      c.beginPath(); c.arc(t.x-t.r*.25,t.y-t.r*.3,t.r*.5,0,TAU); c.fill();
+    }
+  }
+
+  function drawRoads(c){
+    c.fillStyle="#17242a";
+    for(const x of roadsX) c.fillRect(x-roadW/2,0,roadW,H);
+    for(const y of roadsY) c.fillRect(0,y-roadW/2,W,roadW);
+
+    c.strokeStyle="#314047";
+    c.lineWidth=2;
+    for(const x of roadsX){
+      c.beginPath(); c.moveTo(x-roadW/2,0); c.lineTo(x-roadW/2,H); c.stroke();
+      c.beginPath(); c.moveTo(x+roadW/2,0); c.lineTo(x+roadW/2,H); c.stroke();
+    }
+    for(const y of roadsY){
+      c.beginPath(); c.moveTo(0,y-roadW/2); c.lineTo(W,y-roadW/2); c.stroke();
+      c.beginPath(); c.moveTo(0,y+roadW/2); c.lineTo(W,y+roadW/2); c.stroke();
+    }
+
+    c.setLineDash([12,14]);
+    c.lineWidth=1.4;
+    c.strokeStyle="rgba(190,205,201,.38)";
+    for(const x of roadsX){
+      c.beginPath(); c.moveTo(x,0); c.lineTo(x,H); c.stroke();
+    }
+    for(const y of roadsY){
+      c.beginPath(); c.moveTo(0,y); c.lineTo(W,y); c.stroke();
+    }
+
+    c.strokeStyle="rgba(237,190,75,.45)";
+    c.setLineDash([18,10]);
+    for(const x of roadsX){
+      c.beginPath(); c.moveTo(x-3,0); c.lineTo(x-3,H); c.stroke();
+      c.beginPath(); c.moveTo(x+3,0); c.lineTo(x+3,H); c.stroke();
+    }
+    for(const y of roadsY){
+      c.beginPath(); c.moveTo(0,y-3); c.lineTo(W,y-3); c.stroke();
+      c.beginPath(); c.moveTo(0,y+3); c.lineTo(W,y+3); c.stroke();
+    }
+    c.setLineDash([]);
+
+    for(const x of roadsX){
+      for(const y of roadsY){
+        c.fillStyle="#19272d";
+        c.fillRect(x-roadW/2,y-roadW/2,roadW,roadW);
+
+        c.strokeStyle="rgba(220,230,222,.64)";
+        c.lineWidth=3;
+        const stripe=7, count=6;
+        for(let k=0;k<count;k++){
+          const o=-roadW*.28+k*stripe*1.55;
+          c.beginPath();
+          c.moveTo(x-roadW*.36,y+o);
+          c.lineTo(x-roadW*.25,y+o);
+          c.stroke();
+          c.beginPath();
+          c.moveTo(x+roadW*.25,y+o);
+          c.lineTo(x+roadW*.36,y+o);
+          c.stroke();
+
+          c.beginPath();
+          c.moveTo(x+o,y-roadW*.36);
+          c.lineTo(x+o,y-roadW*.25);
+          c.stroke();
+          c.beginPath();
+          c.moveTo(x+o,y+roadW*.25);
+          c.lineTo(x+o,y+roadW*.36);
+          c.stroke();
+        }
+
+        c.strokeStyle="rgba(239,239,220,.55)";
+        c.lineWidth=2;
+        c.beginPath();
+        c.moveTo(x-roadW*.42,y-roadW*.23); c.lineTo(x-roadW*.24,y-roadW*.23);
+        c.moveTo(x+roadW*.24,y+roadW*.23); c.lineTo(x+roadW*.42,y+roadW*.23);
+        c.moveTo(x-roadW*.23,y+roadW*.42); c.lineTo(x-roadW*.23,y+roadW*.24);
+        c.moveTo(x+roadW*.23,y-roadW*.24); c.lineTo(x+roadW*.23,y-roadW*.42);
+        c.stroke();
+      }
+    }
+  }
+
+  function drawBuildings(c){
+    const roofColors=["#263b43","#2b4148","#22343d","#30454a"];
+    for(const b of buildings){
+      c.fillStyle="rgba(0,0,0,.38)";
+      roundedRect(c,b.x+b.height*.28,b.y+b.height*.3,b.w,b.h,4);
+      c.fill();
+
+      c.fillStyle="#15262d";
+      roundedRect(c,b.x+3,b.y+5,b.w,b.h,4); c.fill();
+
+      const grad=c.createLinearGradient(b.x,b.y,b.x+b.w,b.y+b.h);
+      grad.addColorStop(0,roofColors[b.style]);
+      grad.addColorStop(1,"#182c34");
+      roundedRect(c,b.x,b.y,b.w,b.h,4);
+      c.fillStyle=grad; c.fill();
+
+      c.strokeStyle="rgba(105,144,150,.34)";
+      c.lineWidth=1.5; c.stroke();
+
+      c.strokeStyle="rgba(143,182,185,.16)";
+      c.beginPath();
+      c.moveTo(b.x+5,b.y+5);
+      c.lineTo(b.x+b.w-5,b.y+5);
+      c.lineTo(b.x+b.w-5,b.y+b.h-5);
+      c.stroke();
+
+      if(b.roof>.55 && b.w>34 && b.h>30){
+        const rw=Math.min(26,b.w*.3), rh=Math.min(18,b.h*.26);
+        const rx=b.x+b.w*.5-rw*.5, ry=b.y+b.h*.5-rh*.5;
+        roundedRect(c,rx+2,ry+2,rw,rh,2);
+        c.fillStyle="rgba(0,0,0,.3)"; c.fill();
+        roundedRect(c,rx,ry,rw,rh,2);
+        c.fillStyle=b.roof>.8?"#31545b":"#20373e"; c.fill();
+        c.strokeStyle="rgba(124,163,165,.27)"; c.stroke();
+      } else if(b.roof<.16 && b.w>40){
+        c.strokeStyle="rgba(118,160,164,.48)";
+        c.lineWidth=1;
+        c.beginPath();
+        c.arc(b.x+b.w*.5,b.y+b.h*.5,Math.min(9,b.w*.12),0,TAU);
+        c.stroke();
+        c.beginPath();
+        c.moveTo(b.x+b.w*.5,b.y+b.h*.5);
+        c.lineTo(b.x+b.w*.5+8,b.y+b.h*.5-5);
+        c.stroke();
+      }
+
+      if(b.roof>.88 && b.w>46 && b.h>45){
+        c.strokeStyle="rgba(142,188,194,.55)";
+        c.beginPath();
+        c.moveTo(b.x+b.w*.72,b.y+b.h*.4);
+        c.lineTo(b.x+b.w*.72,b.y+b.h*.4-12);
+        c.stroke();
+        c.fillStyle="#ef6d57";
+        c.beginPath(); c.arc(b.x+b.w*.72,b.y+b.h*.4-12,1.8,0,TAU); c.fill();
+      }
+    }
+  }
+
+  function drawStreetDetails(c){
+    c.fillStyle="rgba(95,143,146,.42)";
+    for(const x of roadsX){
+      for(let y=18;y<H;y+=46){
+        if(roadsY.some(ry=>Math.abs(y-ry)<roadW*.7)) continue;
+        c.fillRect(x-roadW/2-5,y-1,3,3);
+        c.fillRect(x+roadW/2+2,y-1,3,3);
+      }
+    }
+    for(const y of roadsY){
+      for(let x=18;x<W;x+=48){
+        if(roadsX.some(rx=>Math.abs(x-rx)<roadW*.7)) continue;
+        c.fillRect(x-1,y-roadW/2-5,3,3);
+        c.fillRect(x-1,y+roadW/2+2,3,3);
+      }
+    }
+  }
+
+  const carColors=["#ef6058","#55aee6","#f0c64f","#e6e7df","#55c6a1","#b483e8","#f28b48","#82a1ad"];
+
+  function spawnCar(randomPosition=false){
+    const horizontal=rand()<.52;
+    const road=(rand()*3)|0;
+    const dir=rand()<.5?-1:1;
+    const len=8+rand()*8;
+    const width=4.6+rand()*2.2;
+    const laneOffset=roadW*.16*(dir>0?1:-1);
+    const c={
+      horizontal,road,dir,len,width,
+      s:randomPosition?rand()*(horizontal?W:H):(dir>0?-22:(horizontal?W:H)+22),
+      speed:25+rand()*30,
+      current:20+rand()*25,
+      color:pick(carColors),
+      laneOffset,
+      type:rand()<.11?1:0,
+      wobble:rand()*TAU
+    };
+    if(c.type){ c.len=18+rand()*8; c.width=6.5; c.color=rand()>.5?"#4f9db7":"#d8b14e"; }
+    cars.push(c);
+  }
+
+  function signalState(ix,iy,time,horizontal){
+    const cycle=20;
+    const phase=(time+ix*1.25+iy*.7)%cycle;
+    if(horizontal){
+      if(phase<8.3) return 0;
+      if(phase<9.7) return 1;
+      return 2;
+    } else {
+      if(phase>=10&&phase<18.3) return 0;
+      if(phase>=18.3&&phase<19.7) return 1;
+      return 2;
+    }
+  }
+
+  function approachingRed(car,time){
+    const intersections=car.horizontal?roadsX:roadsY;
+    const limit=car.horizontal?W:H;
+    let nearest=1e9, ni=-1;
+    for(let i=0;i<3;i++){
+      let d=(intersections[i]-car.s)*car.dir;
+      if(d>=-4 && d<nearest){ nearest=d; ni=i; }
+    }
+    if(ni<0) return null;
+    const ix=car.horizontal?ni:car.road;
+    const iy=car.horizontal?car.road:ni;
+    const state=signalState(ix,iy,time,car.horizontal);
+    const stopDistance=roadW*.56+car.len*.5;
+    if(state!==0 && nearest<stopDistance+55 && nearest>stopDistance-5)
+      return {distance:nearest-stopDistance,state};
+    return null;
+  }
+
+  function updateCars(dt,time){
+    const densityWave=(Math.sin(time*.19)+Math.sin(time*.071+1.4)*.55+1.55)/3.1;
+    const target=Math.floor(34+densityWave*55);
+
+    trafficTimer+=dt;
+    if(trafficTimer>.34){
+      trafficTimer=0;
+      if(cars.length<target) spawnCar(false);
+      else if(cars.length>target+3){
+        const idx=cars.findIndex(c=>c.s<20||c.s>(c.horizontal?W:H)-20);
+        if(idx>=0) cars.splice(idx,1);
+      }
+    }
+
+    for(let i=cars.length-1;i>=0;i--){
+      const c=cars[i];
+      const stop=approachingRed(c,time);
+      let desired=c.speed;
+      if(stop){
+        desired=stop.distance<4?0:clamp(stop.distance*.72,0,c.speed);
+      }
+      c.current+=clamp(desired-c.current,-50*dt,34*dt);
+      c.s+=c.dir*c.current*dt;
+
+      const lim=c.horizontal?W:H;
+      if((c.dir>0&&c.s>lim+35)||(c.dir<0&&c.s<-35)){
+        c.s=c.dir>0?-28:lim+28;
+        c.speed=25+rand()*32;
+      }
+    }
+  }
+
+  function drawWindows(time){
+    ctx.save();
+    ctx.globalCompositeOperation="lighter";
+    for(const w of windows){
+      const pulse=.5+.5*Math.sin(time*w.speed+w.phase);
+      let alpha=w.on?.18+.36*pulse:.04+.09*pulse;
+      if(Math.sin(time*.11+w.phase*7)>.996) alpha=.95;
+      ctx.fillStyle=w.warm
+        ?`rgba(255,202,103,${alpha})`
+        :`rgba(103,211,230,${alpha*.82})`;
+      ctx.fillRect(w.x-w.r,w.y-w.r*.55,w.r*2,w.r*1.1);
+    }
+    ctx.restore();
+  }
+
+  function drawCars(time){
+    for(const c of cars){
+      const x=c.horizontal?c.s:roadsX[c.road]+c.laneOffset;
+      const y=c.horizontal?roadsY[c.road]+c.laneOffset:c.s;
+      ctx.save();
+      ctx.translate(x,y);
+      if(c.horizontal) ctx.rotate(c.dir>0?0:Math.PI);
+      else ctx.rotate(c.dir>0?Math.PI/2:-Math.PI/2);
+
+      ctx.fillStyle="rgba(0,0,0,.34)";
+      roundedRect(ctx,-c.len*.5+2,-c.width*.5+2,c.len,c.width,2.2);
+      ctx.fill();
+
+      if(c.type){
+        ctx.fillStyle=c.color;
+        roundedRect(ctx,-c.len*.5,-c.width*.5,c.len,c.width,2.4); ctx.fill();
+        ctx.fillStyle="rgba(172,225,232,.5)";
+        ctx.fillRect(-c.len*.24,-c.width*.38,c.len*.18,c.width*.76);
+        ctx.fillRect(c.len*.08,-c.width*.38,c.len*.2,c.width*.76);
+      } else {
+        ctx.fillStyle=c.color;
+        roundedRect(ctx,-c.len*.5,-c.width*.5,c.len,c.width,2.3); ctx.fill();
+        ctx.fillStyle="rgba(14,34,43,.72)";
+        roundedRect(ctx,-c.len*.16,-c.width*.42,c.len*.38,c.width*.84,1.3); ctx.fill();
+        ctx.strokeStyle="rgba(255,255,255,.18)";
+        ctx.lineWidth=.7;
+        ctx.beginPath(); ctx.moveTo(-c.len*.38,-c.width*.4); ctx.lineTo(c.len*.32,-c.width*.4); ctx.stroke();
+      }
+
+      ctx.globalCompositeOperation="lighter";
+      ctx.fillStyle="rgba(255,244,184,.85)";
+      ctx.fillRect(c.len*.5-1.5,-c.width*.37,1.8,1.4);
+      ctx.fillRect(c.len*.5-1.5,c.width*.37-1.4,1.8,1.4);
+      ctx.fillStyle="rgba(245,56,43,.68)";
+      ctx.fillRect(-c.len*.5-.2,-c.width*.35,1.7,1.2);
+      ctx.fillRect(-c.len*.5-.2,c.width*.35-1.2,1.7,1.2);
+      ctx.restore();
+    }
+  }
+
+  function drawSignals(time){
+    for(let iy=0;iy<3;iy++){
+      for(let ix=0;ix<3;ix++){
+        const x=roadsX[ix], y=roadsY[iy];
+        const hs=signalState(ix,iy,time,true);
+        const vs=signalState(ix,iy,time,false);
+
+        drawSignalLamp(x-roadW*.38,y-roadW*.38,hs,true);
+        drawSignalLamp(x+roadW*.38,y+roadW*.38,hs,true);
+        drawSignalLamp(x+roadW*.38,y-roadW*.38,vs,false);
+        drawSignalLamp(x-roadW*.38,y+roadW*.38,vs,false);
+      }
+    }
+  }
+
+  function drawSignalLamp(x,y,state,horizontal){
+    ctx.save();
+    ctx.translate(x,y);
+    if(horizontal) ctx.rotate(Math.PI/2);
+    ctx.fillStyle="rgba(2,8,10,.9)";
+    roundedRect(ctx,-3.7,-7.5,7.4,15,2); ctx.fill();
+
+    const colors=[
+      state===2?"#ff4a3d":"#401b1a",
+      state===1?"#ffc845":"#47391d",
+      state===0?"#4ef08d":"#173c2b"
+    ];
+    for(let i=0;i<3;i++){
+      ctx.fillStyle=colors[i];
+      if((i===0&&state===2)||(i===1&&state===1)||(i===2&&state===0)){
+        ctx.shadowColor=colors[i]; ctx.shadowBlur=8;
+      } else ctx.shadowBlur=0;
+      ctx.beginPath(); ctx.arc(0,-4.5+i*4.5,1.45,0,TAU); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawPedestrians(time){
+    const selected=[[0,0],[1,0],[1,1],[2,1],[0,2],[2,2]];
+    for(const [ix,iy] of selected){
+      const x=roadsX[ix], y=roadsY[iy];
+      const hp=(time+ix*1.25+iy*.7)%20;
+
+      if(hp>1&&hp<8.4){
+        const p=(hp-1)/7.4;
+        for(let k=0;k<5;k++){
+          let q=(p+k*.17)%1;
+          drawPerson(x-roadW*.35+q*roadW*.7,y-roadW*.31+(k%3)*5,k,time);
+        }
+      }
+      if(hp>10.8&&hp<18.2){
+        const p=(hp-10.8)/7.4;
+        for(let k=0;k<5;k++){
+          let q=(p+k*.19)%1;
+          drawPerson(x+roadW*.28-(k%3)*5,y-roadW*.35+q*roadW*.7,k+3,time);
+        }
+      }
+    }
+  }
+
+  function drawPerson(x,y,index,time){
+    const colors=["#f4c95d","#e16f62","#6ad0bd","#78a9eb","#d994dc"];
+    const bob=Math.sin(time*9+index)*.7;
+    ctx.save();
+    ctx.translate(x,y+bob);
+    ctx.fillStyle="rgba(0,0,0,.36)";
+    ctx.beginPath(); ctx.ellipse(1.8,2.6,2.2,1.4,0,0,TAU); ctx.fill();
+    ctx.fillStyle=colors[index%colors.length];
+    ctx.beginPath(); ctx.arc(0,0,2.2,0,TAU); ctx.fill();
+    ctx.fillStyle="#efc39e";
+    ctx.beginPath(); ctx.arc(0,-2,1.15,0,TAU); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawAmbient(time){
+    ctx.save();
+    ctx.globalCompositeOperation="screen";
+    const sweep=(time*22)%(W+500)-250;
+    const g=ctx.createLinearGradient(sweep-180,0,sweep+180,H);
+    g.addColorStop(0,"rgba(34,105,120,0)");
+    g.addColorStop(.5,"rgba(44,119,132,.025)");
+    g.addColorStop(1,"rgba(34,105,120,0)");
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    ctx.restore();
+
+    const vignette=ctx.createRadialGradient(W*.5,H*.48,Math.min(W,H)*.15,W*.5,H*.5,Math.max(W,H)*.72);
+    vignette.addColorStop(.3,"rgba(0,0,0,0)");
+    vignette.addColorStop(1,"rgba(0,5,9,.48)");
+    ctx.fillStyle=vignette; ctx.fillRect(0,0,W,H);
+
+    ctx.fillStyle="rgba(205,230,225,.48)";
+    ctx.font="10px system-ui, sans-serif";
+    ctx.letterSpacing="2px";
+    ctx.fillText("METRO DISTRICT",18,H-20);
+
+    const density=clamp((cars.length-30)/58,0,1);
+    ctx.fillStyle="rgba(92,205,176,.62)";
+    ctx.fillRect(18,H-13,56*density,2);
+    ctx.fillStyle="rgba(92,205,176,.16)";
+    ctx.fillRect(18,H-13,56,2);
+  }
+
+  function frame(now){
+    const dt=Math.min(.035,(now-last)/1000);
+    last=now;
+    const time=now/1000;
+
+    updateCars(dt,time);
+
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    ctx.clearRect(0,0,W,H);
+    ctx.drawImage(staticCanvas,0,0,W,H);
+    drawWindows(time);
+    drawPedestrians(time);
+    drawCars(time);
+    drawSignals(time);
+    drawAmbient(time);
+
+    requestAnimationFrame(frame);
+  }
+
+  addEventListener("resize",resize,{passive:true});
+  resize();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

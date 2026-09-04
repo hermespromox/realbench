@@ -21,6 +21,11 @@ MODELS = {
     "grok-4.6": {"id": "x-ai/grok-4.6", "name": "Grok 4.6", "vendor": "xAI", "color": "#111111"},
     "gpt-5.6-luna": {"id": "openai/gpt-5.6-luna", "name": "GPT-5.6 Luna", "vendor": "OpenAI", "color": "#10a37f"},
     "gemini-3.8-flash": {"id": "google/gemini-3.8-flash", "name": "Gemini 3.8 Flash", "vendor": "Google", "color": "#4285f4"},
+    "glm-5.3-flash": {"id": "z-ai/glm-5.3-flash", "name": "GLM 5.3 Flash", "vendor": "Z.ai", "color": "#7c3aed"},
+    "hy4-preview": {"id": "tencent/hy4-preview", "name": "HY 4 Preview", "vendor": "Tencent", "color": "#00a4ef"},
+    "deepseek-v4-flash-0731": {"id": "deepseek/deepseek-v4-flash-0731", "name": "DeepSeek V4 Flash 0731", "vendor": "DeepSeek", "color": "#4d6bfe"},
+    "kimi-k3": {"id": "moonshotai/kimi-k3", "name": "Kimi K3", "vendor": "Moonshot AI", "color": "#111827"},
+    "gpt-5.6-sol": {"id": "openai/gpt-5.6-sol", "name": "GPT-5.6 Sol", "vendor": "OpenAI", "color": "#0f9d7a"},
 }
 
 SCENARIOS = {
@@ -90,10 +95,13 @@ def extract_html(text: str) -> str:
 
 def static_metrics(html: str) -> dict:
     low = html.lower()
+    # XML namespace URIs (e.g. SVG xmlns="http://www.w3.org/2000/svg") are
+    # identifiers, never network fetches; strip them before the check.
+    scan = re.sub(r"xmlns(:[a-z0-9-]+)?\s*=\s*(\"[^\"]*\"|'[^']*')", "", low)
     external_patterns = ["https://", "http://", "fetch(", "@import", "<script src=", "<link href="]
     return {
         "valid_html": "<html" in low and "</html>" in low,
-        "self_contained": not any(p in low for p in external_patterns),
+        "self_contained": not any(p in scan for p in external_patterns),
         "bytes": len(html.encode("utf-8")),
         "uses_canvas": "<canvas" in low,
         "uses_svg": "<svg" in low,
@@ -118,7 +126,6 @@ def call_one(item: tuple[str, dict, str, dict], api_key: str) -> dict:
             {"role": "user", "content": scenario["prompt"]},
         ],
         "temperature": 0.7,
-        "max_tokens": 16000,
     }
     req = urllib.request.Request(
         "https://openrouter.ai/api/v1/chat/completions",

@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elaborate Rube Goldberg Machine</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0b0c10;
+            font-family: sans-serif;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // We design the machine in a 1920x1080 logical coordinate system
+        // and scale it to fit the screen perfectly.
+        function applyTransform(ctx) {
+            const scaleX = width / 1920;
+            const scaleY = height / 1080;
+            const scale = Math.min(scaleX, scaleY);
+            const offsetX = (width - 1920 * scale) / 2;
+            const offsetY = (height - 1080 * scale) / 2;
+            ctx.translate(offsetX, offsetY);
+            ctx.scale(scale, scale);
+        }
+
+        const CYCLE_TIME = 16.0;
+        const startTime = performance.now();
+        let lastT = 0;
+        let projTrail = [];
+
+        // Easing functions
+        const easeInQuad = p => p * p;
+        const easeOutQuad = p => 1 - (1 - p) * (1 - p);
+        const easeInOutQuad = p => p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+
+        function drawGear(ctx, radius, teeth, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            for(let i = 0; i < teeth; i++) {
+                let angle = i * Math.PI * 2 / teeth;
+                let nextAngle = (i + 1) * Math.PI * 2 / teeth;
+                let midAngle = angle + (nextAngle - angle) / 2;
+                
+                ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+                ctx.lineTo(Math.cos(angle) * (radius + 20), Math.sin(angle) * (radius + 20));
+                ctx.lineTo(Math.cos(midAngle + 0.05) * (radius + 20), Math.sin(midAngle + 0.05) * (radius + 20));
+                ctx.lineTo(Math.cos(midAngle - 0.05) * (radius + 20), Math.sin(midAngle - 0.05) * (radius + 20));
+                ctx.lineTo(Math.cos(nextAngle) * (radius + 20), Math.sin(nextAngle) * (radius + 20));
+                ctx.lineTo(Math.cos(nextAngle) * radius, Math.sin(nextAngle) * radius);
+            }
+            ctx.closePath();
+            ctx.fill();
+            
+            // Inner cutout
+            ctx.fillStyle = '#0f0f1b';
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Inner ring detail
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 10;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 0.7, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        function drawFlash(ctx, x, y, t, hitTime) {
+            if (t > hitTime && t < hitTime + 0.2) {
+                let p = (t - hitTime) / 0.2;
+                let radius = 10 + 30 * p;
+                let alpha = 1 - p;
+                ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function animate(now) {
+            requestAnimationFrame(animate);
+            let totalTime = (now - startTime) / 1000;
+            let t = totalTime % CYCLE_TIME;
+
+            if (t < lastT) {
+                projTrail = []; // Reset trail on loop
+            }
+            lastT = t;
+
+            // Clear and draw background
+            ctx.fillStyle = '#0f0f1b';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.save();
+            applyTransform(ctx);
+
+            // Background Gradient
+            let bgGradient = ctx.createRadialGradient(960, 540, 100, 960, 540, 1200);
+            bgGradient.addColorStop(0, '#1a1a2e');
+            bgGradient.addColorStop(1, '#0f0f1b');
+            ctx.fillStyle = bgGradient;
+            ctx.fillRect(0, 0, 1920, 1080);
+
+            // Background Gears
+            ctx.save(); ctx.translate(300, 800); ctx.rotate(totalTime * 0.2); drawGear(ctx, 200, 20, '#16213e'); ctx.restore();
+            ctx.save(); ctx.translate(1600, 600); ctx.rotate(-totalTime * 0.15); drawGear(ctx, 250, 24, '#16213e'); ctx.restore();
+            ctx.save(); ctx.translate(1000, 200); ctx.rotate(totalTime * 0.25); drawGear(ctx, 150, 16, '#16213e'); ctx.restore();
+
+            // Subtle Grid
+            ctx.strokeStyle = 'rgba(26, 26, 46, 0.5)';
+            ctx.lineWidth = 2;
+            for(let i = 0; i <= 1920; i += 100) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 1080); ctx.stroke(); }
+            for(let i = 0; i <= 1080; i += 100) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(1920, i); ctx.stroke(); }
+
+            // ----------------------------------------------------
+            // STATIC ELEMENTS
+            // ----------------------------------------------------
+            ctx.save();
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+            ctx.shadowBlur = 10;
+            ctx.shadowOffsetY = 5;
+
+            // Drop Pipe
+            ctx.fillStyle = '#533483';
+            ctx.fillRect(130, 50, 30, 100);
+
+            // Ramp 1
+            ctx.fillStyle = '#16213e';
+            ctx.strokeStyle = '#0f3460';
+            ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.moveTo(100, 200); ctx.lineTo(450, 350); ctx.lineTo(450, 370); ctx.lineTo(100, 220); ctx.closePath();
+            ctx.fill(); ctx.stroke();
+
+            // Platform 1
+            ctx.fillRect(450, 350, 450, 20);
+            ctx.strokeRect(450, 350, 450, 20);
+
+            // Ramp 2 (Curved Chute)
+            ctx.lineWidth = 30;
+            ctx.strokeStyle = '#16213e';
+            ctx.beginPath(); ctx.moveTo(900, 335); ctx.bezierCurveTo(1050, 335, 1100, 450, 1100, 600); ctx.stroke();
+            ctx.lineWidth = 20;
+            ctx.strokeStyle = '#0f3460';
+            ctx.beginPath(); ctx.moveTo(900, 335); ctx.bezierCurveTo(1050, 335, 1100, 450, 1100, 600); ctx.stroke();
+
+            // Wheel Base
+            ctx.fillStyle = '#16213e';
+            ctx.beginPath(); ctx.moveTo(950, 700); ctx.lineTo(900, 1000); ctx.lineTo(1000, 1000); ctx.closePath();
+            ctx.fill(); ctx.stroke();
+
+            // Catapult Base
+            ctx.beginPath(); ctx.moveTo(750, 850); ctx.lineTo(700, 1000); ctx.lineTo(800, 1000); ctx.closePath();
+            ctx.fill(); ctx.stroke();
+
+            // Bell Frame
+            ctx.fillStyle = '#533483';
+            ctx.fillRect(1690, 0, 20, 150);
+
+            // Trigger Base
+            ctx.fillStyle = '#533483';
+            ctx.fillRect(780, 700, 40, 40);
+
+            // Collection Bins
+            ctx.fillStyle = '#16213e';
+            ctx.beginPath(); ctx.moveTo(1050, 950); ctx.lineTo(1050, 1050); ctx.lineTo(1200, 1050); ctx.lineTo(1200, 950); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(1400, 950); ctx.lineTo(1400, 1050); ctx.lineTo(1600, 1050); ctx.lineTo(1600, 950); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); // End Shadows for statics
+
+            // ----------------------------------------------------
+            // DYNAMIC ELEMENTS
+            // ----------------------------------------------------
+            
+            // 1. Ball 1 (Drop & Ramp 1)
+            let ball1X = 144.1, ball1Y = 50;
+            if (t < 1.2) {
+                ball1Y = 50 + 188.8 * easeInQuad(t / 1.2);
+            } else if (t < 3.0) {
+                let p = easeInQuad((t - 1.2) / 1.8);
+                ball1X = 144.1 + 300 * p;
+                ball1Y = 238.8 + 125 * p;
+            } else {
+                ball1X = 444.1; ball1Y = 363.8;
+            }
+            
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 5;
+            ctx.fillStyle = '#e94560';
+            ctx.beginPath(); ctx.arc(ball1X, ball1Y, 15, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            ctx.beginPath(); ctx.arc(ball1X - 4, ball1Y - 4, 4, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+
+            // 2. Dominoes
+            const numDominoes = 10;
+            for(let i = 0; i < numDominoes; i++) {
+                let dx = 465 + i * 30;
+                let dy = 350;
+                let t_start = 3.0 + i * 0.12;
+                let angle = 0;
+                
+                if (t > t_start) {
+                    let p = Math.min((t - t_start) / 0.3, 1.0);
+                    let maxAngle = (i === numDominoes - 1) ? Math.PI / 2 : Math.PI / 3;
+                    angle = maxAngle * easeInQuad(p);
+                }
+                
+                ctx.save();
+                ctx.translate(dx, dy);
+                ctx.rotate(angle);
+                ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 3;
+                ctx.fillStyle = '#00d2fc';
+                ctx.fillRect(-5, -60, 10, 60);
+                ctx.fillStyle = '#16213e';
+                ctx.fillRect(-5, -40, 10, 5);
+                ctx.fillRect(-5, -20, 10, 5);
+                ctx.restore();
+            }
+
+            // 3. Lever & Ball 2
+            let leverAngle = 0;
+            if (t > 4.2) {
+                let p = Math.min((t - 4.2) / 0.4, 1.0);
+                leverAngle = (Math.PI / 2) * easeOutQuad(p);
+            }
+
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 5;
+            ctx.translate(785, 350);
+            ctx.rotate(leverAngle);
+            ctx.fillStyle = '#f9ed69';
+            ctx.fillRect(-5, -80, 10, 80); // Vertical arm
+            ctx.fillRect(-30, -10, 30, 10); // Horizontal arm
+            ctx.fillStyle = '#e94560';
+            ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+
+            let ball2X = 770, ball2Y = 335;
+            if (t > 4.6) {
+                if (t < 5.5) {
+                    let p = easeInQuad((t - 4.6) / 0.9);
+                    ball2X = 770 + 130 * p;
+                } else if (t < 6.5) {
+                    let p = (t - 5.5) / 1.0;
+                    let u = 1 - p;
+                    ball2X = u*u*u*900 + 3*u*u*p*1050 + 3*u*p*p*1100 + p*p*p*1100;
+                    ball2Y = u*u*u*335 + 3*u*u*p*335 + 3*u*p*p*450 + p*p*p*600;
+                } else if (t < 7.0) {
+                    let p = (t - 6.5) / 0.5;
+                    ball2X = 1100;
+                    ball2Y = 600 + 75 * (p * p); // Hits paddle at 675
+                } else {
+                    let p = Math.min((t - 7.0) / 1.0, 1.0);
+                    ball2X = 1100 + 50 * p;
+                    ball2Y = 675 + 275 * (p * p);
+                }
+            }
+
+            if (t < 12.0) {
+                ctx.save();
+                ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 5;
+                ctx.fillStyle = '#00d2fc';
+                ctx.beginPath(); ctx.arc(ball2X, ball2Y, 15, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                ctx.beginPath(); ctx.arc(ball2X - 4, ball2Y - 4, 4, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            }
+
+            // 4. Wheel
+            let wheelAngle = 0;
+            if (t > 7.0) {
+                let p = Math.min((t - 7.0) / 2.0, 1.0);
+                wheelAngle = -Math.PI * easeInOutQuad(p);
+            }
+
+            ctx.save();
+            ctx.translate(950, 700);
+            ctx.rotate(wheelAngle);
+            ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 5;
+
+            ctx.strokeStyle = '#e94560'; ctx.lineWidth = 8;
+            ctx.beginPath(); ctx.arc(0, 0, 150, 0, Math.PI * 2); ctx.stroke();
+            ctx.strokeStyle = '#533483'; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(0, 0, 140, 0, Math.PI * 2); ctx.stroke();
+
+            ctx.strokeStyle = '#533483'; ctx.lineWidth = 6;
+            for(let i = 0; i < 8; i++) {
+                ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(140 * Math.cos(i * Math.PI/4), 140 * Math.sin(i * Math.PI/4)); ctx.stroke();
+            }
+
+            ctx.fillStyle = '#e94560';
+            for(let i = 0; i < 8; i++) {
+                ctx.save();
+                ctx.rotate(i * Math.PI/4);
+                ctx.translate(150, 0);
+                ctx.rotate(Math.PI/2);
+                ctx.fillRect(-25, -5, 50, 10);
+                ctx.restore();
+            }
+
+            ctx.fillStyle = '#f9ed69';
+            ctx.beginPath(); ctx.arc(150, 0, 10, 0, Math.PI * 2); ctx.fill(); // Trigger Peg
+            ctx.restore();
+
+            // 5. Trigger & Wire
+            let triggerPressed = (t > 9.0);
+            
+            ctx.save();
+            ctx.strokeStyle = triggerPressed ? '#533483' : '#fff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(800, 700);
+            if (!triggerPressed) ctx.lineTo(750, 850);
+            else ctx.quadraticCurveTo(820, 780, 750, 850);
+            ctx.stroke();
+
+            ctx.fillStyle = triggerPressed ? '#00d2fc' : '#e94560';
+            ctx.fillRect(790, 690, 20, 10); // Button
+            ctx.restore();
+
+            // 6. Catapult
+            let catapultAngle = Math.PI;
+            if (t > 9.0) {
+                let p = Math.min((t - 9.0) / 0.4, 1.0);
+                catapultAngle = Math.PI - (Math.PI + Math.PI/4) * easeOutQuad(p);
+            }
+
+            ctx.save();
+            ctx.translate(750, 850);
+            
+            // Stopper block
+            ctx.save();
+            ctx.rotate(-Math.PI/4);
+            ctx.fillStyle = '#e94560';
+            ctx.fillRect(130, -5, 20, 20);
+            ctx.restore();
+
+            ctx.rotate(catapultAngle);
+            ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 5;
+            ctx.fillStyle = '#f9ed69';
+            ctx.fillRect(0, -10, 150, 20);
+            ctx.strokeStyle = '#0f3460'; ctx.lineWidth = 2;
+            ctx.strokeRect(0, -10, 150, 20);
+
+            ctx.fillStyle = '#e94560';
+            ctx.beginPath(); ctx.arc(150, 0, 20, Math.PI/2, Math.PI*1.5); ctx.fill();
+
+            ctx.fillStyle = '#533483';
+            ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+
+            // 7. Projectile
+            let projX = 0, projY = 0, drawProj = false;
+            if (t > 9.0 && t < 9.4) {
+                drawProj = true;
+                let p = easeOutQuad((t - 9.0) / 0.4);
+                let angle = Math.PI - (Math.PI + Math.PI/4) * p;
+                projX = 750 + 150 * Math.cos(angle);
+                projY = 850 + 150 * Math.sin(angle);
+            } else if (t >= 9.4 && t < 11.4) {
+                drawProj = true;
+                let tf = t - 9.4;
+                projX = 856.06 + 421.97 * tf;
+                projY = 743.93 - 1071.96 * tf + 400 * tf * tf;
+            } else if (t >= 11.4 && t < 12.77) {
+                drawProj = true;
+                let tf = t - 11.4;
+                projX = 1700 - 133.3 * tf;
+                projY = 200 + 400 * tf * tf;
+            } else if (t >= 12.77 && t < 16.0) {
+                drawProj = true;
+                projX = 1517.5;
+                projY = 950;
+            }
+
+            if (drawProj) {
+                projTrail.push({x: projX, y: projY});
+                if (projTrail.length > 15) projTrail.shift();
+            }
+
+            if (projTrail.length > 0) {
+                ctx.save();
+                for(let i = 0; i < projTrail.length; i++) {
+                    ctx.fillStyle = `rgba(255, 255, 255, ${i / projTrail.length * 0.4})`;
+                    ctx.beginPath(); ctx.arc(projTrail[i].x, projTrail[i].y, 10, 0, Math.PI * 2); ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            if (drawProj) {
+                ctx.save();
+                ctx.shadowColor = '#00d2fc'; ctx.shadowBlur = 15;
+                ctx.fillStyle = '#fff';
+                ctx.beginPath(); ctx.arc(projX, projY, 10, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            }
+
+            // 8. Bell
+            let bellAngle = 0;
+            if (t > 11.4) {
+                let tr = t - 11.4;
+                bellAngle = 0.3 * Math.exp(-tr * 1.5) * Math.sin(tr * 20);
+            }
+
+            ctx.save();
+            ctx.translate(1700, 150);
+            ctx.rotate(bellAngle);
+            ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 5;
+
+            ctx.fillStyle = '#f9ed69';
+            ctx.strokeStyle = '#0f3460';
+            ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-20, 50); ctx.bezierCurveTo(-20, 0, 20, 0, 20, 50); ctx.lineTo(30, 70); ctx.lineTo(-30, 70); ctx.closePath();
+            ctx.fill(); ctx.stroke();
+            
+            ctx.strokeStyle = '#e94560'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(-25, 65); ctx.lineTo(25, 65); ctx.stroke();
+            
+            ctx.fillStyle = '#533483';
+            ctx.beginPath(); ctx.arc(0, 75, 8, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+
+            // Bell Ripples
+            if (t > 11.4 && t < 13.5) {
+                let tr = t - 11.4;
+                let r = tr * 150;
+                let alpha = Math.max(0, 1 - (r / 250));
+                ctx.strokeStyle = `rgba(249, 237, 105, ${alpha})`;
+                ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.arc(1700, 200, r, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.arc(1700, 200, Math.max(0, r - 30), 0, Math.PI * 2); ctx.stroke();
+            }
+
+            // 9. Impact Flashes
+            drawFlash(ctx, 460, 350, t, 2.5);  // Ball 1 hits Dominoes
+            drawFlash(ctx, 785, 290, t, 4.2);  // Domino hits Lever
+            drawFlash(ctx, 1100, 675, t, 7.0); // Ball 2 hits Wheel
+            drawFlash(ctx, 800, 700, t, 9.0);  // Wheel Peg hits Trigger
+            drawFlash(ctx, 1700, 200, t, 11.4);// Projectile hits Bell
+
+            // Subtle Title
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.font = 'bold 36px sans-serif';
+            ctx.fillText('RUBE GOLDBERG MACHINE', 50, 1020);
+
+            ctx.restore();
+        }
+
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>

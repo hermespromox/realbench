@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cinematic Solar System</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000005;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="solarSystem"></canvas>
+    <script>
+        const canvas = document.getElementById('solarSystem');
+        const ctx = canvas.getContext('2d');
+        let width, height, cx, cy, scale;
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            cx = width / 2;
+            cy = height / 2;
+            scale = Math.min(width / 1150, height / 650);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const tilt = 0.4;
+        
+        const stars = Array.from({length: 1500}, () => {
+            const z = Math.random() * 3 + 0.5;
+            return {
+                x: Math.random(),
+                y: Math.random(),
+                z: z,
+                size: (Math.random() * 1.5 + 0.5) / z,
+                alpha: Math.random() / z + 0.1,
+                twinkleSpeed: Math.random() * 0.02 + 0.005,
+                driftSpeed: (Math.random() * 0.0002 + 0.00005) / z
+            };
+        });
+
+        const planets = [
+            { name: 'Mercury', radius: 4, orbit: 80, speed: 1.6, color: '#8c8c8c', initialAngle: 0, moons: [] },
+            { name: 'Venus', radius: 7, orbit: 120, speed: 1.2, color: '#e0c080', initialAngle: 1, moons: [] },
+            { name: 'Earth', radius: 7.5, orbit: 160, speed: 1.0, color: '#3b82f6', initialAngle: 2, moons: [
+                { radius: 2, orbit: 16, speed: 1.5, color: '#cccccc' }
+            ]},
+            { name: 'Mars', radius: 5.5, orbit: 200, speed: 0.8, color: '#ef4444', initialAngle: 3, moons: [
+                { radius: 1.5, orbit: 13, speed: 2.0, color: '#dddddd' },
+                { radius: 1.2, orbit: 19, speed: 1.5, color: '#bbbbbb' }
+            ]},
+            { name: 'Jupiter', radius: 18, orbit: 280, speed: 0.4, color: '#d1a373', initialAngle: 4, moons: [
+                { radius: 2.5, orbit: 30, speed: 1.8, color: '#eeeeee' },
+                { radius: 2.2, orbit: 36, speed: 1.5, color: '#ffffdd' },
+                { radius: 3, orbit: 44, speed: 1.2, color: '#dddddd' },
+                { radius: 2, orbit: 52, speed: 0.9, color: '#cccccc' }
+            ]},
+            { name: 'Saturn', radius: 15, orbit: 360, speed: 0.3, color: '#e3d599', initialAngle: 5, rings: true, moons: [
+                { radius: 2, orbit: 26, speed: 1.6, color: '#ffffff' },
+                { radius: 2.5, orbit: 35, speed: 1.2, color: '#eeeeee' }
+            ]},
+            { name: 'Uranus', radius: 10, orbit: 440, speed: 0.2, color: '#93c5fd', initialAngle: 6, moons: [] },
+            { name: 'Neptune', radius: 9.5, orbit: 500, speed: 0.16, color: '#2563eb', initialAngle: 7, moons: [
+                { radius: 2, orbit: 20, speed: -1.5, color: '#dddddd' }
+            ]}
+        ];
+
+        function drawStars(time) {
+            ctx.fillStyle = '#ffffff';
+            stars.forEach(s => {
+                s.x -= s.driftSpeed;
+                if (s.x < 0) s.x += 1;
+                
+                const a = s.alpha + Math.sin(time * s.twinkleSpeed * 100) * 0.3;
+                ctx.globalAlpha = Math.max(0, Math.min(1, a));
+                
+                ctx.fillRect(s.x * width, s.y * height, s.size, s.size);
+            });
+            ctx.globalAlpha = 1;
+        }
+
+        function drawSun(time) {
+            const r = 20 * scale;
+            const pulse = Math.sin(time * 2) * 0.05 + 1;
+            
+            const glow = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r * 4);
+            glow.addColorStop(0, 'rgba(255, 170, 0, 0.3)');
+            glow.addColorStop(0.5, 'rgba(255, 68, 0, 0.1)');
+            glow.addColorStop(1, 'rgba(255, 68, 0, 0)');
+            
+            ctx.beginPath();
+            ctx.arc(cx, cy, r * 4, 0, Math.PI * 2);
+            ctx.fillStyle = glow;
+            ctx.fill();
+            
+            const corona = ctx.createRadialGradient(cx, cy, r * 0.8, cx, cy, r * 1.5);
+            corona.addColorStop(0, '#ffffff');
+            corona.addColorStop(0.3, '#fff5cc');
+            corona.addColorStop(0.7, '#ffaa00');
+            corona.addColorStop(1, 'rgba(255, 68, 0, 0)');
+            
+            ctx.beginPath();
+            ctx.arc(cx, cy, r * 1.5, 0, Math.PI * 2);
+            ctx.fillStyle = corona;
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(cx, cy, r * 0.9 * pulse, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowBlur = 20 * scale;
+            ctx.shadowColor = '#ffffff';
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        function drawRings(x, y, r, isFront) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(1, 0.4);
+            
+            ctx.beginPath();
+            if (isFront) {
+                ctx.arc(0, 0, r * 2.2, 0, Math.PI);
+            } else {
+                ctx.arc(0, 0, r * 2.2, Math.PI, Math.PI * 2);
+            }
+            ctx.strokeStyle = 'rgba(227, 213, 153, 0.4)';
+            ctx.lineWidth = r * 0.6;
+            ctx.stroke();
+            
+            ctx.beginPath();
+            if (isFront) {
+                ctx.arc(0, 0, r * 1.6, 0, Math.PI);
+            } else {
+                ctx.arc(0, 0, r * 1.6, Math.PI, Math.PI * 2);
+            }
+            ctx.strokeStyle = 'rgba(227, 213, 153, 0.2)';
+            ctx.lineWidth = r * 0.3;
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+
+        function drawBody(x, y, r, color, name) {
+            const dx = cx - x;
+            const dy = cy - y;
+            const dist = Math.hypot(dx, dy);
+            let nx = 0, ny = 0;
+            if (dist > 0) {
+                nx = dx / dist;
+                ny = dy / dist;
+            }
+            
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            
+            if (name === 'Jupiter') {
+                ctx.clip();
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+                for(let i = -r; i < r; i += r * 0.35) {
+                    ctx.beginPath();
+                    ctx.ellipse(x, y + i, r, r * 0.08, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            ctx.restore();
+            
+            const shadowGrad = ctx.createLinearGradient(
+                x + nx * r, y + ny * r,
+                x - nx * r, y - ny * r
+            );
+            shadowGrad.addColorStop(0, 'rgba(0,0,0,0)');
+            shadowGrad.addColorStop(0.5, 'rgba(0,0,0,0.3)');
+            shadowGrad.addColorStop(1, 'rgba(0,0,0,0.9)');
+            
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fillStyle = shadowGrad;
+            ctx.fill();
+            
+            const highlightGrad = ctx.createRadialGradient(
+                x + nx * r * 0.5, y + ny * r * 0.5, 0,
+                x + nx * r * 0.5, y + ny * r * 0.5, r * 1.2
+            );
+            highlightGrad.addColorStop(0, 'rgba(255,255,255,0.2)');
+            highlightGrad.addColorStop(1, 'rgba(255,255,255,0)');
+            
+            ctx.fillStyle = highlightGrad;
+            ctx.fill();
+            
+            if (name === 'Earth') {
+                ctx.strokeStyle = 'rgba(59, 130, 246, 0.4)';
+                ctx.lineWidth = r * 0.2;
+                ctx.stroke();
+            } else if (name === 'Uranus' || name === 'Neptune') {
+                ctx.strokeStyle = 'rgba(147, 197, 253, 0.3)';
+                ctx.lineWidth = r * 0.15;
+                ctx.stroke();
+            } else {
+                ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+        }
+
+        function animate(now) {
+            if (!now) now = performance.now();
+            const time = now / 1000;
+
+            const bgGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(width, height));
+            bgGrad.addColorStop(0, '#0a0a1a');
+            bgGrad.addColorStop(1, '#000005');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, width, height);
+
+            drawStars(time);
+
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.scale(1, tilt);
+            planets.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(0, 0, p.orbit * scale, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            });
+            ctx.restore();
+
+            let renderList = [];
+
+            renderList.push({
+                y: cy,
+                draw: () => drawSun(time)
+            });
+
+            planets.forEach((p, i) => {
+                const angle = time * p.speed + p.initialAngle;
+                const px = cx + (p.orbit * scale) * Math.cos(angle);
+                const py = cy + (p.orbit * scale) * Math.sin(angle) * tilt;
+                const pr = p.radius * scale;
+
+                p.moons.forEach(m => {
+                    ctx.save();
+                    ctx.translate(px, py);
+                    ctx.scale(1, tilt);
+                    ctx.beginPath();
+                    ctx.arc(0, 0, m.orbit * scale, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    ctx.restore();
+                });
+
+                renderList.push({
+                    y: py,
+                    draw: () => {
+                        if (p.rings) drawRings(px, py, pr, false);
+                        drawBody(px, py, pr, p.color, p.name);
+                        if (p.rings) drawRings(px, py, pr, true);
+                    }
+                });
+
+                p.moons.forEach((m, j) => {
+                    const mAngle = time * m.speed + j * 2.5;
+                    const mx = px + (m.orbit * scale) * Math.cos(mAngle);
+                    const my = py + (m.orbit * scale) * Math.sin(mAngle) * tilt;
+                    const mr = m.radius * scale;
+
+                    renderList.push({
+                        y: my,
+                        draw: () => {
+                            drawBody(mx, my, mr, m.color, 'Moon');
+                        }
+                    });
+                });
+            });
+
+            renderList.sort((a, b) => a.y - b.y);
+            renderList.forEach(item => item.draw());
+
+            requestAnimationFrame(animate);
+        }
+
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>

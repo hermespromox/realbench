@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Underwater Ecosystem</title>
+<style>
+  html, body { margin:0; padding:0; height:100%; overflow:hidden; background:#010c1a; }
+  canvas { display:block; width:100vw; height:100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+'use strict';
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const TAU = Math.PI * 2;
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = arr => arr[(Math.random() * arr.length) | 0];
+
+let W = 0, H = 0, DPR = 1, bgGrad = null, vigGrad = null;
+
+/* ---------------- Background / resize ---------------- */
+let rays = [], weeds = [], floorPts = [], rocks = [], corals = [];
+
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+  bgGrad.addColorStop(0, '#0b4262');
+  bgGrad.addColorStop(0.35, '#073252');
+  bgGrad.addColorStop(0.7, '#04203c');
+  bgGrad.addColorStop(1, '#010b18');
+
+  vigGrad = ctx.createRadialGradient(W / 2, H * 0.42, Math.min(W, H) * 0.32, W / 2, H * 0.5, Math.max(W, H) * 0.85);
+  vigGrad.addColorStop(0, 'rgba(0,0,0,0)');
+  vigGrad.addColorStop(1, 'rgba(0,4,14,0.55)');
+
+  buildRays(); buildWeeds(); buildFloor();
+}
+
+/* ---------------- Light rays ---------------- */
+function buildRays() {
+  rays = [];
+  const n = Math.max(6, Math.round(W / 200));
+  for (let i = 0; i < n; i++) rays.push({
+    x: rand(-W * 0.1, W * 1.05),
+    w: rand(30, 130),
+    ang: rand(-0.12, 0.12),
+    sp: rand(0.05, 0.16),
+    ph: rand(0, TAU),
+    a: rand(0.05, 0.12),
+    len: H * rand(0.75, 1.2)
+  });
+}
+function drawRays(t) {
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  for (const r of rays) {
+    const sway = Math.sin(t * r.sp + r.ph);
+    const ang = r.ang + sway * 0.14;
+    const flick = Math.sin(t * r.sp * 2.3 + r.ph * 2.7) * Math.sin(t * 0.31 + r.ph);
+    const alpha = r.a * (0.45 + 0.55 * Math.abs(flick));
+    ctx.save();
+    ctx.translate(r.x, -40);
+    ctx.rotate(ang);
+    const g = ctx.createLinearGradient(0, 0, 0, r.len);
+    g.addColorStop(0, 'rgba(175,228,255,' + alpha + ')');
+    g.addColorStop(0.7, 'rgba(140,205,245,' + alpha * 0.35 + ')');
+    g.addColorStop(1, 'rgba(120,190,235,0)');
+    ctx.fillStyle = g;
+    const wt = r.w * 0.45, wb = r.w * 1.7;
+    ctx.beginPath();
+    ctx.moveTo(-wt / 2, 0); ctx.lineTo(wt / 2, 0);
+    ctx.lineTo(wb / 2, r.len); ctx.lineTo(-wb / 2, r.len);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  const g2 = ctx.createLinearGradient(0, 0, 0, H * 0.28);
+  g2.addColorStop(0, 'rgba(150,220,255,0.30)');
+  g2.addColorStop(1, 'rgba(150,220,255,0)');
+  ctx.fillStyle = g2;
+  ctx.fillRect(0, 0, W, H * 0.28);
+  ctx.restore();
+}
+
+/* ---------------- Floor, rocks, corals ---------------- */
+function genCoral(x, y, ang, len, w, depth, out) {
+  const x2 = x + Math.cos(ang) * len, y2 = y + Math.sin(ang) * len;
+  const cx = x + Math.cos(ang + rand(-0.4, 0.4)) * len * 0.6;
+  const cy = y + Math.sin(ang + rand(-0.3, 0.3)) * len * 0.6;
+  out.push({ x, y, cx, cy, x2, y2, w });
+  if (depth > 0) {
+    const n = Math.random() < 0.75 ? 2 : 1;
+    for (let i = 0; i < n; i++)
+      genCoral(x2, y2, ang + rand(-0.75, 0.75), len * rand(0.6, 0.8), w * 0.68, depth - 1, out);
+  }
+}
+function buildFloor() {
+  floorPts = [];
+  const n = 26;
+  for (let i = 0; i <= n; i++) {
+    const x = (i / n) * W;
+    const y = H - rand(8, H * 0.055) - Math.sin(i * 0.8) * H * 0.015;
+    floorPts.push([x, y]);
+  }
+  rocks = [];
+  for (let i = 0; i < 6; i++)
+    rocks.push({ x: rand(0, W), y: H - rand(0, 18), rx: rand(20, 70), ry: rand(10, 26) });
+  corals = [];
+  for (let i = 0; i < 3; i++) {
+    const strokes = [];
+    genCoral(rand(W * 0.08, W * 0.92), H - rand(4, 14), -Math.PI / 2 + rand(-0.3, 0.3),
+      rand(26, 46), rand(4, 6), 3, strokes);
+    corals.push({ strokes, hue: pick([330, 15, 200]) });
+  }
+}
+function drawFloor() {
+  ctx.beginPath();
+  ctx.moveTo(-20, H + 20);
+  ctx.lineTo(-20, floorPts[0][1]);
+  for (let i = 1; i < floorPts.length; i++) {
+    const p = floorPts[i - 1], q = floorPts[i];
+    ctx.quadraticCurveTo(p[0], p[1], (p[0] + q[0]) / 2, (p[1] + q[1]) / 2);
+  }
+  ctx.lineTo(W + 20, H + 20);
+  ctx.closePath();
+  const g = ctx.createLinearGradient(0, H * 0.9, 0, H);
+  g.addColorStop(0, '#0b2740');
+  g.addColorStop(1, '#020913');
+  ctx.fillStyle = g; ctx.fill();
+  for (const r of rocks) {
+    ctx.beginPath();
+    ctx.ellipse(r.x, r.y, r.rx, r.ry, 0, Math.PI, 0);
+    ctx.fillStyle = '#071a2c';
+    ctx.fill();
+  }
+  for (const c of corals) {
+    ctx.lineCap = 'round';
+    for (const s of c.strokes) {
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y);
+      ctx.quadraticCurveTo(s.cx, s.cy, s.x2, s.y2);
+      ctx.lineWidth = Math.max(1, s.w);
+      ctx.strokeStyle = 'hsla(' + c.hue + ',45%,22%,0.9)';
+      ctx.stroke();
+    }
+  }
+}
+
+/* ---------------- Seaweed ---------------- */
+function buildWeeds() {
+  weeds = [];
+  const n = Math.max(11, Math.round(W / 105));
+  for (let i = 0; i < n; i++) {
+    const layer = i % 2; // 0 = far silhouette, 1 = near
+    weeds.push({
+      x: rand(0, W),
+      h: rand(H * 0.18, H * (layer ? 0.52 : 0.34)),
+      segs: 9,
+      ph: rand(0, TAU),
+      sp: rand(0.45, 1.0),
+      w: rand(5, 11) * (layer ? 1 : 0.7),
+      hue: rand(95, 168),
+      sat: layer ? rand(45, 65) : rand(18, 32),
+      lit: layer ? rand(22, 32) : rand(9, 15),
+      lean: rand(-0.25, 0.25),
+      layer,
+      fronds: Math.random() < 0.65,
+      frondSeed: rand(0, TAU)
+    });
+  }
+}
+function drawWeed(wd, t) {
+  const n = wd.segs, pts = [];
+  for (let i = 0; i <= n; i++) {
+    const f = i / n;
+    const sway = Math.sin(t * wd.sp + wd.ph + f * 2.4) * f * f * 34
+               + Math.sin(t * 0.21 + wd.ph * 1.37) * f * 16;
+    pts.push([wd.x + sway + wd.lean * f * 50, H + 12 - f * wd.h]);
+  }
+  ctx.lineCap = 'round';
+  for (let i = 1; i <= n; i++) {
+    const f = i / n;
+    ctx.beginPath();
+    ctx.moveTo(pts[i - 1][0], pts[i - 1][1]);
+    ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.lineWidth = Math.max(1, wd.w * (1 - f * 0.7));
+    ctx.strokeStyle = 'hsl(' + wd.hue + ',' + wd.sat + '%,' + (wd.lit + f * 6) + '%)';
+    ctx.stroke();
+    if (wd.fronds && i > 1 && i < n) {
+      const side = (i % 2 ? 1 : -1);
+      const ang = Math.atan2(pts[i][1] - pts[i - 1][1], pts[i][0] - pts[i - 1][0]);
+      const flut = Math.sin(t * wd.sp * 1.3 + wd.frondSeed + i) * 0.25;
+      ctx.save();
+      ctx.translate(pts[i][0], pts[i][1]);
+      ctx.rotate(ang + side * (0.95 + flut));
+      ctx.beginPath();
+      ctx.ellipse(wd.w * 1.6, 0, wd.w * 1.9, wd.w * 0.55, 0, 0, TAU);
+      ctx.fillStyle = 'hsla(' + wd.hue + ',' + wd.sat + '%,' + (wd.lit + 8) + '%,0.85)';
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+}
+
+/* ---------------- Independent fish ---------------- */
+const FISH_PALETTES = [
+  { h: 24,  s: 92, l: 56, stripes: true  },
+  { h: 48,  s: 88, l: 58, stripes: false },
+  { h: 205, s: 62, l: 66, stripes: false },
+  { h: 350, s: 78, l: 62, stripes: false },
+  { h: 165, s: 55, l: 50, stripes: true  },
+  { h: 265, s: 55, l: 66, stripes: false },
+  { h: 190, s: 75, l: 55, stripes: false }
+];
+class Fish {
+  constructor() {
+    this.depth = rand(0.55, 1);
+    this.size = rand(11, 26) * (0.6 + 0.45 * this.depth);
+    this.baseSpeed = rand(0.5, 1.3) * (1.15 - 0.3 * this.depth);
+    this.pal = pick(FISH_PALETTES);
+    this.x = rand(0, W); this.y = rand(H * 0.1, H * 0.8);
+    this.a = rand(0, TAU);
+    this.seed = rand(0, 1000);
+    this.wagFreq = rand(4.5, 8);
+    this.wagPhase = rand(0, TAU);
+    this.finPhase = rand(0, TAU);
+    this.speed = this.baseSpeed;
+  }
+  update(t, dt, step) {
+    const s = this.seed;
+    const w = Math.sin(t * 0.29 + s) * 0.9
+            + Math.sin(t * 0.117 + s * 1.71) * 0.7
+            + Math.sin(t * 0.53 + s * 0.37) * 0.45;
+    this.a += w * 0.014 * step;
+    this.speed = this.baseSpeed * (0.7 + 0.3 * Math.sin(t * 0.37 + s * 2.1));
+    let vx = Math.cos(this.a) * this.speed;
+    let vy = Math.sin(this.a) * this.speed * 0.72;
+    const m = 90;
+    if (this.x < m) vx += (m - this.x) * 0.006;
+    else if (this.x > W - m) vx -= (this.x - (W - m)) * 0.006;
+    const top = H * 0.07, bot = H * 0.84;
+    if (this.y < top) vy += (top - this.y) * 0.006;
+    else if (this.y > bot) vy -= (this.y - bot) * 0.006;
+    this.x += vx * step; this.y += vy * step;
+    const target = Math.atan2(vy, vx);
+    let d = target - this.a;
+    while (d > Math.PI) d -= TAU;
+    while (d < -Math.PI) d += TAU;
+    this.a += d * 0.06 * step;
+    this.wagPhase += dt * this.wagFreq * (0.55 + this.speed * 0.55);
+  }
+  draw(t) {
+    const s = this.size, p = this.pal;
+    const wag = Math.sin(this.wagPhase) * 0.5;
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.a);
+    if (Math.cos(this.a) < 0) ctx.scale(1, -1);
+    ctx.globalAlpha = 0.5 + 0.5 * this.depth;
+    ctx.rotate(wag * 0.07);
+    // tail
+    ctx.save();
+    ctx.translate(-s * 0.82, 0);
+    ctx.rotate(wag * 0.85);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(-s * 0.34, -s * 0.34, -s * 0.52, -s * 0.46);
+    ctx.quadraticCurveTo(-s * 0.3, 0, -s * 0.52, s * 0.46);
+    ctx.quadraticCurveTo(-s * 0.34, s * 0.34, 0, 0);
+    ctx.fillStyle = 'hsl(' + p.h + ',' + p.s + '%,' + (p.l - 8) + '%)';
+    ctx.fill();
+    ctx.restore();
+    // dorsal fin
+    ctx.beginPath();
+    ctx.moveTo(s * 0.2, -s * 0.3);
+    ctx.quadraticCurveTo(-s * 0.05, -s * 0.72, -s * 0.42, -s * 0.28);
+    ctx.closePath();
+    ctx.fillStyle = 'hsla(' + p.h + ',' + p.s + '%,' + (p.l - 12) + '%,0.9)';
+    ctx.fill();
+    // body
+    const body = new Path2D();
+    body.moveTo(s, 0);
+    body.bezierCurveTo(s * 0.55, -s * 0.44, -s * 0.35, -s * 0.38, -s * 0.9, -s * 0.02);
+    body.bezierCurveTo(-s * 0.35, s * 0.38, s * 0.55, s * 0.44, s, 0);
+    const g = ctx.createLinearGradient(0, -s * 0.45, 0, s * 0.45);
+    g.addColorStop(0, 'hsl(' + p.h + ',' + p.s + '%,' + Math.max(8, p.l - 14) + '%)');
+    g.addColorStop(0.45, 'hsl(' + p.h + ',' + p.s + '%,' + p.l + '%)');
+    g.addColorStop(1, 'hsl(' + p.h + ',' + Math.max(10, p.s - 25) + '%,' + Math.min(92, p.l + 26) + '%)');
+    ctx.fillStyle = g;
+    ctx.fill(body);
+    if (p.stripes) {
+      ctx.save();
+      ctx.clip(body);
+      ctx.fillStyle = 'hsla(' + p.h + ',' + p.s + '%,' + Math.min(95, p.l + 40) + '%,0.85)';
+      for (const bx of [0.35, -0.05, -0.45]) {
+        ctx.beginPath();
+        ctx.ellipse(s * bx, 0, s * 0.09, s * 0.5, 0, 0, TAU);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    // pectoral fin
+    ctx.save();
+    ctx.translate(s * 0.12, s * 0.14);
+    ctx.rotate(0.6 + Math.sin(t * 3 + this.finPhase) * 0.35);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, s * 0.26, s * 0.09, 0.4, 0, TAU);
+    ctx.fillStyle = 'hsla(' + p.h + ',' + p.s + '%,' + (p.l + 10) + '%,0.55)';
+    ctx.fill();
+    ctx.restore();
+    // gill
+    ctx.beginPath();
+    ctx.arc(s * 0.42, 0, s * 0.22, Math.PI * 0.65, Math.PI * 1.35);
+    ctx.strokeStyle = 'hsla(' + p.h + ',' + p.s + '%,' + Math.max(6, p.l - 22) + '%,0.5)';
+    ctx.lineWidth = Math.max(1, s * 0.03);
+    ctx.stroke();
+    // eye
+    ctx.beginPath();
+    ctx.arc(s * 0.58, -s * 0.09, s * 0.075, 0, TAU);
+    ctx.fillStyle = '#0b1620'; ctx.fill();
+    ctx.beginPath();
+    ctx.arc(s * 0.6, -s * 0.12, s * 0.025, 0, TAU);
+    ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fill();
+    ctx.restore();
+  }
+}
+
+/* ---------------- Schools (boids) ---------------- */
+class School {
+  constructor(hx, hy, n, hue) {
+    this.homeX = hx; this.homeY = hy; this.hue = hue;
+    this.seed = rand(0, 1000);
+    this.ax = hx; this.ay = hy;
+    this.fish = [];
+    for (let i = 0; i < n; i++) this.fish.push({
+      x: hx + rand(-70, 70), y: hy + rand(-45, 45),
+      vx: rand(-1, 1), vy: rand(-0.5, 0.5),
+      phase: rand(0, TAU), size: rand(3.5, 6)
+    });
+  }
+  update(t, step) {
+    const s = this.seed;
+    this.ax = this.homeX + Math.sin(t * 0.07 + s) * W * 0.16 + Math.sin(t * 0.13 + s * 2) * W * 0.05;
+    this.ay = this.homeY + Math.cos(t * 0.09 + s * 1.3) * H * 0.11 + Math.sin(t * 0.17 + s * 0.7) * H * 0.05;
+    const F = this.fish;
+    for (const f of F) {
+      let ax = 0, ay = 0, cx = 0, cy = 0, cnt = 0, sx = 0, sy = 0, avx = 0, avy = 0;
+      for (const o of F) {
+        if (o === f) continue;
+        const dx = o.x - f.x, dy = o.y - f.y, d2 = dx * dx + dy * dy;
+        if (d2 < 3025) {
+          cnt++; cx += o.x; cy += o.y; avx += o.vx; avy += o.vy;
+          if (d2 < 320 && d2 > 0.01) { const d = Math.sqrt(d2); sx -= dx / d; sy -= dy / d; }
+        }
+      }
+      if (cnt) {
+        ax += (cx / cnt - f.x) * 0.0016;
+        ay += (cy / cnt - f.y) * 0.0016;
+        ax += (avx / cnt - f.vx) * 0.05;
+        ay += (avy / cnt - f.vy) * 0.05;
+      }
+      ax += sx * 0.09; ay += sy * 0.09;
+      ax += (this.ax - f.x) * 0.0006;
+      ay += (this.ay - f.y) * 0.0006;
+      ax += Math.sin(t * 1.3 + f.phase * 7) * 0.012;
+      ay += Math.cos(t * 1.1 + f.phase * 5) * 0.012;
+      f.vx += ax * step; f.vy += ay * step;
+      const sp = Math.hypot(f.vx, f.vy);
+      if (sp > 1.9) { f.vx *= 1.9 / sp; f.vy *= 1.9 / sp; }
+      else if (sp < 0.7 && sp > 0.001) { f.vx *= 0.7 / sp; f.vy *= 0.7 / sp; }
+      f.x += f.vx * step; f.y += f.vy * step;
+    }
+  }
+  draw(t) {
+    for (const f of this.fish) {
+      const a = Math.atan2(f.vy, f.vx);
+      const wag = Math.sin(t * 10 + f.phase) * 0.55;
+      const s = f.size;
+      const flash = 66 + 12 * Math.sin(t * 5 + f.phase * 3);
+      ctx.save();
+      ctx.translate(f.x, f.y);
+      ctx.rotate(a);
+      if (Math.cos(a) < 0) ctx.scale(1, -1);
+      ctx.fillStyle = 'hsla(' + this.hue + ',60%,' + flash + '%,0.92)';
+      ctx.save();
+      ctx.translate(-s * 0.85, 0);
+      ctx.rotate(wag);
+      ctx.beginPath();
+      ctx.moveTo(0, 0); ctx.lineTo(-s * 0.65, -s * 0.38); ctx.lineTo(-s * 0.65, s * 0.38);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+      ctx.beginPath();
+      ctx.ellipse(0, 0, s, s * 0.36, 0, 0, TAU);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+}
+
+/* ---------------- Jellyfish ---------------- */
+class Jelly {
+  constructor() {
+    this.x = rand(W * 0.08, W * 0.92);
+    this.y = rand(H * 0.15, H * 0.9);
+    this.r = rand(16, 40);
+    this.hue = pick([300, 320, 195, 270, 340]);
+    this.phase = rand(0, TAU);
+    this.pulseSpeed = rand(0.8, 1.3);
+    this.seed = rand(0, 1000);
+  }
+  update(t, step) {
+    this.x += (Math.sin(t * 0.11 + this.seed) * 0.25 + 0.07) * step;
+    this.y -= (0.16 + 0.12 * Math.sin(t * 0.23 + this.seed * 1.7)) * step;
+    this.y -= Math.max(0, Math.sin(t * this.pulseSpeed + this.phase)) * 0.14 * step;
+    if (this.y < -100) { this.y = H + 100; this.x = rand(W * 0.05, W * 0.95); }
+    if (this.x > W + 100) this.x = -100;
+    if (this.x < -100) this.x = W + 100;
+  }
+  draw(t) {
+    const p = Math.sin(t * this.pulseSpeed + this.phase);
+    const sq = 1 + p * 0.12, st = 1 - p * 0.14;
+    const r = this.r, hue = this.hue;
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    // glow
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    const gl = ctx.createRadialGradient(0, 0, r * 0.2, 0, 0, r * 2.6);
+    gl.addColorStop(0, 'hsla(' + hue + ',85%,75%,0.16)');
+    gl.addColorStop(1, 'hsla(' + hue + ',85%,75%,0)');
+    ctx.fillStyle = gl;
+    ctx.beginPath(); ctx.arc(0, 0, r * 2.6, 0, TAU); ctx.fill();
+    ctx.restore();
+    // tentacles
+    const tent = 6;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < tent; i++) {
+      const fx = (i / (tent - 1) - 0.5) * r * 1.15;
+      const len = r * (1.7 + 0.5 * Math.sin(this.seed + i * 2.1));
+      const w1 = Math.sin(t * 1.1 + this.phase + i * 1.3) * r * 0.25;
+      const w2 = Math.sin(t * 0.8 + this.phase * 2 + i * 0.9) * r * 0.45;
+      ctx.beginPath();
+      ctx.moveTo(fx * sq, r * 0.12);
+      ctx.bezierCurveTo(fx + w1 * 0.4, r * 0.12 + len * 0.33,
+                        fx + w2 * 0.7, r * 0.12 + len * 0.66,
+                        fx + w2, r * 0.12 + len * st);
+      ctx.strokeStyle = 'hsla(' + hue + ',80%,82%,0.34)';
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+    }
+    // oral arms
+    for (let i = 0; i < 3; i++) {
+      const fx = (i - 1) * r * 0.22;
+      const w2 = Math.sin(t * 0.9 + this.phase + i * 2.4) * r * 0.3;
+      ctx.beginPath();
+      ctx.moveTo(fx, r * 0.1);
+      ctx.quadraticCurveTo(fx + w2 * 0.5, r * 0.7, fx + w2, r * 1.15 * st);
+      ctx.strokeStyle = 'hsla(' + hue + ',85%,88%,0.4)';
+      ctx.lineWidth = 2.6;
+      ctx.stroke();
+    }
+    // bell
+    ctx.scale(sq, st);
+    const g = ctx.createRadialGradient(0, -r * 0.25, r * 0.1, 0, 0, r * 1.15);
+    g.addColorStop(0, 'hsla(' + hue + ',85%,90%,0.8)');
+    g.addColorStop(0.55, 'hsla(' + hue + ',80%,72%,0.42)');
+    g.addColorStop(1, 'hsla(' + hue + ',80%,65%,0.08)');
+    ctx.beginPath();
+    ctx.moveTo(-r, 0);
+    ctx.arc(0, 0, r, Math.PI, 0, false);
+    const sc = 5;
+    for (let i = 1; i <= sc; i++) {
+      const x0 = r - ((i - 1) / sc) * 2 * r, x1 = r - (i / sc) * 2 * r;
+      ctx.quadraticCurveTo((x0 + x1) / 2, r * 0.28, x1, r * 0.08);
+    }
+    ctx.closePath();
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.strokeStyle = 'hsla(' + hue + ',85%,88%,0.35)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // inner organs
+    ctx.fillStyle = 'hsla(' + hue + ',90%,92%,0.4)';
+    for (let i = 0; i < 4; i++) {
+      const ox = (i - 1.5) * r * 0.34;
+      ctx.beginPath();
+      ctx.ellipse(ox, -r * 0.3, r * 0.11, r * 0.17, 0, 0, TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+/* ---------------- Bubbles ---------------- */
+class Bubble {
+  constructor(ventX) { this.ventX = ventX; this.reset(true); }
+  reset(init) {
+    this.baseX = this.ventX != null ? this.ventX + rand(-7, 7) : rand(0, W);
+    this.y = init ? rand(0, H) : H + rand(5, 50);
+    this.r = rand(1.2, 4.6);
+    this.speed = rand(0.5, 1.4) * (0.6 + this.r * 0.18);
+    this.seed = rand(0, TAU);
+    this.wobF = rand(1.2, 2.6);
+  }
+  update(t, step) {
+    this.y -= this.speed * step;
+    const risen = H - this.y;
+    const amp = Math.min(18, 4 + risen * 0.02);
+    this.x = this.baseX + Math.sin(t * this.wobF + this.seed) * amp;
+    if (this.y < -12) this.reset(false);
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, TAU);
+    ctx.strokeStyle = 'rgba(190,230,255,0.38)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(this.x - this.r * 0.3, this.y - this.r * 0.3, this.r * 0.32, Math.PI * 0.8, Math.PI * 1.7);
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.stroke();
+  }
+}
+
+/* ---------------- Particles (marine snow) ---------------- */
+class Particle {
+  constructor(near) {
+    this.near = near;
+    this.x = rand(0, W); this.y = rand(0, H);
+    this.r = near ? rand(1, 2.4) : rand(0.4, 1.3);
+    this.seed = rand(0, TAU);
+    this.vy = rand(-0.12, 0.1);
+    this.tw = rand(0.5, 1.5);
+    this.baseA = near ? rand(0.15, 0.35) : rand(0.06, 0.16);
+  }
+  update(t, step) {
+    this.y += this.vy * step;
+    this.x += Math.sin(t * 0.3 + this.seed) * 0.15 * step;
+    if (this.y < -5) this.y = H + 5;
+    if (this.y > H + 5) this.y = -5;
+    if (this.x < -5) this.x = W + 5;
+    if (this.x > W + 5) this.x = -5;
+  }
+  draw(t) {
+    const a = this.baseA * (0.5 + 0.5 * Math.sin(t * this.tw + this.seed * 3));
+    ctx.fillStyle = 'rgba(200,230,255,' + a + ')';
+    ctx.fillRect(this.x, this.y, this.r, this.r);
+  }
+}
+
+/* ---------------- Populate ---------------- */
+resize();
+window.addEventListener('resize', resize);
+
+const fishes = [];
+for (let i = 0; i < 28; i++) fishes.push(new Fish());
+fishes.sort((a, b) => a.depth - b.depth);
+
+const schools = [
+  new School(W * 0.25, H * 0.30, 26, 210),
+  new School(W * 0.70, H * 0.48, 30, 45),
+  new School(W * 0.45, H * 0.64, 20, 190)
+];
+
+const jellies = [];
+for (let i = 0; i < 6; i++) jellies.push(new Jelly());
+
+const bubbles = [];
+for (let i = 0; i < 45; i++) bubbles.push(new Bubble(null));
+for (const vx of [W * 0.2, W * 0.55, W * 0.8])
+  for (let i = 0; i < 8; i++) bubbles.push(new Bubble(vx));
+
+const particlesFar = [], particlesNear = [];
+for (let i = 0; i < 60; i++) particlesFar.push(new Particle(false));
+for (let i = 0; i < 30; i++) particlesNear.push(new Particle(true));
+
+/* ---------------- Main loop ---------------- */
+let last = 0;
+function frame(ts) {
+  const t = ts / 1000;
+  const dt = Math.min(0.05, (ts - last) / 1000 || 0.016);
+  last = ts;
+  const step = dt * 60;
+
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  drawRays(t);
+
+  for (const p of particlesFar) { p.update(t, step); p.draw(t); }
+
+  drawFloor();
+  for (const w of weeds) if (w.layer === 0) drawWeed(w, t);
+
+  for (const j of jellies) { j.update(t, step); j.draw(t); }
+
+  for (const sc of schools) { sc.update(t, step); sc.draw(t); }
+
+  for (const f of fishes) { f.update(t, dt, step); f.draw(t); }
+
+  for (const w of weeds) if (w.layer === 1) drawWeed(w, t);
+
+  for (const b of bubbles) { b.update(t, step); b.draw(); }
+
+  for (const p of particlesNear) { p.update(t, step); p.draw(t); }
+
+  ctx.fillStyle = vigGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

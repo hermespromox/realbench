@@ -1,0 +1,604 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Futuristic Automated Factory</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            overflow: hidden;
+            background: #080c14;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="factory"></canvas>
+    <script>
+        const canvas = document.getElementById('factory');
+        const ctx = canvas.getContext('2d');
+        let W, H, ORIGIN_X, ORIGIN_Y, TILE_W, TILE_H, SCALE;
+
+        function resize() {
+            W = canvas.width = window.innerWidth;
+            H = canvas.height = window.innerHeight;
+            SCALE = Math.min(W / 1400, H / 900);
+            TILE_W = 80 * SCALE;
+            TILE_H = 40 * SCALE;
+            ORIGIN_X = W / 2 - 20 * SCALE;
+            ORIGIN_Y = H / 2 - 60 * SCALE;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function toScreen(gx, gy, gz = 0) {
+            return {
+                x: ORIGIN_X + (gx - gy) * TILE_W / 2,
+                y: ORIGIN_Y + (gx + gy) * TILE_H / 2 - gz * TILE_H
+            };
+        }
+
+        function drawBox(gx, gy, gz, w, h, gh, topColor, rightColor, leftColor, outline = true) {
+            const p0 = toScreen(gx, gy, gz + gh);
+            const p1 = toScreen(gx + w, gy, gz + gh);
+            const p2 = toScreen(gx + w, gy + h, gz + gh);
+            const p3 = toScreen(gx, gy + h, gz + gh);
+            const b0 = toScreen(gx, gy, gz);
+            const b1 = toScreen(gx + w, gy, gz);
+            const b2 = toScreen(gx + w, gy + h, gz);
+            const b3 = toScreen(gx, gy + h, gz);
+
+            ctx.fillStyle = topColor;
+            ctx.beginPath();
+            ctx.moveTo(p0.x, p0.y);
+            ctx.lineTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.lineTo(p3.x, p3.y);
+            ctx.closePath();
+            ctx.fill();
+            if (outline) { ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                ctx.stroke(); }
+
+            ctx.fillStyle = rightColor;
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.lineTo(b2.x, b2.y);
+            ctx.lineTo(b1.x, b1.y);
+            ctx.closePath();
+            ctx.fill();
+            if (outline) { ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+                ctx.stroke(); }
+
+            ctx.fillStyle = leftColor;
+            ctx.beginPath();
+            ctx.moveTo(p2.x, p2.y);
+            ctx.lineTo(p3.x, p3.y);
+            ctx.lineTo(b3.x, b3.y);
+            ctx.lineTo(b2.x, b2.y);
+            ctx.closePath();
+            ctx.fill();
+            if (outline) { ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+                ctx.stroke(); }
+        }
+
+        function drawFloor() {
+            const gw = 17,
+                gh = 12;
+            const top = toScreen(0, 0, 0);
+            const right = toScreen(gw, 0, 0);
+            const bottom = toScreen(gw, gh, 0);
+            const left = toScreen(0, gh, 0);
+
+            ctx.fillStyle = '#141824';
+            ctx.beginPath();
+            ctx.moveTo(top.x, top.y);
+            ctx.lineTo(right.x, right.y);
+            ctx.lineTo(bottom.x, bottom.y);
+            ctx.lineTo(left.x, left.y);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.strokeStyle = 'rgba(100,160,255,0.08)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= gw; i++) {
+                const p1 = toScreen(i, 0, 0);
+                const p2 = toScreen(i, gh, 0);
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+            }
+            for (let j = 0; j <= gh; j++) {
+                const p1 = toScreen(0, j, 0);
+                const p2 = toScreen(gw, j, 0);
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+            }
+
+            for (let i = 0; i < gw; i++) {
+                for (let j = 0; j < gh; j++) {
+                    if ((i + j) % 2 === 0) {
+                        const p = toScreen(i + 0.5, j + 0.5, 0);
+                        ctx.fillStyle = 'rgba(100,160,255,0.03)';
+                        ctx.beginPath();
+                        ctx.moveTo(toScreen(i, j, 0).x, toScreen(i, j, 0).y);
+                        ctx.lineTo(toScreen(i + 1, j, 0).x, toScreen(i + 1, j, 0).y);
+                        ctx.lineTo(toScreen(i + 1, j + 1, 0).x, toScreen(i + 1, j + 1, 0).y);
+                        ctx.lineTo(toScreen(i, j + 1, 0).x, toScreen(i, j + 1, 0).y);
+                        ctx.lineTo(toScreen(i, j, 0).x, toScreen(i, j, 0).y);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+
+        function drawConveyor(gx, gy, length, dir, time) {
+            const w = dir === 'east' ? length : 1;
+            const h = dir === 'east' ? 1 : length;
+            drawBox(gx, gy, 0, w, h, 0.25, '#2a2e3a', '#1a1e2a', '#202430', false);
+
+            const p0 = toScreen(gx, gy, 0.25);
+            const p1 = toScreen(gx + w, gy, 0.25);
+            const p2 = toScreen(gx + w, gy + h, 0.25);
+            const p3 = toScreen(gx, gy + h, 0.25);
+            ctx.fillStyle = '#333850';
+            ctx.beginPath();
+            ctx.moveTo(p0.x, p0.y);
+            ctx.lineTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.lineTo(p3.x, p3.y);
+            ctx.closePath();
+            ctx.fill();
+
+            const stripeCount = Math.floor(length * 6);
+            const spacing = length / stripeCount;
+            const offset = (time * 0.6) % spacing;
+            for (let i = 0; i < stripeCount; i++) {
+                const pos = i * spacing + offset;
+                if (pos > length) continue;
+                let sp, ep;
+                if (dir === 'east') {
+                    sp = toScreen(gx + pos, gy, 0.3);
+                    ep = toScreen(gx + pos, gy + 1, 0.3);
+                } else {
+                    sp = toScreen(gx, gy + pos, 0.3);
+                    ep = toScreen(gx + 1, gy + pos, 0.3);
+                }
+                ctx.strokeStyle = 'rgba(255,200,100,0.3)';
+                ctx.lineWidth = 2 * SCALE;
+                ctx.beginPath();
+                ctx.moveTo(sp.x, sp.y);
+                ctx.lineTo(ep.x, ep.y);
+                ctx.stroke();
+            }
+
+            ctx.strokeStyle = 'rgba(255,180,80,0.15)';
+            ctx.lineWidth = 1;
+            if (dir === 'east') {
+                for (let i = 0; i < length * 4; i++) {
+                    const pos = i * 0.25 + offset;
+                    if (pos > length) continue;
+                    const sp = toScreen(gx + pos, gy, 0.3);
+                    const ep = toScreen(gx + pos, gy + 1, 0.3);
+                    ctx.beginPath();
+                    ctx.moveTo(sp.x, sp.y);
+                    ctx.lineTo(ep.x, ep.y);
+                    ctx.stroke();
+                }
+            } else {
+                for (let i = 0; i < length * 4; i++) {
+                    const pos = i * 0.25 + offset;
+                    if (pos > length) continue;
+                    const sp = toScreen(gx, gy + pos, 0.3);
+                    const ep = toScreen(gx + 1, gy + pos, 0.3);
+                    ctx.beginPath();
+                    ctx.moveTo(sp.x, sp.y);
+                    ctx.lineTo(ep.x, ep.y);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        function drawHopper(gx, gy, time) {
+            drawBox(gx - 0.6, gy - 0.6, 0, 1.2, 1.2, 1.2, '#3a3a4a', '#2a2a3a', '#303040');
+            drawBox(gx - 0.4, gy - 0.4, 0.8, 0.8, 0.8, 0.4, '#4a4a5a', '#3a3a4a', '#404050');
+            ctx.fillStyle = 'rgba(255,100,50,0.3)';
+            const p = toScreen(gx, gy, 1.2);
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 3 * SCALE, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        const PRODUCT_COLORS = {
+            raw: { top: '#a0a0b0', right: '#707080', left: '#808090' },
+            stamped: { top: '#4090e0', right: '#2060b0', left: '#3070c0' },
+            assembled: { top: '#40c070', right: '#209050', left: '#30a060' }
+        };
+
+        let time = 0;
+        let products = [];
+        let spawnTimer = 0;
+        let particles = [];
+        let outputCount = 0;
+        const SPAWN_INTERVAL = 2.8;
+
+        const PHASES = {
+            conveyor_a: { duration: 3, next: 'pick1' },
+            pick1: { duration: 1, next: 'press' },
+            press: { duration: 1.5, next: 'pick2' },
+            pick2: { duration: 1, next: 'conveyor_b' },
+            conveyor_b: { duration: 3, next: 'pick3' },
+            pick3: { duration: 1, next: 'assembly' },
+            assembly: { duration: 1.5, next: 'pick4' },
+            pick4: { duration: 1, next: 'conveyor_c' },
+            conveyor_c: { duration: 3, next: 'output' },
+            output: { duration: Infinity, next: null }
+        };
+
+        const PHASE_POS = {
+            conveyor_a: { start: { x: 2, y: 2, z: 0.3 }, end: { x: 5, y: 2, z: 0.3 } },
+            pick1: { start: { x: 5, y: 2, z: 0.3 }, end: { x: 5, y: 4, z: 0 } },
+            press: { start: { x: 5, y: 4, z: 0 }, end: { x: 5, y: 4, z: 0 } },
+            pick2: { start: { x: 5, y: 4, z: 0 }, end: { x: 5, y: 6, z: 0.3 } },
+            conveyor_b: { start: { x: 5, y: 6, z: 0.3 }, end: { x: 5, y: 9, z: 0.3 } },
+            pick3: { start: { x: 5, y: 9, z: 0.3 }, end: { x: 8, y: 9, z: 0 } },
+            assembly: { start: { x: 8, y: 9, z: 0 }, end: { x: 8, y: 9, z: 0 } },
+            pick4: { start: { x: 8, y: 9, z: 0 }, end: { x: 10, y: 9, z: 0.3 } },
+            conveyor_c: { start: { x: 10, y: 9, z: 0.3 }, end: { x: 13, y: 9, z: 0.3 } },
+            output: { start: { x: 13, y: 9, z: 0.3 }, end: { x: 13, y: 9, z: 0.3 } }
+        };
+
+        function createProduct() {
+            return {
+                phase: 'conveyor_a',
+                phaseTime: 0,
+                state: 'raw',
+                position: { x: 2, y: 2, z: 0.3 },
+                alive: true
+            };
+        }
+
+        function spawnParticles(x, y, z, color, count) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x,
+                    y,
+                    z,
+                    vx: (Math.random() - 0.5) * 3,
+                    vy: (Math.random() - 0.5) * 3,
+                    vz: Math.random() * 2,
+                    life: 0.4 + Math.random() * 0.4,
+                    maxLife: 0.4 + Math.random() * 0.4,
+                    color,
+                    size: 2 + Math.random() * 3
+                });
+            }
+        }
+
+        function updateProduct(product, dt) {
+            product.phaseTime += dt;
+            const phaseName = product.phase;
+            const dur = PHASES[phaseName].duration;
+            const t = Math.min(product.phaseTime / dur, 1);
+            const pos = PHASE_POS[phaseName];
+            const start = pos.start;
+            const end = pos.end;
+
+            if (phaseName === 'pick1' || phaseName === 'pick2' || phaseName === 'pick3' || phaseName === 'pick4') {
+                const arc = Math.sin(t * Math.PI) * 2;
+                product.position = {
+                    x: start.x + (end.x - start.x) * t,
+                    y: start.y + (end.y - start.y) * t,
+                    z: start.z + (end.z - start.z) * t + arc
+                };
+            } else {
+                product.position = {
+                    x: start.x + (end.x - start.x) * t,
+                    y: start.y + (end.y - start.y) * t,
+                    z: start.z + (end.z - start.z) * t
+                };
+            }
+
+            if (product.phaseTime >= dur && PHASES[phaseName].next) {
+                product.phase = PHASES[phaseName].next;
+                product.phaseTime = 0;
+                if (product.phase === 'press') {
+                    product.state = 'stamped';
+                    spawnParticles(5, 4, 0.5, '#ffaa00', 6);
+                }
+                if (product.phase === 'assembly') {
+                    product.state = 'assembled';
+                    spawnParticles(8, 9, 0.5, '#00ff88', 8);
+                }
+                if (product.phase === 'output') {
+                    const idx = outputCount++;
+                    product.position = { x: 13 + (idx % 3) * 0.4, y: 9 + Math.floor(idx / 3) * 0.4, z: 0.3 };
+                }
+            }
+        }
+
+        function updateParticles(dt) {
+            for (const p of particles) {
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                p.z += p.vz * dt;
+                p.vz -= 2 * dt;
+                p.life -= dt;
+            }
+            particles = particles.filter(p => p.life > 0);
+        }
+
+        function drawParticles() {
+            for (const p of particles) {
+                const sp = toScreen(p.x, p.y, p.z);
+                const alpha = Math.max(0, p.life / p.maxLife);
+                ctx.fillStyle = `rgba(255,200,100,${alpha})`;
+                ctx.beginPath();
+                ctx.arc(sp.x, sp.y, p.size * SCALE * (p.life / p.maxLife), 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function drawPress(gx, gy, time) {
+            const baseH = 0.6;
+            drawBox(gx - 0.6, gy - 0.6, 0, 1.8, 1.8, baseH, '#3a3e4e', '#2a2e3e', '#303040');
+            drawBox(gx - 0.5, gy - 0.5, 0, 1.6, 1.6, 0.2, '#4a4e5e', '#3a3e4e', '#404050');
+
+            const stampMove = Math.sin(time * 2) * 0.15;
+            drawBox(gx - 0.3, gy - 0.3, baseH + 0.1, 0.6, 0.6, 0.3, '#555a6a', '#44485a', '#4a4e5e');
+
+            for (let i = 0; i < 4; i++) {
+                const px = (i === 0 || i === 3) ? gx - 0.7 : gx + 0.4;
+                const py = (i < 2) ? gy - 0.7 : gy + 0.4;
+                drawBox(px, py, 0, 0.2, 0.2, 0.8, '#666a7a', '#555a6a', '#5a5e6e');
+            }
+        }
+
+        function drawAssembly(gx, gy, time) {
+            drawBox(gx - 0.6, gy - 0.6, 0, 1.8, 1.8, 0.5, '#2e3a4e', '#1e2a3e', '#243040');
+            drawBox(gx - 0.4, gy - 0.4, 0.5, 1.4, 1.4, 0.3, '#3e4a5e', '#2e3a4e', '#344050');
+
+            const rot = Math.sin(time * 1.5) * 0.2;
+            drawBox(gx - 0.2, gy - 0.2, 0.8, 0.4, 0.4, 0.4, '#4a5a6a', '#3a4a5a', '#405060');
+        }
+
+        function drawRobotArm(arm) {
+            const baseX = arm.base.x,
+                baseY = arm.base.y;
+            const target = arm.target;
+            const shoulder = toScreen(baseX, baseY, 2.2);
+            const wrist = toScreen(target.x, target.y, target.z);
+
+            drawBox(baseX - 0.4, baseY - 0.4, 0, 0.8, 0.8, 0.4, '#555a6a', '#44485a', '#4a4e5e');
+
+            ctx.fillStyle = '#666a7a';
+            ctx.beginPath();
+            ctx.arc(shoulder.x, shoulder.y, 5 * SCALE, 0, Math.PI * 2);
+            ctx.fill();
+
+            const dx = wrist.x - shoulder.x;
+            const dy = wrist.y - shoulder.y;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            const nx = -dy / (len || 1);
+            const ny = dx / (len || 1);
+            const bend = Math.min(len * 0.3, 30 * SCALE);
+            const elbowX = (shoulder.x + wrist.x) / 2 + nx * bend;
+            const elbowY = (shoulder.y + wrist.y) / 2 + ny * bend;
+
+            ctx.strokeStyle = '#ff6a00';
+            ctx.lineWidth = 6 * SCALE;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(shoulder.x, shoulder.y);
+            ctx.lineTo(elbowX, elbowY);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#ff8a20';
+            ctx.lineWidth = 4 * SCALE;
+            ctx.beginPath();
+            ctx.moveTo(elbowX, elbowY);
+            ctx.lineTo(wrist.x, wrist.y);
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffaa40';
+            ctx.beginPath();
+            ctx.arc(shoulder.x, shoulder.y, 4 * SCALE, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffcc66';
+            ctx.beginPath();
+            ctx.arc(elbowX, elbowY, 3 * SCALE, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#888';
+            ctx.beginPath();
+            ctx.arc(wrist.x, wrist.y, 5 * SCALE, 0, Math.PI * 2);
+            ctx.fill();
+
+            const grip = arm.gripperOpen;
+            const gx1 = wrist.x + nx * 6 * SCALE * grip;
+            const gy1 = wrist.y + ny * 6 * SCALE * grip;
+            ctx.strokeStyle = '#ccc';
+            ctx.lineWidth = 2 * SCALE;
+            ctx.beginPath();
+            ctx.moveTo(wrist.x, wrist.y);
+            ctx.lineTo(gx1, gy1);
+            ctx.stroke();
+        }
+
+        function drawCart(cart, time) {
+            const pos = toScreen(cart.x, cart.y, 0);
+            drawBox(cart.x - 0.3, cart.y - 0.3, 0, 0.6, 0.6, 0.3, '#ff8800', '#cc6600', '#dd7700');
+
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(pos.x, pos.y, 12 * SCALE, 8 * SCALE, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            drawBox(cart.x - 0.2, cart.y - 0.2, 0.3, 0.4, 0.4, 0.2, '#ffaa22', '#cc8800', '#dd9922');
+            const wheelOffset = Math.sin(time * 10) * 0.1;
+            drawBox(cart.x - 0.35, cart.y - 0.35, 0, 0.1, 0.1, 0.1, '#333', '#222', '#2a2a2a');
+        }
+
+        function drawProduct(product) {
+            const p = toScreen(product.position.x, product.position.y, 0);
+            const shadow = toScreen(product.position.x, product.position.y, 0);
+            ctx.fillStyle = 'rgba(0,0,0,0.25)';
+            ctx.beginPath();
+            ctx.ellipse(shadow.x, shadow.y, 10 * SCALE, 5 * SCALE, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            const colors = PRODUCT_COLORS[product.state];
+            const size = 0.35;
+            drawBox(product.position.x - size / 2, product.position.y - size / 2, product.position.z, size, size, size, colors.top,
+                colors.right, colors.left);
+        }
+
+        function drawLights(time) {
+            const lightPositions = [
+                { x: 2, y: 2, z: 1.5, color: '#ff4444', phase: 0 },
+                { x: 5, y: 4, z: 1.5, color: '#44ff44', phase: 0.5 },
+                { x: 8, y: 9, z: 1.5, color: '#4488ff', phase: 0.3 },
+                { x: 13, y: 9, z: 1.5, color: '#ffff44', phase: 0.7 }
+            ];
+            for (const l of lightPositions) {
+                const p = toScreen(l.x, l.y, l.z);
+                const on = Math.sin(time * 3 + l.phase * Math.PI) > 0;
+                ctx.fillStyle = on ? l.color : '#333';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 4 * SCALE, 0, Math.PI * 2);
+                ctx.fill();
+                if (on) {
+                    ctx.fillStyle = l.color + '88';
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 8 * SCALE, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        const carts = [{
+            path: [{ x: 14, y: 2 }, { x: 14, y: 8 }, { x: 2, y: 8 }, { x: 2, y: 2 }],
+            pathIndex: 0,
+            progress: 0,
+            speed: 0.15
+        }, {
+            path: [{ x: 5, y: 4 }, { x: 8, y: 4 }, { x: 8, y: 9 }, { x: 5, y: 9 }],
+            pathIndex: 0,
+            progress: 0,
+            speed: 0.12
+        }];
+
+        function updateCart(cart, dt) {
+            cart.progress += cart.speed * dt;
+            if (cart.progress >= 1) {
+                cart.progress -= 1;
+                cart.pathIndex = (cart.pathIndex + 1) % cart.path.length;
+            }
+            const start = cart.path[cart.pathIndex];
+            const end = cart.path[(cart.pathIndex + 1) % cart.path.length];
+            const t = cart.progress;
+            cart.x = start.x + (end.x - start.x) * t;
+            cart.y = start.y + (end.y - start.y) * t;
+        }
+
+        function mainLoop(ts) {
+            const dt = Math.min((ts - (lastTs || ts)) / 1000, 0.05);
+            lastTs = ts;
+            time += dt;
+
+            spawnTimer += dt;
+            if (spawnTimer >= SPAWN_INTERVAL) {
+                spawnTimer -= SPAWN_INTERVAL;
+                products.push(createProduct());
+            }
+
+            for (const product of products) {
+                updateProduct(product, dt);
+            }
+
+            for (const cart of carts) {
+                updateCart(cart, dt);
+            }
+
+            ctx.clearRect(0, 0, W, H);
+
+            // Background
+            const grad = ctx.createRadialGradient(W / 2, H / 2, 0, W, H);
+            grad.addColorStop(0, '#0a0e1a');
+            grad.addColorStop(1, '#050810');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, W, H);
+
+            drawFloor();
+
+            // Draw conveyors
+            drawConveyor(2, 2, 3, 'east', time);
+            drawConveyor(5, 6, 3, 'south', time);
+            drawConveyor(10, 9, 3, 'east', time);
+
+            // Draw hopper
+            drawHopper(2, 2, time);
+
+            // Draw machines
+            drawPress(5, 4, time);
+            drawAssembly(8, 9, time);
+
+            // Draw products
+            for (const product of products) {
+                drawProduct(product);
+            }
+
+            // Draw arms
+            const armDefs = [
+                { base: { x: 5, y: 2 }, target: { x: 5, y: 2, z: 0.3 } },
+                { base: { x: 5, y: 4 }, target: { x: 5, y: 4, z: 0 } },
+                { base: { x: 5, y: 9 }, target: { x: 5, y: 9, z: 0.3 } },
+                { base: { x: 8, y: 9 }, target: { x: 8, y: 9, z: 0 } }
+            ];
+
+            for (const arm of armDefs) {
+                const armObj = {
+                    base: arm.base,
+                    target: { x: arm.base.x, y: arm.base.y, z: 0.3 },
+                    gripperOpen: 1
+                };
+                drawRobotArm(armObj);
+            }
+
+            // Draw carts
+            for (const cart of carts) {
+                drawCart(cart, time);
+            }
+
+            // Draw lights
+            drawLights(time);
+
+            // Particles
+            for (const p of particles) {
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                p.z += p.vz * dt;
+                p.vz -= 1 * dt;
+                p.life -= dt;
+            }
+            particles = particles.filter(p => p.life > 0);
+
+            requestAnimationFrame(mainLoop);
+        }
+
+        let lastTs = 0;
+        requestAnimationFrame(mainLoop);
+    </script>
+</body>
+</html>
+```

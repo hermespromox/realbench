@@ -1,0 +1,535 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Modern City Simulation</title>
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: #1a1a24;
+        font-family: sans-serif;
+    }
+    canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+    }
+</style>
+</head>
+<body>
+<canvas id="simCanvas"></canvas>
+<script>
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d', { alpha: false });
+
+    let width, height;
+    let cols, rows;
+    const cell = 200;
+    const W = 60; // Street width
+    const L = 15; // Lane offset from center
+
+    let cars = [];
+    let pedestrians = [];
+    let buildings = [];
+
+    const colors = [
+        '#e74c3c', '#3498db', '#2ecc71', '#f1c40f', 
+        '#9b59b6', '#e67e22', '#ecf0f1', '#1abc9c', 
+        '#34495e', '#95a5a6'
+    ];
+
+    function resize() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+        cols = Math.ceil(width / cell) + 1;
+        rows = Math.ceil(height / cell) + 1;
+        generateCity();
+    }
+
+    function generateCity() {
+        buildings = [];
+        for (let c = -1; c <= cols; c++) {
+            for (let r = -1; r <= rows; r++) {
+                let bx = c * cell + W/2;
+                let by = r * cell + W/2;
+                let bw = cell - W;
+                let bh = cell - W;
+                
+                // Randomly skip some blocks to create parks or plazas
+                if (Math.random() < 0.1) continue;
+
+                let b = {
+                    x: bx + 5, y: by + 5, 
+                    w: bw - 10, h: bh - 10,
+                    windows: [],
+                    color: '#22222d'
+                };
+
+                let colsW = Math.floor(b.w / 15);
+                let rowsW = Math.floor(b.h / 15);
+                for(let i=0; i<colsW; i++) {
+                    for(let j=0; j<rowsW; j++) {
+                        if(Math.random() > 0.2) {
+                            b.windows.push({
+                                x: b.x + 4 + i * 15,
+                                y: b.y + 4 + j * 15,
+                                lit: Math.random() > 0.6,
+                                flickerSpeed: 0.001 + Math.random() * 0.003,
+                                offset: Math.random() * 10000
+                            });
+                        }
+                    }
+                }
+                buildings.push(b);
+            }
+        }
+    }
+
+    class Car {
+        constructor(x, y, dir) {
+            this.x = x;
+            this.y = y;
+            this.dir = dir; // 0: N, 1: E, 2: S, 3: W
+            this.speed = 0;
+            this.maxSpeed = 1.5 + Math.random() * 1.0;
+            this.color = colors[Math.floor(Math.random() * colors.length)];
+            this.turnState = 'STRAIGHT';
+            this.turnNext = Math.random() < 0.3;
+            this.t = 0;
+            this.p0 = null;
+            this.p1 = null;
+            this.p2 = null;
+            this.length = 24;
+            this.width = 12;
+        }
+
+        update(time) {
+            if (this.turnState === 'TURNING') {
+                this.t += this.speed / 70;
+                if (this.t >= 1) {
+                    this.turnState = 'STRAIGHT';
+                    this.x = this.p2.x;
+                    this.y = this.p2.y;
+                    this.turnNext = Math.random() < 0.3;
+                } else {
+                    let mt = 1 - this.t;
+                    this.x = mt * mt * this.p0.x + 2 * mt * this.t * this.p1.x + this.t * this.t * this.p2.x;
+                    this.y = mt * mt * this.p0.y + 2 * mt * this.t * this.p1.y + this.t * this.t * this.p2.y;
+                    
+                    let dx = 2 * mt * (this.p1.x - this.p0.x) + 2 * this.t * (this.p2.x - this.p1.x);
+                    let dy = 2 * mt * (this.p1.y - this.p0.y) + 2 * this.t * (this.p2.y - this.p1.y);
+                    this.angle = Math.atan2(dy, dx);
+                }
+                return;
+            }
+
+            // Find next intersection
+            let cx, cy, distToStop;
+            if (this.dir === 1) { // East
+                cx = Math.ceil(this.x / cell) * cell;
+                cy = Math.round(this.y / cell) * cell;
+                distToStop = cx - 35 - this.x;
+            } else if (this.dir === 3) { // West
+                cx = Math.floor(this.x / cell) * cell;
+                cy = Math.round(this.y / cell) * cell;
+                distToStop = this.x - (cx + 35);
+            } else if (this.dir === 2) { // South
+                cx = Math.round(this.x / cell) * cell;
+                cy = Math.ceil(this.y / cell) * cell;
+                distToStop = cy - 35 - this.y;
+            } else { // North
+                cx = Math.round(this.x / cell) * cell;
+                cy = Math.floor(this.y / cell) * cell;
+                distToStop = this.y - (cy + 35);
+            }
+
+            // Traffic Light Check
+            let targetSpeed = this.maxSpeed;
+            let c = Math.round(cx / cell);
+            let r = Math.round(cy / cell);
+            let localTime = (time + (c * 3 + r * 5)) % 12;
+            let lightState = localTime < 5 ? 0 : localTime < 6 ? 1 : localTime < 11 ? 2 : 3; // 0: NS Green, 2: EW Green
+            
+            let isGreen = (this.dir === 0 || this.dir === 2) ? (lightState === 0) : (lightState === 2);
+            
+            if (distToStop > 0 && distToStop < 25 && !isGreen) {
+                targetSpeed = 0;
+            }
+
+            // Car Ahead Check
+            let distToCarAhead = Infinity;
+            for (let other of cars) {
+                if (other === this) continue;
+                if (Math.abs(other.x - this.x) > 60 || Math.abs(other.y - this.y) > 60) continue;
+                
+                if (this.dir === 1 && Math.abs(other.y - this.y) < 10 && other.x > this.x) {
+                    distToCarAhead = Math.min(distToCarAhead, other.x - this.x);
+                } else if (this.dir === 3 && Math.abs(other.y - this.y) < 10 && other.x < this.x) {
+                    distToCarAhead = Math.min(distToCarAhead, this.x - other.x);
+                } else if (this.dir === 2 && Math.abs(other.x - this.x) < 10 && other.y > this.y) {
+                    distToCarAhead = Math.min(distToCarAhead, other.y - this.y);
+                } else if (this.dir === 0 && Math.abs(other.x - this.x) < 10 && other.y < this.y) {
+                    distToCarAhead = Math.min(distToCarAhead, this.y - other.y);
+                }
+            }
+
+            if (distToCarAhead < 35) {
+                targetSpeed = Math.min(targetSpeed, Math.max(0, (distToCarAhead - 20) / 15 * this.maxSpeed));
+            }
+
+            // Kinematics
+            this.speed += (targetSpeed - this.speed) * 0.1;
+            
+            let dx = 0, dy = 0;
+            if (this.dir === 1) dx = this.speed;
+            if (this.dir === 3) dx = -this.speed;
+            if (this.dir === 2) dy = this.speed;
+            if (this.dir === 0) dy = -this.speed;
+
+            this.x += dx;
+            this.y += dy;
+
+            // Turning Initiation
+            if (this.turnNext && distToStop <= 0 && distToStop > -this.speed - 1) {
+                this.turnState = 'TURNING';
+                this.t = 0;
+                
+                if (this.dir === 1) { // E -> S
+                    this.p0 = {x: cx - 35, y: cy + L};
+                    this.p1 = {x: cx + L, y: cy + L};
+                    this.p2 = {x: cx + L, y: cy + 45};
+                    this.dir = 2;
+                } else if (this.dir === 2) { // S -> W
+                    this.p0 = {x: cx + L, y: cy - 35};
+                    this.p1 = {x: cx + L, y: cy - L};
+                    this.p2 = {x: cx - 45, y: cy - L};
+                    this.dir = 3;
+                } else if (this.dir === 3) { // W -> N
+                    this.p0 = {x: cx + 35, y: cy - L};
+                    this.p1 = {x: cx - L, y: cy - L};
+                    this.p2 = {x: cx - L, y: cy - 45};
+                    this.dir = 0;
+                } else if (this.dir === 0) { // N -> E
+                    this.p0 = {x: cx - L, y: cy + 35};
+                    this.p1 = {x: cx - L, y: cy + L};
+                    this.p2 = {x: cx + 45, y: cy + L};
+                    this.dir = 1;
+                }
+            }
+        }
+
+        draw() {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            if (this.turnState === 'TURNING') {
+                ctx.rotate(this.angle);
+            } else {
+                ctx.rotate(this.dir * Math.PI / 2);
+            }
+
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(-this.length/2 + 2, -this.width/2 + 2, this.length, this.width);
+
+            // Body
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.roundRect(-this.length/2, -this.width/2, this.length, this.width, 3);
+            ctx.fill();
+
+            // Roof/Windshield
+            ctx.fillStyle = '#111';
+            ctx.fillRect(-4, -this.width/2 + 2, 10, this.width - 4);
+
+            // Headlights
+            ctx.fillStyle = '#fff9c4';
+            ctx.fillRect(this.length/2 - 2, -this.width/2 + 1, 2, 3);
+            ctx.fillRect(this.length/2 - 2, this.width/2 - 4, 2, 3);
+
+            // Taillights
+            ctx.fillStyle = '#ff5252';
+            ctx.fillRect(-this.length/2, -this.width/2 + 1, 2, 3);
+            ctx.fillRect(-this.length/2, this.width/2 - 4, 2, 3);
+
+            ctx.restore();
+        }
+    }
+
+    class Pedestrian {
+        constructor(c, r, corner) {
+            this.c = c;
+            this.r = r;
+            this.corner = corner; // 0: NW, 1: NE, 2: SE, 3: SW
+            let cx = c * cell;
+            let cy = r * cell;
+            this.x = cx + (corner === 1 || corner === 2 ? 30 : -30);
+            this.y = cy + (corner >= 2 ? 30 : -30);
+            this.speed = 0.4 + Math.random() * 0.3;
+            this.color = colors[Math.floor(Math.random() * colors.length)];
+            this.state = 'IDLE'; // IDLE, WALKING
+            this.crossType = null;
+            this.targetX = this.x;
+            this.targetY = this.y;
+            this.decideNextMove();
+        }
+
+        decideNextMove() {
+            let c = this.c;
+            let r = this.r;
+            let corner = this.corner;
+            let moves = [];
+
+            // Crossings
+            if (corner === 0 || corner === 1) moves.push({ type: 'CROSS_NS', dc: 0, dr: 0, nCorner: corner === 0 ? 1 : 0 });
+            if (corner === 2 || corner === 3) moves.push({ type: 'CROSS_NS', dc: 0, dr: 0, nCorner: corner === 2 ? 3 : 2 });
+            if (corner === 1 || corner === 2) moves.push({ type: 'CROSS_EW', dc: 0, dr: 0, nCorner: corner === 1 ? 2 : 1 });
+            if (corner === 3 || corner === 0) moves.push({ type: 'CROSS_EW', dc: 0, dr: 0, nCorner: corner === 3 ? 0 : 3 });
+
+            // Walks
+            if (corner === 0 || corner === 1) moves.push({ type: 'WALK', dc: 0, dr: -1, nCorner: corner === 0 ? 3 : 2 }); // North
+            if (corner === 2 || corner === 3) moves.push({ type: 'WALK', dc: 0, dr: 1, nCorner: corner === 2 ? 1 : 0 }); // South
+            if (corner === 0 || corner === 3) moves.push({ type: 'WALK', dc: -1, dr: 0, nCorner: corner === 0 ? 1 : 2 }); // West
+            if (corner === 1 || corner === 2) moves.push({ type: 'WALK', dc: 1, dr: 0, nCorner: corner === 1 ? 0 : 3 }); // East
+
+            // Filter out of bounds
+            moves = moves.filter(m => {
+                let nc = c + m.dc;
+                let nr = r + m.dr;
+                return nc >= -1 && nc <= cols && nr >= -1 && nr <= rows;
+            });
+
+            if (moves.length === 0) {
+                // Stuck, despawn
+                this.c = -999; 
+                return;
+            }
+
+            let move = moves[Math.floor(Math.random() * moves.length)];
+            this.c += move.dc;
+            this.r += move.dr;
+            this.corner = move.nCorner;
+            
+            let ncx = this.c * cell;
+            let ncy = this.r * cell;
+            this.targetX = ncx + (this.corner === 1 || this.corner === 2 ? 30 : -30);
+            this.targetY = ncy + (this.corner >= 2 ? 30 : -30);
+            
+            this.crossType = move.type;
+            this.state = (this.crossType === 'WALK') ? 'WALKING' : 'IDLE';
+        }
+
+        update(time) {
+            if (this.state === 'IDLE') {
+                let localTime = (time + (this.c * 3 + this.r * 5)) % 12;
+                let lightState = localTime < 5 ? 0 : localTime < 6 ? 1 : localTime < 11 ? 2 : 3;
+                
+                let safe = false;
+                if (this.crossType === 'CROSS_NS' && lightState >= 2) safe = true;
+                if (this.crossType === 'CROSS_EW' && (lightState === 0 || lightState === 1)) safe = true;
+                
+                if (safe) this.state = 'WALKING';
+            } else if (this.state === 'WALKING') {
+                let dx = this.targetX - this.x;
+                let dy = this.targetY - this.y;
+                let dist = Math.hypot(dx, dy);
+                
+                if (dist <= this.speed) {
+                    this.x = this.targetX;
+                    this.y = this.targetY;
+                    this.decideNextMove();
+                } else {
+                    this.x += (dx / dist) * this.speed;
+                    this.y += (dy / dist) * this.speed;
+                }
+            }
+        }
+
+        draw() {
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    function spawnCar() {
+        let edge = Math.floor(Math.random() * 4);
+        let c = Math.floor(Math.random() * (cols + 2)) - 1;
+        let r = Math.floor(Math.random() * (rows + 2)) - 1;
+        
+        let x, y, dir;
+        if (edge === 0) { x = c * cell + L; y = -50; dir = 2; } // Top
+        else if (edge === 1) { x = c * cell - L; y = height + 50; dir = 0; } // Bottom
+        else if (edge === 2) { x = -50; y = r * cell + L; dir = 1; } // Left
+        else { x = width + 50; y = r * cell - L; dir = 3; } // Right
+
+        // Check clear
+        for (let car of cars) {
+            if (Math.hypot(car.x - x, car.y - y) < 60) return;
+        }
+
+        cars.push(new Car(x, y, dir));
+    }
+
+    function spawnPedestrian() {
+        let c = Math.floor(Math.random() * (cols + 1));
+        let r = Math.floor(Math.random() * (rows + 1));
+        let corner = Math.floor(Math.random() * 4);
+        pedestrians.push(new Pedestrian(c, r, corner));
+    }
+
+    function drawRoads(time) {
+        // Asphalt background
+        ctx.fillStyle = '#1a1a24';
+        ctx.fillRect(0, 0, width, height);
+
+        // Blocks (Base)
+        ctx.fillStyle = '#22222d';
+        for (let c = -1; c <= cols; c++) {
+            for (let r = -1; r <= rows; r++) {
+                let bx = c * cell + W/2;
+                let by = r * cell + W/2;
+                ctx.fillRect(bx, by, cell - W, cell - W);
+            }
+        }
+
+        // Buildings and Windows
+        for (let b of buildings) {
+            ctx.fillStyle = b.color;
+            ctx.fillRect(b.x, b.y, b.w, b.h);
+            
+            // Inner shadow/border
+            ctx.strokeStyle = '#15151d';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(b.x, b.y, b.w, b.h);
+
+            for (let w of b.windows) {
+                let lit = w.lit;
+                if (Math.random() < 0.001) w.lit = !w.lit; // Random flicker
+                
+                ctx.fillStyle = w.lit ? 'rgba(241, 196, 15, 0.8)' : '#1a1a24';
+                ctx.fillRect(w.x, w.y, 6, 6);
+            }
+        }
+
+        // Road Markings
+        ctx.strokeStyle = 'rgba(241, 196, 15, 0.4)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([15, 15]);
+        ctx.beginPath();
+        for(let r = -1; r <= rows; r++) {
+            let cy = r * cell;
+            ctx.moveTo(0, cy);
+            ctx.lineTo(width, cy);
+        }
+        for(let c = -1; c <= cols; c++) {
+            let cx = c * cell;
+            ctx.moveTo(cx, 0);
+            ctx.lineTo(cx, height);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Intersections (Crosswalks & Lights)
+        for (let c = -1; c <= cols; c++) {
+            for (let r = -1; r <= rows; r++) {
+                let cx = c * cell;
+                let cy = r * cell;
+                
+                // Clear intersection asphalt
+                ctx.fillStyle = '#1a1a24';
+                ctx.fillRect(cx - W/2, cy - W/2, W, W);
+
+                // Crosswalks
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+                for(let i=0; i<6; i++) {
+                    ctx.fillRect(cx - 28 + i*10, cy - 48, 5, 16); // Top
+                    ctx.fillRect(cx - 28 + i*10, cy + 32, 5, 16); // Bottom
+                    ctx.fillRect(cx - 48, cy - 28 + i*10, 16, 5); // Left
+                    ctx.fillRect(cx + 32, cy - 28 + i*10, 16, 5); // Right
+                }
+
+                // Traffic Lights
+                let localTime = (time + (c * 3 + r * 5)) % 12;
+                let lightState = localTime < 5 ? 0 : localTime < 6 ? 1 : localTime < 11 ? 2 : 3;
+                
+                ctx.shadowBlur = 10;
+                
+                // Top (South-moving)
+                ctx.fillStyle = (lightState === 0) ? '#2ecc71' : '#e74c3c';
+                ctx.shadowColor = ctx.fillStyle;
+                ctx.fillRect(cx + 2, cy - 35, 28, 3);
+                
+                // Bottom (North-moving)
+                ctx.fillStyle = (lightState === 0) ? '#2ecc71' : '#e74c3c';
+                ctx.shadowColor = ctx.fillStyle;
+                ctx.fillRect(cx - 30, cy + 32, 28, 3);
+                
+                // Left (East-moving)
+                ctx.fillStyle = (lightState === 2) ? '#2ecc71' : '#e74c3c';
+                ctx.shadowColor = ctx.fillStyle;
+                ctx.fillRect(cx - 35, cy + 2, 3, 28);
+                
+                // Right (West-moving)
+                ctx.fillStyle = (lightState === 2) ? '#2ecc71' : '#e74c3c';
+                ctx.shadowColor = ctx.fillStyle;
+                ctx.fillRect(cx + 32, cy - 30, 3, 28);
+                
+                ctx.shadowBlur = 0;
+            }
+        }
+    }
+
+    let lastTime = 0;
+    function loop(timestamp) {
+        let time = timestamp / 1000;
+        let dt = time - lastTime;
+        lastTime = time;
+
+        // Density Control
+        let density = (Math.sin(time / 15) + 1) / 2; // 0 to 1
+        let targetCars = 10 + density * 120;
+        let targetPeds = 20 + density * 150;
+
+        if (cars.length < targetCars && Math.random() < 0.2) spawnCar();
+        if (pedestrians.length < targetPeds && Math.random() < 0.2) spawnPedestrian();
+
+        drawRoads(time);
+
+        // Update & Draw Pedestrians
+        for (let i = pedestrians.length - 1; i >= 0; i--) {
+            let p = pedestrians[i];
+            p.update(time);
+            p.draw();
+            if (p.c < -2 || p.c > cols + 2 || p.r < -2 || p.r > rows + 2) {
+                pedestrians.splice(i, 1);
+            }
+        }
+
+        // Update & Draw Cars
+        for (let i = cars.length - 1; i >= 0; i--) {
+            let car = cars[i];
+            car.update(time);
+            car.draw();
+            if (car.x < -100 || car.x > width + 100 || car.y < -100 || car.y > height + 100) {
+                cars.splice(i, 1);
+            }
+        }
+
+        requestAnimationFrame(loop);
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+    requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>
+```

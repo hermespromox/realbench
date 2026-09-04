@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autonomous Isometric Factory</title>
+<style>
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07101d}
+  body{font-family:Arial,Helvetica,sans-serif}
+  svg{display:block;width:100vw;height:100vh}
+  .belt-mark{stroke-dasharray:24 18;animation:belt 1.1s linear infinite}
+  .belt-mark.reverse{animation-direction:reverse}
+  @keyframes belt{to{stroke-dashoffset:-42}}
+  .pulse{animation:pulse 1.4s ease-in-out infinite}
+  .pulse2{animation:pulse 1.4s ease-in-out .7s infinite}
+  @keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
+  .screenline{animation:scan 3.2s linear infinite}
+  @keyframes scan{0%{transform:translateY(-22px);opacity:0}12%,85%{opacity:.85}100%{transform:translateY(42px);opacity:0}}
+  .fan{transform-origin:center;transform-box:fill-box;animation:spin 2s linear infinite}
+  .fan.fast{animation-duration:.7s}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .armA{transform-origin:724px 398px;animation:armA 6s cubic-bezier(.55,.05,.45,.95) infinite}
+  .foreA{transform-origin:783px 351px;animation:foreA 6s cubic-bezier(.55,.05,.45,.95) infinite}
+  .gripA{transform-origin:818px 403px;animation:gripA 6s ease-in-out infinite}
+  @keyframes armA{0%,14%,86%,100%{transform:rotate(-17deg)}30%,47%{transform:rotate(19deg)}62%,76%{transform:rotate(7deg)}}
+  @keyframes foreA{0%,14%,86%,100%{transform:rotate(25deg)}30%,47%{transform:rotate(-40deg)}62%,76%{transform:rotate(-8deg)}}
+  @keyframes gripA{0%,28%,49%,100%{transform:scaleX(1)}34%,44%{transform:scaleX(.55)}}
+  .armB{transform-origin:895px 390px;animation:armB 6s cubic-bezier(.5,.05,.5,.95) -3s infinite}
+  .foreB{transform-origin:942px 348px;animation:foreB 6s cubic-bezier(.5,.05,.5,.95) -3s infinite}
+  @keyframes armB{0%,16%,88%,100%{transform:rotate(18deg)}31%,48%{transform:rotate(-18deg)}64%,78%{transform:rotate(-4deg)}}
+  @keyframes foreB{0%,16%,88%,100%{transform:rotate(-28deg)}31%,48%{transform:rotate(43deg)}64%,78%{transform:rotate(10deg)}}
+  .press{animation:press 6s cubic-bezier(.5,0,.35,1) infinite}
+  @keyframes press{0%,20%,42%,100%{transform:translateY(0)}26%,35%{transform:translateY(52px)}}
+  .pressGlow{animation:pressglow 6s linear infinite}
+  @keyframes pressglow{0%,24%,37%,100%{opacity:0}27%,34%{opacity:1}}
+  .welder{animation:welder 6s linear -1.2s infinite}
+  @keyframes welder{0%,41%,54%,100%{opacity:0}43%,45%,48%,51%{opacity:1}44%,47%,50%,53%{opacity:.15}}
+  .lift{animation:lift 4.5s ease-in-out infinite}
+  @keyframes lift{0%,100%{transform:translateY(0)}45%,58%{transform:translateY(-18px)}}
+  .blink{animation:blink 1s steps(1) infinite}
+  .blinkSlow{animation:blink 2.2s steps(1) infinite}
+  @keyframes blink{0%,48%{opacity:1}49%,100%{opacity:.18}}
+  .data{stroke-dasharray:3 8;animation:data 1s linear infinite}
+  @keyframes data{to{stroke-dashoffset:-22}}
+  .smoke{animation:smoke 5s ease-out infinite}
+  .smoke.s2{animation-delay:-1.7s}.smoke.s3{animation-delay:-3.4s}
+  @keyframes smoke{0%{transform:translate(0,0) scale(.4);opacity:0}15%{opacity:.3}100%{transform:translate(15px,-70px) scale(1.6);opacity:0}}
+  .package1{animation:stack 8s ease-in-out infinite}
+  .package2{animation:stack 8s ease-in-out -2s infinite}
+  .package3{animation:stack 8s ease-in-out -4s infinite}
+  .package4{animation:stack 8s ease-in-out -6s infinite}
+  @keyframes stack{0%,7%{opacity:0;transform:translateY(-15px)}12%,82%{opacity:1;transform:none}88%,100%{opacity:0;transform:translate(15px,8px)}}
+  .spark{animation:spark .75s ease-out infinite;transform-origin:850px 482px}
+  .spark.s2{animation-delay:-.25s}.spark.s3{animation-delay:-.5s}
+  @keyframes spark{0%{opacity:1;transform:scale(.2)}100%{opacity:0;transform:scale(1.9)}}
+</style>
+</head>
+<body>
+<svg viewBox="0 0 1400 800" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <linearGradient id="bg" x2="0" y2="1"><stop stop-color="#0c1b31"/><stop offset="1" stop-color="#040914"/></linearGradient>
+  <linearGradient id="floor" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#172b3e"/><stop offset=".58" stop-color="#0d1c2b"/><stop offset="1" stop-color="#09131f"/></linearGradient>
+  <linearGradient id="metal" x2="0" y2="1"><stop stop-color="#7594a6"/><stop offset=".35" stop-color="#344e60"/><stop offset="1" stop-color="#172a39"/></linearGradient>
+  <linearGradient id="darkmetal" x2="0" y2="1"><stop stop-color="#314b5c"/><stop offset="1" stop-color="#101e2a"/></linearGradient>
+  <linearGradient id="belt" x2="0" y2="1"><stop stop-color="#273b47"/><stop offset="1" stop-color="#101a23"/></linearGradient>
+  <linearGradient id="cyan" x2="0" y2="1"><stop stop-color="#71fff3"/><stop offset="1" stop-color="#00aabe"/></linearGradient>
+  <linearGradient id="orange" x2="0" y2="1"><stop stop-color="#ffd36a"/><stop offset="1" stop-color="#f36b24"/></linearGradient>
+  <radialGradient id="halo"><stop stop-color="#28fff0" stop-opacity=".38"/><stop offset="1" stop-color="#28fff0" stop-opacity="0"/></radialGradient>
+  <pattern id="grid" width="60" height="35" patternUnits="userSpaceOnUse" patternTransform="skewX(-30)">
+    <path d="M60 0H0V35" fill="none" stroke="#5eb7c5" stroke-opacity=".09" stroke-width="1"/>
+  </pattern>
+  <pattern id="hazard" width="24" height="24" patternUnits="userSpaceOnUse" patternTransform="skewX(-25)">
+    <rect width="12" height="24" fill="#f0a92e"/><rect x="12" width="12" height="24" fill="#17212a"/>
+  </pattern>
+  <filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <filter id="bigglow"><feGaussianBlur stdDeviation="12"/></filter>
+  <filter id="shadow"><feGaussianBlur stdDeviation="8"/></filter>
+  <path id="cartPath" d="M205 613 L1050 613 L1205 520 L1115 325 L830 175 L385 175 L150 360 Z"/>
+  <g id="product">
+    <ellipse cx="0" cy="13" rx="22" ry="7" fill="#02070d" opacity=".55"/>
+    <polygon points="-18,-2 0,-12 19,-2 0,8" fill="#68f9ed"/>
+    <polygon points="-18,-2 0,8 0,25 -18,14" fill="#178fa3"/>
+    <polygon points="19,-2 0,8 0,25 19,14" fill="#0a6077"/>
+    <path d="M-7-4L1 0L9-5" fill="none" stroke="#dffffb" stroke-width="2"/>
+    <circle cx="0" cy="-2" r="3" fill="#fff" filter="url(#glow)"/>
+  </g>
+  <g id="cart">
+    <ellipse cx="0" cy="14" rx="34" ry="13" fill="#000" opacity=".5"/>
+    <polygon points="-32,-7 9,-19 33,-6 -8,7" fill="#f3a936"/>
+    <polygon points="-32,-7 -8,7 -8,22 -32,8" fill="#9b4b20"/>
+    <polygon points="33,-6 -8,7 -8,22 33,8" fill="#532d25"/>
+    <polygon points="-19,-9 6,-16 21,-8 -4,-1" fill="#263e4d"/>
+    <circle cx="-22" cy="10" r="5" fill="#0b1218" stroke="#56fff2" stroke-width="2"/>
+    <circle cx="20" cy="7" r="5" fill="#0b1218" stroke="#56fff2" stroke-width="2"/>
+    <rect x="-29" y="-3" width="5" height="4" rx="1" fill="#fff779" filter="url(#glow)"/>
+  </g>
+</defs>
+
+<rect width="1400" height="800" fill="url(#bg)"/>
+<ellipse cx="710" cy="690" rx="650" ry="140" fill="#000" opacity=".45" filter="url(#shadow)"/>
+
+<!-- distant architecture -->
+<g opacity=".7">
+  <path d="M0 135H1400" stroke="#34536a" stroke-width="3"/>
+  <path d="M90 135V440M300 135V310M530 135V265M765 135V260M1000 135V320M1250 135V460" stroke="#223d51" stroke-width="12"/>
+  <path d="M90 140L300 280L530 140L765 280L1000 140L1250 300" fill="none" stroke="#1a3245" stroke-width="9"/>
+  <path d="M90 140L300 280M300 140L90 280M530 140L765 280M765 140L530 280M1000 140L1250 300M1250 140L1000 300" stroke="#284a5f" stroke-width="3"/>
+  <circle cx="90" cy="137" r="6" fill="#3effe9" class="pulse"/>
+  <circle cx="530" cy="137" r="6" fill="#3effe9" class="pulse2"/>
+  <circle cx="1000" cy="137" r="6" fill="#3effe9" class="pulse"/>
+</g>
+
+<!-- floor -->
+<polygon points="96,316 590,78 1322,411 822,753" fill="url(#floor)" stroke="#28475a" stroke-width="3"/>
+<polygon points="96,316 590,78 1322,411 822,753" fill="url(#grid)"/>
+<path d="M160 362L824 685L1256 410M257 263L918 587L1170 451M379 205L1040 528" fill="none" stroke="#4fe5db" stroke-opacity=".07" stroke-width="2"/>
+<path d="M183 603L1064 603L1214 515L1123 315L832 163L379 163L137 354Z" fill="none" stroke="#efaa32" stroke-opacity=".28" stroke-width="18"/>
+<path d="M183 603L1064 603L1214 515L1123 315L832 163L379 163L137 354Z" fill="none" stroke="#ffe27b" stroke-opacity=".55" stroke-width="2" stroke-dasharray="12 12"/>
+
+<!-- rear power units -->
+<g transform="translate(280 216)">
+  <polygon points="0,30 64,0 105,21 41,52" fill="#466376"/>
+  <polygon points="0,30 41,52 41,132 0,110" fill="#203545"/>
+  <polygon points="41,52 105,21 105,101 41,132" fill="#142633"/>
+  <rect x="51" y="57" width="42" height="30" rx="3" fill="#07131d" stroke="#2cc9d2"/>
+  <path d="M57 78l8-10 7 7 8-13 7 8" fill="none" stroke="#58fff0" stroke-width="2"/>
+  <circle cx="12" cy="45" r="4" fill="#6aff9e" class="blink"/>
+  <path d="M17 117v-70" stroke="#6e8b9c" stroke-width="4"/>
+</g>
+<g transform="translate(1035 245)">
+  <polygon points="0,25 55,0 92,20 37,45" fill="#415e71"/>
+  <polygon points="0,25 37,45 37,119 0,99" fill="#1b3140"/>
+  <polygon points="37,45 92,20 92,94 37,119" fill="#10222e"/>
+  <circle cx="65" cy="59" r="20" fill="#08141d" stroke="#4b7183" stroke-width="3"/>
+  <g class="fan" transform="translate(65 59)" fill="#6c8998"><path d="M0 0C3-22 14-20 13-7Z"/><path d="M0 0C22 3 20 14 7 13Z"/><path d="M0 0C-3 22-14 20-13 7Z"/><path d="M0 0C-22-3-20-14-7-13Z"/></g>
+  <circle cx="13" cy="42" r="4" fill="#ffbf42" class="blinkSlow"/>
+</g>
+
+<!-- pipe network -->
+<g fill="none" stroke-linejoin="round">
+  <path d="M356 242V173H474V225" stroke="#4b6879" stroke-width="14"/>
+  <path d="M356 242V173H474V225" stroke="#8ba2ad" stroke-width="3"/>
+  <path d="M1020 289V215H941V273" stroke="#38596b" stroke-width="12"/>
+  <path d="M1020 289V215H941V273" stroke="#6dded8" stroke-opacity=".4" stroke-width="3" class="data"/>
+</g>
+
+<!-- main conveyor -->
+<g>
+  <polygon points="91,475 1101,475 1194,526 182,526" fill="#101a23" stroke="#5d7481" stroke-width="3"/>
+  <polygon points="182,526 1194,526 1194,551 182,551" fill="#142632"/>
+  <polygon points="91,475 182,526 182,551 91,499" fill="#263b49"/>
+  <polygon points="1101,475 1194,526 1194,551 1101,500" fill="#0c1822"/>
+  <path d="M121 491L1117 491L1165 518L169 518Z" fill="url(#belt)" stroke="#415b69"/>
+  <path d="M132 497L1144 497" stroke="#74fff1" stroke-opacity=".42" stroke-width="3" class="belt-mark"/>
+  <path d="M121 507L1158 507" stroke="#93aeb7" stroke-opacity=".18" stroke-width="9" stroke-dasharray="3 17"/>
+  <g stroke="#536b78" stroke-width="5">
+    <path d="M224 530v48M387 530v48M551 530v48M715 530v48M879 530v48M1043 530v48M1160 530v48"/>
+  </g>
+  <g fill="#15232d" stroke="#69808b" stroke-width="3">
+    <circle cx="224" cy="575" r="9"/><circle cx="387" cy="575" r="9"/><circle cx="551" cy="575" r="9"/>
+    <circle cx="715" cy="575" r="9"/><circle cx="879" cy="575" r="9"/><circle cx="1043" cy="575" r="9"/><circle cx="1160" cy="575" r="9"/>
+  </g>
+</g>
+
+<!-- incoming feeder -->
+<g>
+  <polygon points="38,429 126,389 219,439 129,480" fill="#1a2b35" stroke="#506b78" stroke-width="3"/>
+  <path d="M65 428L127 400L195 438L130 467Z" fill="#243c49"/>
+  <path d="M68 427L190 441" stroke="#60ebdf" stroke-width="3" class="belt-mark reverse"/>
+  <polygon points="38,429 129,480 129,500 38,449" fill="#10222d"/>
+</g>
+
+<!-- product stream -->
+<g>
+  <g><use href="#product"/><animateMotion dur="18s" repeatCount="indefinite" path="M105 493 L1162 503" begin="-1s"/></g>
+  <g><use href="#product"/><animateMotion dur="18s" repeatCount="indefinite" path="M105 493 L1162 503" begin="-4.6s"/></g>
+  <g><use href="#product"/><animateMotion dur="18s" repeatCount="indefinite" path="M105 493 L1162 503" begin="-8.2s"/></g>
+  <g><use href="#product"/><animateMotion dur="18s" repeatCount="indefinite" path="M105 493 L1162 503" begin="-11.8s"/></g>
+  <g><use href="#product"/><animateMotion dur="18s" repeatCount="indefinite" path="M105 493 L1162 503" begin="-15.4s"/></g>
+</g>
+
+<!-- stamping station -->
+<g>
+  <polygon points="330,448 385,422 497,476 440,503" fill="url(#hazard)" opacity=".85"/>
+  <g transform="translate(355 280)">
+    <polygon points="0,35 46,13 77,29 31,52" fill="#58788a"/>
+    <polygon points="0,35 31,52 31,178 0,161" fill="#213947"/>
+    <polygon points="31,52 77,29 77,155 31,178" fill="#132631"/>
+    <polygon points="112,90 151,72 179,87 140,106" fill="#526f80"/>
+    <polygon points="112,90 140,106 140,185 112,169" fill="#1b3341"/>
+    <polygon points="140,106 179,87 179,166 140,185" fill="#11242f"/>
+    <path d="M58 48V27H132V91" fill="none" stroke="#7695a4" stroke-width="20"/>
+    <path d="M58 48V27H132V91" fill="none" stroke="#263d4b" stroke-width="10"/>
+    <rect x="57" y="48" width="76" height="42" rx="5" fill="url(#metal)" stroke="#809ba7"/>
+    <rect x="67" y="59" width="36" height="17" rx="2" fill="#07141d"/>
+    <path d="M72 69h25" stroke="#54fff1" stroke-width="3" class="belt-mark"/>
+    <circle cx="119" cy="67" r="6" fill="#6aff9b" class="pulse" filter="url(#glow)"/>
+    <g class="press">
+      <rect x="83" y="88" width="24" height="58" rx="3" fill="#849aa4"/>
+      <polygon points="71,142 95,130 120,143 96,155" fill="#d0dce0"/>
+      <polygon points="71,142 96,155 96,166 71,153" fill="#526b76"/>
+      <polygon points="120,143 96,155 96,166 120,154" fill="#344d59"/>
+    </g>
+    <ellipse cx="96" cy="169" rx="40" ry="12" fill="#ff942e" opacity="0" filter="url(#bigglow)" class="pressGlow"/>
+  </g>
+</g>
+
+<!-- assembly deck -->
+<g>
+  <polygon points="626,426 798,345 984,439 813,521" fill="#112431" stroke="#3a5c6e" stroke-width="3"/>
+  <polygon points="813,521 984,439 984,471 813,553" fill="#0a1923"/>
+  <polygon points="626,426 813,521 813,553 626,457" fill="#1c3443"/>
+  <path d="M658 428L814 503L947 439" fill="none" stroke="#53d8d2" stroke-opacity=".24"/>
+  <circle cx="724" cy="398" r="29" fill="#0d1a23" stroke="#5b7a89" stroke-width="7"/>
+  <circle cx="724" cy="398" r="15" fill="#f0a32e" stroke="#ffc761" stroke-width="3"/>
+  <g class="armA">
+    <polygon points="715,389 773,342 791,358 737,413" fill="#d88825" stroke="#ffc75c" stroke-width="3"/>
+    <circle cx="783" cy="351" r="16" fill="#203744" stroke="#ffb641" stroke-width="6"/>
+    <g class="foreA">
+      <polygon points="778,342 827,392 814,408 770,362" fill="#e79a2f" stroke="#ffd16a" stroke-width="3"/>
+      <circle cx="818" cy="403" r="12" fill="#203844" stroke="#70fff0" stroke-width="4"/>
+      <g class="gripA">
+        <path d="M812 410l-13 17M823 410l14 15" fill="none" stroke="#9ab0b9" stroke-width="6"/>
+        <path d="M798 426l7 5M837 425l-7 6" stroke="#78fff0" stroke-width="4"/>
+      </g>
+    </g>
+  </g>
+
+  <circle cx="895" cy="390" r="28" fill="#0d1a23" stroke="#5b7a89" stroke-width="7"/>
+  <circle cx="895" cy="390" r="14" fill="#ef9b2c" stroke="#ffc761" stroke-width="3"/>
+  <g class="armB">
+    <polygon points="886,381 934,338 950,354 906,405" fill="#ca7424" stroke="#ffc75c" stroke-width="3"/>
+    <circle cx="942" cy="348" r="15" fill="#203744" stroke="#ffb641" stroke-width="6"/>
+    <g class="foreB">
+      <polygon points="936,340 973,391 958,402 929,358" fill="#dc8c2b" stroke="#ffd16a" stroke-width="3"/>
+      <circle cx="965" cy="398" r="10" fill="#203844" stroke="#70fff0" stroke-width="4"/>
+      <path d="M960 405l-12 17M971 405l13 14" fill="none" stroke="#9ab0b9" stroke-width="5"/>
+    </g>
+  </g>
+
+  <!-- welding sparks -->
+  <g class="welder" filter="url(#glow)">
+    <circle cx="850" cy="482" r="8" fill="#fff"/>
+    <g class="spark" stroke="#8dfff5" stroke-width="3"><path d="M850 482l-24-15M850 482l4-25M850 482l25-15M850 482l25 10M850 482l-12 22"/></g>
+    <g class="spark s2" stroke="#ffd55b" stroke-width="2"><path d="M850 482l-30 4M850 482l-15-28M850 482l29-22M850 482l8 29"/></g>
+    <g class="spark s3" stroke="#fff" stroke-width="2"><path d="M850 482l-21 21M850 482l-1-31M850 482l32 3"/></g>
+  </g>
+</g>
+
+<!-- quality scanner / packing gate -->
+<g transform="translate(1010 345)">
+  <polygon points="0,44 48,20 79,37 31,61" fill="#536f7f"/>
+  <polygon points="0,44 31,61 31,178 0,161" fill="#1d3544"/>
+  <polygon points="31,61 79,37 79,154 31,178" fill="#102530"/>
+  <polygon points="122,95 158,77 184,91 148,109" fill="#526f7e"/>
+  <polygon points="122,95 148,109 148,180 122,166" fill="#1a3240"/>
+  <polygon points="148,109 184,91 184,162 148,180" fill="#10232e"/>
+  <path d="M59 56V28H136V93" fill="none" stroke="#708b98" stroke-width="17"/>
+  <path d="M59 56V28H136V93" fill="none" stroke="#172b37" stroke-width="8"/>
+  <rect x="64" y="39" width="66" height="35" rx="4" fill="#07131d" stroke="#51e7e0" stroke-width="2"/>
+  <text x="75" y="54" font-size="9" fill="#67fff2" letter-spacing="2">QC PASS</text>
+  <rect x="72" y="61" width="49" height="4" fill="#18363e"/>
+  <rect x="72" y="61" width="40" height="4" fill="#5aff99" class="pulse"/>
+  <path d="M90 79v90" stroke="#4afff0" stroke-opacity=".28" stroke-width="15" filter="url(#glow)"/>
+  <path d="M90 79v90" stroke="#caffff" stroke-width="2" class="screenline"/>
+  <circle cx="144" cy="95" r="6" fill="#63ff9d" class="blink" filter="url(#glow)"/>
+</g>
+
+<!-- finished staging -->
+<g transform="translate(1115 575)">
+  <polygon points="0,15 75,-20 132,10 57,46" fill="#243b48" stroke="#647f8a" stroke-width="2"/>
+  <polygon points="0,15 57,46 57,60 0,29" fill="#142833"/>
+  <polygon points="57,46 132,10 132,24 57,60" fill="#0d1d26"/>
+  <path d="M10 18l48 25M37 5l48 25M64-7l48 24" stroke="#f4b33d" stroke-width="3"/>
+  <g class="package1" transform="translate(22 1)"><use href="#product"/></g>
+  <g class="package2" transform="translate(52 15)"><use href="#product"/></g>
+  <g class="package3" transform="translate(72 -9)"><use href="#product"/></g>
+  <g class="package4" transform="translate(101 5)"><use href="#product"/></g>
+</g>
+
+<!-- autonomous carts -->
+<g>
+  <g><use href="#cart"/><animateMotion dur="22s" repeatCount="indefinite" rotate="auto" begin="-2s"><mpath href="#cartPath"/></animateMotion></g>
+  <g transform="scale(.88)"><use href="#cart"/><animateMotion dur="22s" repeatCount="indefinite" rotate="auto" begin="-9.3s" path="M225 670 L1120 670 L1290 565 L1190 360 L900 185 L420 185 L165 390 Z"/></g>
+  <g transform="scale(.72)"><use href="#cart"/><animateMotion dur="22s" repeatCount="indefinite" rotate="auto" begin="-16.6s" path="M250 760 L1320 760 L1450 600 L1360 400 L1040 185 L500 185 L180 440 Z"/></g>
+</g>
+
+<!-- side storage lift -->
+<g transform="translate(164 584)">
+  <polygon points="0,22 63,-8 105,14 42,45" fill="#385464"/>
+  <polygon points="0,22 42,45 42,105 0,82" fill="#172e3b"/>
+  <polygon points="42,45 105,14 105,74 42,105" fill="#0d202b"/>
+  <g class="lift">
+    <polygon points="11,15 54,-5 84,11 41,31" fill="#df8b29"/>
+    <polygon points="11,15 41,31 41,43 11,27" fill="#8f431e"/>
+    <polygon points="41,31 84,11 84,23 41,43" fill="#552b20"/>
+  </g>
+  <path d="M8 38v44M95 24v48" stroke="#718996" stroke-width="4"/>
+</g>
+
+<!-- chimney and vapor -->
+<g transform="translate(1210 320)">
+  <path d="M0 80V0h34v80" fill="#263e4b" stroke="#607987" stroke-width="3"/>
+  <ellipse cx="17" cy="1" rx="17" ry="7" fill="#0b1922" stroke="#607987" stroke-width="3"/>
+  <circle class="smoke" cx="15" cy="-8" r="13" fill="#8edbd5"/>
+  <circle class="smoke s2" cx="15" cy="-8" r="13" fill="#8edbd5"/>
+  <circle class="smoke s3" cx="15" cy="-8" r="13" fill="#8edbd5"/>
+</g>
+
+<!-- overhead data links -->
+<path d="M322 274C500 190 731 244 817 336S1051 360 1071 391" fill="none" stroke="#4effef" stroke-opacity=".25" stroke-width="2" class="data"/>
+<circle cx="322" cy="274" r="6" fill="#5effee" filter="url(#glow)" class="pulse"/>
+<circle cx="817" cy="336" r="6" fill="#5effee" filter="url(#glow)" class="pulse2"/>
+
+<!-- HUD -->
+<g transform="translate(38 35)">
+  <path d="M0 0h338l18 18v63H0Z" fill="#07131e" fill-opacity=".84" stroke="#2d6577"/>
+  <path d="M0 0h155" stroke="#5effef" stroke-width="3"/>
+  <text x="20" y="30" fill="#d9ffff" font-size="17" font-weight="bold" letter-spacing="4">AUTONOMOUS LINE 07</text>
+  <text x="20" y="55" fill="#5d92a5" font-size="10" letter-spacing="2">PRODUCTION ORCHESTRATION</text>
+  <circle cx="282" cy="46" r="14" fill="none" stroke="#173b48" stroke-width="5"/>
+  <path d="M282 32a14 14 0 1 1-13 19" fill="none" stroke="#58fff0" stroke-width="5" class="fan"/>
+  <text x="308" y="50" fill="#69ff9e" font-size="12">ONLINE</text>
+</g>
+<g transform="translate(1090 37)">
+  <path d="M0 0h270v84H18L0 66Z" fill="#07131e" fill-opacity=".84" stroke="#2d6577"/>
+  <text x="20" y="24" fill="#6e9aad" font-size="10" letter-spacing="2">LIVE THROUGHPUT</text>
+  <text x="20" y="55" fill="#dcffff" font-size="25" font-weight="bold">248</text>
+  <text x="76" y="55" fill="#57fff0" font-size="11">UNITS / HR</text>
+  <rect x="164" y="20" width="78" height="40" rx="3" fill="#091923"/>
+  <path d="M170 50l9-10 8 6 8-19 9 16 9-8 11 8 11-19" fill="none" stroke="#5aff9c" stroke-width="2"/>
+  <circle cx="235" cy="24" r="3" fill="#fff" class="pulse"/>
+</g>
+
+<!-- foreground status beacons -->
+<g transform="translate(66 663)">
+  <ellipse cx="0" cy="32" rx="24" ry="8" fill="#000" opacity=".5"/>
+  <path d="M-12 31L-7 0H7l12 31" fill="#1a2c37" stroke="#506d79" stroke-width="2"/>
+  <ellipse cx="0" cy="0" rx="9" ry="5" fill="#ffb63d"/>
+  <ellipse cx="0" cy="-2" rx="18" ry="18" fill="#ffb12e" opacity=".16" filter="url(#bigglow)" class="pulse"/>
+  <circle cx="0" cy="-2" r="5" fill="#fff083" class="blink"/>
+</g>
+<g transform="translate(1294 583)">
+  <ellipse cx="0" cy="32" rx="24" ry="8" fill="#000" opacity=".5"/>
+  <path d="M-12 31L-7 0H7l12 31" fill="#1a2c37" stroke="#506d79" stroke-width="2"/>
+  <ellipse cx="0" cy="0" rx="9" ry="5" fill="#52fff0"/>
+  <ellipse cx="0" cy="-2" rx="18" ry="18" fill="#42fff0" opacity=".14" filter="url(#bigglow)" class="pulse2"/>
+  <circle cx="0" cy="-2" r="5" fill="#cffffb" class="blinkSlow"/>
+</g>
+
+<!-- subtle vignette -->
+<rect width="1400" height="800" fill="none" stroke="#000" stroke-opacity=".55" stroke-width="42"/>
+</svg>
+</body>
+</html>

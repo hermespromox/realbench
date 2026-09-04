@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Underwater Ecosystem</title>
+<style>
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#031d38}
+  canvas{display:block;width:100vw;height:100vh}
+</style>
+</head>
+<body>
+<canvas id="ocean" aria-label="Animated underwater ecosystem"></canvas>
+<script>
+(() => {
+  "use strict";
+
+  const canvas = document.getElementById("ocean");
+  const ctx = canvas.getContext("2d");
+  const TAU = Math.PI * 2;
+  const LOOP = 60;
+  let W = 0, H = 0, DPR = 1;
+  let fish = [], bubbles = [], particles = [], plants = [], jellies = [], schools = [], rocks = [];
+
+  let seed = 927451;
+  function random() {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  }
+  const range = (a,b) => a + (b-a)*random();
+  const mod = (n,m) => ((n % m) + m) % m;
+  const mix = (a,b,t) => a + (b-a)*t;
+
+  const palettes = [
+    ["#ffbd54","#f06b45","#fff0a8"],
+    ["#58dfd2","#087ea4","#d5fff8"],
+    ["#ef75b4","#9e3b91","#ffd5e8"],
+    ["#b5e85d","#448f66","#f1ffbd"],
+    ["#7db9ff","#3158ae","#d7ecff"],
+    ["#ff896d","#c53c5d","#ffe4a9"],
+    ["#b695ff","#5b4bad","#e6dcff"]
+  ];
+
+  function resize() {
+    DPR = Math.min(devicePixelRatio || 1, 2);
+    W = innerWidth;
+    H = innerHeight;
+    canvas.width = Math.round(W * DPR);
+    canvas.height = Math.round(H * DPR);
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    createWorld();
+  }
+
+  function createWorld() {
+    seed = 927451;
+
+    fish = Array.from({length: 30}, (_,i) => ({
+      phase: random(),
+      y: range(.16,.76),
+      amp: range(.012,.065),
+      size: range(11,26) * Math.min(1.2, Math.max(.72, W/1100)),
+      cycles: 1 + Math.floor(random()*4),
+      wave: 2 + Math.floor(random()*5),
+      tail: 10 + Math.floor(random()*9),
+      dir: random() < .42 ? -1 : 1,
+      palette: palettes[Math.floor(random()*palettes.length)],
+      stripes: random() < .58,
+      type: Math.floor(random()*3),
+      phase2: range(0,TAU),
+      depth: range(.25,1)
+    }));
+
+    schools = Array.from({length:3}, (_,s) => ({
+      phase: random(),
+      baseY: [.25,.43,.61][s] + range(-.04,.04),
+      cycles: 2+s,
+      wave: 2+s,
+      dir: s === 1 ? -1 : 1,
+      color: ["#b8f6ee","#d7e9ff","#9ee5d1"][s],
+      count: 9 + s,
+      members: Array.from({length:9+s},(_,i) => ({
+        ox: (i%4)*range(.025,.038) + range(-.008,.008),
+        oy: (Math.floor(i/4)-1)*.026 + range(-.012,.012),
+        size: range(5.5,9),
+        phase: range(0,TAU)
+      }))
+    }));
+
+    bubbles = Array.from({length:74}, () => ({
+      x: random(),
+      phase: random(),
+      size: range(1.2,7),
+      cycles: 1 + Math.floor(random()*5),
+      sway: range(.005,.035),
+      wave: 2 + Math.floor(random()*6),
+      phase2: range(0,TAU),
+      alpha: range(.18,.7)
+    }));
+
+    particles = Array.from({length:155}, () => ({
+      x: random(), y: random(),
+      r: range(.35,2.2),
+      phase: range(0,TAU),
+      wave: 1 + Math.floor(random()*5),
+      drift: range(.004,.03),
+      alpha: range(.08,.42),
+      warm: random() < .28
+    }));
+
+    plants = Array.from({length:34}, (_,i) => ({
+      x: (i+.35)/34 + range(-.012,.012),
+      len: range(.09,.28),
+      width: range(2.2,7),
+      phase: range(0,TAU),
+      freq: 2 + Math.floor(random()*4),
+      lean: range(-.03,.03),
+      color: random()<.45 ? "#087d70" : random()<.55 ? "#0d9579" : "#126c68",
+      front: random() < .42,
+      branches: 2 + Math.floor(random()*5)
+    }));
+
+    jellies = Array.from({length:5}, (_,i) => ({
+      x: .1 + i*.2 + range(-.05,.05),
+      y: range(.18,.58),
+      size: range(22,43),
+      phase: range(0,TAU),
+      pulse: 2 + Math.floor(random()*3),
+      drift: 1 + Math.floor(random()*2),
+      color: i%2 ? [140,209,255] : [221,145,255]
+    }));
+
+    rocks = Array.from({length:15},(_,i) => ({
+      x: i/14 + range(-.035,.035),
+      w: range(.05,.14),
+      h: range(.025,.095),
+      shade: range(0,1)
+    }));
+  }
+
+  function background(T) {
+    const g = ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,"#087a9d");
+    g.addColorStop(.13,"#086987");
+    g.addColorStop(.46,"#07506d");
+    g.addColorStop(.76,"#06354e");
+    g.addColorStop(1,"#031d35");
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,W,H);
+
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    for (let i=0;i<9;i++) {
+      const p = i/8;
+      const sway = Math.sin(TAU*(T*(1+i%3))+i*1.71);
+      const topX = W*(p + .025*sway);
+      const spread = W*(.075 + .025*Math.sin(i));
+      const bottomX = topX + W*(.06*Math.sin(i*2.3 + TAU*T*2));
+      const grad = ctx.createLinearGradient(topX,0,bottomX,H*.85);
+      grad.addColorStop(0,`rgba(145,241,255,${.075+(i%3)*.018})`);
+      grad.addColorStop(1,"rgba(44,170,199,0)");
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(topX-spread*.18,0);
+      ctx.lineTo(topX+spread*.18,0);
+      ctx.lineTo(bottomX+spread,H*.88);
+      ctx.lineTo(bottomX-spread,H*.88);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    for(let i=0;i<15;i++){
+      const y = H*(.018 + i*.007);
+      const offset = Math.sin(TAU*T*(2+i%2)+i*.8)*28;
+      ctx.strokeStyle = `rgba(171,249,255,${.10-i*.004})`;
+      ctx.lineWidth = 1.2 + (i%3)*.7;
+      ctx.beginPath();
+      for(let x=-40;x<W+40;x+=18){
+        const yy = y + Math.sin(x*.018+i+TAU*T*(2+i%3))*3.5;
+        x===-40 ? ctx.moveTo(x+offset,yy) : ctx.lineTo(x+offset,yy);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    const vignette = ctx.createRadialGradient(W*.5,H*.35,Math.min(W,H)*.08,W*.5,H*.45,Math.max(W,H)*.78);
+    vignette.addColorStop(.35,"rgba(0,20,39,0)");
+    vignette.addColorStop(1,"rgba(0,9,24,.56)");
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0,0,W,H);
+  }
+
+  function drawParticles(T) {
+    ctx.save();
+    for(const p of particles){
+      let x = mod(p.x + T*p.drift,1)*W;
+      let y = p.y*H + Math.sin(TAU*T*p.wave+p.phase)*H*.006;
+      ctx.fillStyle = p.warm
+        ? `rgba(255,229,157,${p.alpha})`
+        : `rgba(177,241,236,${p.alpha})`;
+      ctx.beginPath();
+      ctx.arc(x,y,p.r,0,TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawTerrain() {
+    const sand = ctx.createLinearGradient(0,H*.83,0,H);
+    sand.addColorStop(0,"#174b55");
+    sand.addColorStop(.25,"#103d48");
+    sand.addColorStop(1,"#092638");
+    ctx.fillStyle = sand;
+    ctx.beginPath();
+    ctx.moveTo(0,H);
+    ctx.lineTo(0,H*.9);
+    for(let x=0;x<=W;x+=W/12){
+      ctx.lineTo(x,H*(.895 + .015*Math.sin(x*.019)+.009*Math.sin(x*.043)));
+    }
+    ctx.lineTo(W,H);
+    ctx.closePath();
+    ctx.fill();
+
+    for(const r of rocks){
+      const x=r.x*W, rw=r.w*W, rh=r.h*H;
+      const rg=ctx.createLinearGradient(x-rw/2,H-rh,x+rw/2,H);
+      rg.addColorStop(0,r.shade>.5?"#245d5c":"#163f4a");
+      rg.addColorStop(1,"#092d3b");
+      ctx.fillStyle=rg;
+      ctx.beginPath();
+      ctx.moveTo(x-rw/2,H);
+      ctx.bezierCurveTo(x-rw*.48,H-rh*.5,x-rw*.2,H-rh,x,H-rh);
+      ctx.bezierCurveTo(x+rw*.25,H-rh*1.05,x+rw*.48,H-rh*.45,x+rw/2,H);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  function drawPlants(T, front) {
+    ctx.save();
+    ctx.lineCap="round";
+    for(const p of plants){
+      if(p.front !== front) continue;
+      const bx=p.x*W, by=H*.94;
+      const len=p.len*H;
+      const sway=Math.sin(TAU*T*p.freq+p.phase)*len*.13 + p.lean*W;
+      ctx.strokeStyle=p.color;
+      ctx.lineWidth=p.width;
+      ctx.beginPath();
+      ctx.moveTo(bx,by);
+      ctx.bezierCurveTo(
+        bx+sway*.08,by-len*.3,
+        bx-sway*.18,by-len*.68,
+        bx+sway,by-len
+      );
+      ctx.stroke();
+
+      for(let j=1;j<=p.branches;j++){
+        const f=j/(p.branches+1);
+        const y=by-len*f;
+        const stemX=bx+sway*(f*f)+Math.sin(f*5+p.phase)*4;
+        const side=j%2 ? -1:1;
+        const leafLen=len*(.11+.035*(j%3));
+        const leafSway=Math.sin(TAU*T*p.freq+p.phase+j)*8;
+        ctx.lineWidth=Math.max(1.2,p.width*.55);
+        ctx.beginPath();
+        ctx.moveTo(stemX,y);
+        ctx.quadraticCurveTo(stemX+side*leafLen*.55+leafSway,y-leafLen*.2,stemX+side*leafLen,y-leafLen*.55);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawCorals(T) {
+    const bases=[.08,.21,.78,.9,.57];
+    bases.forEach((xp,i)=>{
+      const x=xp*W, base=H*.93;
+      ctx.strokeStyle=i%2?"#b54f77":"#d16b67";
+      ctx.lineCap="round";
+      ctx.lineWidth=5;
+      for(let b=-2;b<=2;b++){
+        const phase=i+b*.7;
+        const sway=Math.sin(TAU*T*2+phase)*4;
+        ctx.beginPath();
+        ctx.moveTo(x+b*3,base);
+        ctx.bezierCurveTo(x+b*8,base-25,x+b*12+sway,base-48,x+b*17+sway,base-72-Math.abs(b)*5);
+        ctx.stroke();
+        if(Math.abs(b)<2){
+          ctx.beginPath();
+          ctx.moveTo(x+b*9,base-35);
+          ctx.quadraticCurveTo(x+b*22,base-48,x+b*27+sway,base-59);
+          ctx.stroke();
+        }
+      }
+    });
+  }
+
+  function drawFish(x,y,size,dir,palette,tailPhase,stripes,type,alpha=1,angle=0) {
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(angle);
+    ctx.scale(dir,1);
+    ctx.globalAlpha=alpha;
+
+    const tailWave=Math.sin(tailPhase)*size*.18;
+    ctx.fillStyle=palette[1];
+    ctx.beginPath();
+    ctx.moveTo(-size*1.05,0);
+    ctx.quadraticCurveTo(-size*1.72,-size*.78-tailWave,-size*1.65,-size*.96);
+    ctx.quadraticCurveTo(-size*1.1,-size*.55,-size*.9,-size*.12);
+    ctx.quadraticCurveTo(-size*1.25,size*.52+tailWave,-size*1.58,size*.86);
+    ctx.quadraticCurveTo(-size*1.65,size*.28,-size*1.05,0);
+    ctx.fill();
+
+    ctx.fillStyle=palette[1];
+    ctx.beginPath();
+    ctx.moveTo(-size*.12,-size*.45);
+    ctx.quadraticCurveTo(size*.05,-size*1.02,size*.55,-size*.82);
+    ctx.quadraticCurveTo(size*.34,-size*.38,size*.08,-size*.13);
+    ctx.fill();
+
+    const body=ctx.createLinearGradient(0,-size,0,size);
+    body.addColorStop(0,palette[2]);
+    body.addColorStop(.36,palette[0]);
+    body.addColorStop(1,palette[1]);
+    ctx.fillStyle=body;
+    ctx.beginPath();
+    ctx.moveTo(-size*1.05,0);
+    if(type===1){
+      ctx.bezierCurveTo(-size*.55,-size*.9,size*.62,-size*.77,size*1.18,-size*.08);
+      ctx.quadraticCurveTo(size*1.32,0,size*1.16,size*.15);
+      ctx.bezierCurveTo(size*.54,size*.72,-size*.56,size*.83,-size*1.05,0);
+    } else if(type===2){
+      ctx.bezierCurveTo(-size*.62,-size*.58,size*.53,-size*.97,size*1.2,-size*.08);
+      ctx.quadraticCurveTo(size*1.34,0,size*1.17,size*.14);
+      ctx.bezierCurveTo(size*.52,size*.48,-size*.58,size*.62,-size*1.05,0);
+    } else {
+      ctx.bezierCurveTo(-size*.54,-size*.75,size*.54,-size*.73,size*1.2,-size*.08);
+      ctx.quadraticCurveTo(size*1.36,0,size*1.17,size*.16);
+      ctx.bezierCurveTo(size*.48,size*.7,-size*.56,size*.73,-size*1.05,0);
+    }
+    ctx.fill();
+
+    if(stripes){
+      ctx.save();
+      ctx.globalAlpha*=.32;
+      ctx.strokeStyle=palette[1];
+      ctx.lineWidth=Math.max(1,size*.12);
+      [-.45,-.08,.28].forEach((sx,j)=>{
+        ctx.beginPath();
+        ctx.moveTo(size*sx,-size*(.53-j*.04));
+        ctx.quadraticCurveTo(size*(sx-.14),0,size*sx,size*(.53-j*.04));
+        ctx.stroke();
+      });
+      ctx.restore();
+    }
+
+    ctx.fillStyle="rgba(255,255,255,.22)";
+    ctx.beginPath();
+    ctx.ellipse(size*.12,-size*.34,size*.58,size*.12,-.08,0,TAU);
+    ctx.fill();
+
+    ctx.fillStyle=palette[1];
+    ctx.globalAlpha=alpha*.72;
+    ctx.beginPath();
+    ctx.moveTo(-size*.08,size*.24);
+    ctx.quadraticCurveTo(-size*.42,size*1.05,size*.32,size*.62);
+    ctx.quadraticCurveTo(size*.48,size*.39,-size*.08,size*.24);
+    ctx.fill();
+
+    ctx.globalAlpha=alpha;
+    ctx.fillStyle="#f6ffff";
+    ctx.beginPath();
+    ctx.arc(size*.78,-size*.17,Math.max(1.5,size*.115),0,TAU);
+    ctx.fill();
+    ctx.fillStyle="#092b3e";
+    ctx.beginPath();
+    ctx.arc(size*.82,-size*.16,Math.max(.9,size*.058),0,TAU);
+    ctx.fill();
+
+    ctx.strokeStyle="rgba(255,255,255,.28)";
+    ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.arc(size*.92,size*.08,size*.2,-.4,.55);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawSchools(T) {
+    for(const s of schools){
+      const p=mod(s.phase+s.cycles*T,1);
+      let cx=(-.18+p*1.36)*W;
+      if(s.dir<0) cx=W-cx;
+      const cy=H*(s.baseY + Math.sin(TAU*T*s.wave+s.phase*TAU)*.055);
+      for(const m of s.members){
+        const ox=m.ox*W*s.dir;
+        const oy=m.oy*H + Math.sin(TAU*T*(s.wave+2)+m.phase)*4;
+        const c=[s.color,"#498fa0","#ebffff"];
+        drawFish(cx-ox,cy+oy,m.size,s.dir,c,TAU*T*14+m.phase,false,1,.62);
+      }
+    }
+  }
+
+  function drawFreeFish(T) {
+    const ordered=[...fish].sort((a,b)=>a.depth-b.depth);
+    for(const f of ordered){
+      const p=mod(f.phase+f.cycles*T,1);
+      const margin=f.size*4;
+      let x=-margin+p*(W+margin*2);
+      if(f.dir<0) x=W-x;
+      const yy=f.y*H+Math.sin(TAU*T*f.wave+f.phase2)*f.amp*H;
+      const slope=Math.cos(TAU*T*f.wave+f.phase2)*f.amp*f.wave*.09;
+      drawFish(x,yy,f.size*(.72+.28*f.depth),f.dir,f.palette,TAU*T*f.tail+f.phase2,f.stripes,f.type,.58+.42*f.depth,slope*f.dir);
+    }
+  }
+
+  function drawJellies(T) {
+    for(const j of jellies){
+      const pulse=(Math.sin(TAU*T*j.pulse+j.phase)+1)*.5;
+      const x=j.x*W+Math.sin(TAU*T*j.drift+j.phase)*W*.045;
+      const y=j.y*H+Math.sin(TAU*T*(j.drift+1)+j.phase*.7)*H*.055;
+      const s=j.size*(.93+pulse*.09);
+      const [r,g,b]=j.color;
+
+      ctx.save();
+      ctx.translate(x,y);
+      ctx.globalCompositeOperation="screen";
+
+      for(let k=-3;k<=3;k++){
+        const startX=k*s*.19;
+        const len=s*(1.25+Math.abs(k%2)*.35);
+        const sway=Math.sin(TAU*T*(2+(k+4)%3)+j.phase+k)*s*.28;
+        ctx.strokeStyle=`rgba(${r},${g},${b},${.17+(3-Math.abs(k))*.035})`;
+        ctx.lineWidth=k===0?2:1.2;
+        ctx.beginPath();
+        ctx.moveTo(startX,s*.18);
+        ctx.bezierCurveTo(startX+sway*.4,s*.55,startX-sway*.35,len*.72,startX+sway,len);
+        ctx.stroke();
+      }
+
+      const glow=ctx.createRadialGradient(0,-s*.1,s*.08,0,0,s);
+      glow.addColorStop(0,`rgba(255,255,255,.5)`);
+      glow.addColorStop(.45,`rgba(${r},${g},${b},.28)`);
+      glow.addColorStop(1,`rgba(${r},${g},${b},0)`);
+      ctx.fillStyle=glow;
+      ctx.beginPath();
+      ctx.ellipse(0,0,s*1.05,s*.78,0,Math.PI,TAU);
+      ctx.lineTo(s*.8,s*.18);
+      for(let k=3;k>=-3;k--) ctx.quadraticCurveTo(k*s*.2,s*(.34+(k%2)*.06),(k-.5)*s*.2,s*.2);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle=`rgba(225,252,255,.42)`;
+      ctx.lineWidth=1.2;
+      ctx.beginPath();
+      ctx.ellipse(0,0,s*.82,s*.59,0,Math.PI,TAU);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  function drawBubbles(T) {
+    ctx.save();
+    ctx.globalCompositeOperation="screen";
+    for(const b of bubbles){
+      const q=mod(b.phase+b.cycles*T,1);
+      const y=H+30-q*(H+90);
+      const x=b.x*W+Math.sin(TAU*T*b.wave+b.phase2)*b.sway*W;
+      ctx.strokeStyle=`rgba(185,244,255,${b.alpha})`;
+      ctx.lineWidth=Math.max(.6,b.size*.14);
+      ctx.beginPath();
+      ctx.arc(x,y,b.size,0,TAU);
+      ctx.stroke();
+      ctx.fillStyle=`rgba(231,255,255,${b.alpha*.55})`;
+      ctx.beginPath();
+      ctx.arc(x-b.size*.3,y-b.size*.32,Math.max(.45,b.size*.2),0,TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function foregroundHaze() {
+    const g=ctx.createLinearGradient(0,H*.72,0,H);
+    g.addColorStop(0,"rgba(2,31,47,0)");
+    g.addColorStop(1,"rgba(1,15,29,.35)");
+    ctx.fillStyle=g;
+    ctx.fillRect(0,H*.7,W,H*.3);
+  }
+
+  const start=performance.now();
+  function frame(now){
+    const T=((now-start)/1000 % LOOP)/LOOP;
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    ctx.clearRect(0,0,W,H);
+
+    background(T);
+    drawParticles(T);
+    drawTerrain();
+    drawPlants(T,false);
+    drawCorals(T);
+    drawSchools(T);
+    drawJellies(T);
+    drawFreeFish(T);
+    drawBubbles(T);
+    foregroundHaze();
+    drawPlants(T,true);
+
+    requestAnimationFrame(frame);
+  }
+
+  addEventListener("resize",resize,{passive:true});
+  resize();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rube Goldberg Workshop</title>
+<style>
+  html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #101827;
+  }
+  svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    font-family: "Trebuchet MS", Arial, sans-serif;
+  }
+  .label {
+    fill: #dae7ef;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 2px;
+  }
+  .small {
+    fill: #8fa9b8;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+  }
+  .outline {
+    stroke: #17212c;
+    stroke-width: 4;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+  .thin {
+    stroke: #21303c;
+    stroke-width: 3;
+    stroke-linecap: round;
+    fill: none;
+  }
+  .machine-shadow {
+    filter: url(#shadow);
+  }
+  .glow {
+    filter: url(#glow);
+  }
+  .indicator {
+    transition: fill .15s, opacity .15s;
+  }
+</style>
+</head>
+<body>
+<svg id="scene" viewBox="0 0 1400 800" preserveAspectRatio="xMidYMid slice" aria-label="Animated Rube Goldberg machine">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#1b2a3c"/>
+      <stop offset=".55" stop-color="#122231"/>
+      <stop offset="1" stop-color="#09131e"/>
+    </linearGradient>
+    <radialGradient id="lampGlow">
+      <stop offset="0" stop-color="#ffd66b" stop-opacity=".75"/>
+      <stop offset=".3" stop-color="#ffc94e" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#ffc94e" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="wood" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d99145"/>
+      <stop offset=".45" stop-color="#a95f2e"/>
+      <stop offset="1" stop-color="#74361f"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#dce8eb"/>
+      <stop offset=".35" stop-color="#7e9ba6"/>
+      <stop offset=".7" stop-color="#425c69"/>
+      <stop offset="1" stop-color="#9ab3ba"/>
+    </linearGradient>
+    <radialGradient id="redBall" cx=".32" cy=".25">
+      <stop offset="0" stop-color="#fff0d5"/>
+      <stop offset=".16" stop-color="#ff9b74"/>
+      <stop offset=".5" stop-color="#ed4d3e"/>
+      <stop offset="1" stop-color="#7b1925"/>
+    </radialGradient>
+    <radialGradient id="blueBall" cx=".3" cy=".25">
+      <stop offset="0" stop-color="#edffff"/>
+      <stop offset=".18" stop-color="#71def0"/>
+      <stop offset=".58" stop-color="#2091b0"/>
+      <stop offset="1" stop-color="#114259"/>
+    </radialGradient>
+    <linearGradient id="brass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff1a1"/>
+      <stop offset=".3" stop-color="#e8b934"/>
+      <stop offset=".72" stop-color="#9b5d16"/>
+      <stop offset="1" stop-color="#ffe073"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#02070b" flood-opacity=".55"/>
+    </filter>
+    <filter id="glow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="#7090a0" stroke-opacity=".055" stroke-width="1"/>
+      <circle cx="0" cy="0" r="1.5" fill="#83a2af" opacity=".12"/>
+    </pattern>
+    <path id="ballOnePath" d="M88 146 C196 145 263 186 345 245 C404 288 460 340 510 404"/>
+    <path id="ballTwoPath" d="M947 235 C930 293 957 334 1016 360 C1055 377 1053 409 1025 431"/>
+  </defs>
+
+  <rect width="1400" height="800" fill="url(#bg)"/>
+  <rect width="1400" height="800" fill="url(#grid)"/>
+
+  <!-- ambient workshop windows -->
+  <g opacity=".65">
+    <rect x="45" y="75" width="225" height="105" rx="8" fill="#0a1620" stroke="#314b59" stroke-width="4"/>
+    <path d="M157 77V178M47 128H268" stroke="#314b59" stroke-width="4"/>
+    <rect x="55" y="85" width="92" height="33" fill="#214256" opacity=".55"/>
+    <rect x="168" y="85" width="92" height="33" fill="#1b3749" opacity=".45"/>
+  </g>
+
+  <!-- overhead lamps -->
+  <g>
+    <path d="M350 0V48" stroke="#516975" stroke-width="6"/>
+    <path d="M320 75Q350 30 380 75Z" fill="#354a55" stroke="#17232d" stroke-width="4"/>
+    <ellipse cx="350" cy="76" rx="21" ry="8" fill="#ffd55f"/>
+    <circle cx="350" cy="92" r="85" fill="url(#lampGlow)" opacity=".6"/>
+    <path d="M1080 0V48" stroke="#516975" stroke-width="6"/>
+    <path d="M1050 75Q1080 30 1110 75Z" fill="#354a55" stroke="#17232d" stroke-width="4"/>
+    <ellipse cx="1080" cy="76" rx="21" ry="8" fill="#ffd55f"/>
+    <circle cx="1080" cy="92" r="85" fill="url(#lampGlow)" opacity=".55"/>
+  </g>
+
+  <!-- heading -->
+  <g transform="translate(700 54)" text-anchor="middle">
+    <text fill="#eff8fa" font-size="25" font-weight="800" letter-spacing="6">THE MARVELOUS CHAIN REACTION</text>
+    <text y="27" fill="#7f9ba9" font-size="11" font-weight="700" letter-spacing="3">AUTOMATIC WORKSHOP • SEQUENCE No. 07</text>
+  </g>
+
+  <!-- stage backplates and direction guides -->
+  <g opacity=".55">
+    <path d="M62 111H292" stroke="#7b9aa7" stroke-width="2" stroke-dasharray="4 9"/>
+    <path d="M500 348H751" stroke="#7b9aa7" stroke-width="2" stroke-dasharray="4 9"/>
+    <path d="M889 196H1086" stroke="#7b9aa7" stroke-width="2" stroke-dasharray="4 9"/>
+    <path d="M1112 518Q1200 385 1283 347" stroke="#7b9aa7" stroke-width="2" stroke-dasharray="7 9" fill="none"/>
+  </g>
+
+  <!-- first ramp -->
+  <g class="machine-shadow">
+    <use href="#ballOnePath" transform="translate(0 20)" fill="none" stroke="#49271c" stroke-width="31" stroke-linecap="round"/>
+    <use href="#ballOnePath" transform="translate(0 17)" fill="none" stroke="url(#wood)" stroke-width="24" stroke-linecap="round"/>
+    <use href="#ballOnePath" transform="translate(0 10)" fill="none" stroke="#efb869" stroke-width="3" stroke-linecap="round" opacity=".75"/>
+    <path d="M150 184L132 318M286 238L265 363M420 348L402 430" stroke="#6e422c" stroke-width="12" stroke-linecap="round"/>
+    <path d="M130 318H172M258 363H302M393 430H438" stroke="#27333a" stroke-width="10" stroke-linecap="round"/>
+  </g>
+  <text x="70" y="218" class="label">01 • ROLL</text>
+  <path d="M165 218h65l-12-8m12 8-12 8" class="thin" stroke="#eabb54"/>
+
+  <!-- ball one -->
+  <g id="ball1" class="machine-shadow">
+    <circle r="21" fill="url(#redBall)" stroke="#5e1e25" stroke-width="4"/>
+    <path d="M-11 -11Q0-18 10-10" fill="none" stroke="#ffd2b7" stroke-width="4" stroke-linecap="round" opacity=".8"/>
+    <circle cx="0" cy="0" r="6" fill="none" stroke="#73212a" stroke-width="2" opacity=".5"/>
+  </g>
+
+  <!-- domino platform -->
+  <g class="machine-shadow">
+    <path d="M486 451H784" stroke="#17232c" stroke-width="23" stroke-linecap="round"/>
+    <path d="M486 445H784" stroke="#5c7780" stroke-width="13" stroke-linecap="round"/>
+    <path d="M505 450v70M760 450v70" stroke="#425963" stroke-width="12"/>
+    <path d="M484 520h43M740 520h43" stroke="#17232c" stroke-width="10" stroke-linecap="round"/>
+  </g>
+  <text x="520" y="342" class="label">02 • DOMINO RUN</text>
+
+  <g id="dominoes" class="machine-shadow">
+    <g data-x="532"><rect x="525" y="383" width="15" height="62" rx="3" fill="#f1d162" class="outline"/><circle cx="532.5" cy="400" r="3" fill="#593d22"/><circle cx="532.5" cy="428" r="3" fill="#593d22"/></g>
+    <g data-x="562"><rect x="555" y="383" width="15" height="62" rx="3" fill="#e77452" class="outline"/><circle cx="562.5" cy="400" r="3" fill="#562833"/><circle cx="562.5" cy="428" r="3" fill="#562833"/></g>
+    <g data-x="592"><rect x="585" y="383" width="15" height="62" rx="3" fill="#68bfbd" class="outline"/><circle cx="592.5" cy="400" r="3" fill="#163c47"/><circle cx="592.5" cy="428" r="3" fill="#163c47"/></g>
+    <g data-x="622"><rect x="615" y="383" width="15" height="62" rx="3" fill="#f1d162" class="outline"/><circle cx="622.5" cy="400" r="3" fill="#593d22"/><circle cx="622.5" cy="428" r="3" fill="#593d22"/></g>
+    <g data-x="652"><rect x="645" y="383" width="15" height="62" rx="3" fill="#e77452" class="outline"/><circle cx="652.5" cy="400" r="3" fill="#562833"/><circle cx="652.5" cy="428" r="3" fill="#562833"/></g>
+    <g data-x="682"><rect x="675" y="383" width="15" height="62" rx="3" fill="#68bfbd" class="outline"/><circle cx="682.5" cy="400" r="3" fill="#163c47"/><circle cx="682.5" cy="428" r="3" fill="#163c47"/></g>
+    <g data-x="712"><rect x="705" y="383" width="15" height="62" rx="3" fill="#f1d162" class="outline"/><circle cx="712.5" cy="400" r="3" fill="#593d22"/><circle cx="712.5" cy="428" r="3" fill="#593d22"/></g>
+    <g data-x="742"><rect x="735" y="383" width="15" height="62" rx="3" fill="#e77452" class="outline"/><circle cx="742.5" cy="400" r="3" fill="#562833"/><circle cx="742.5" cy="428" r="3" fill="#562833"/></g>
+  </g>
+
+  <!-- lever -->
+  <g>
+    <text x="760" y="542" class="label">03 • LEVER</text>
+    <g id="lever" class="machine-shadow">
+      <rect x="748" y="430" width="190" height="20" rx="10" fill="url(#wood)" class="outline"/>
+      <circle cx="835" cy="440" r="13" fill="url(#brass)" stroke="#50381b" stroke-width="4"/>
+      <circle cx="835" cy="440" r="4" fill="#493525"/>
+    </g>
+    <path d="M835 454L807 510H864Z" fill="#526b75" stroke="#17232c" stroke-width="5"/>
+    <path d="M800 512H870" stroke="#18242d" stroke-width="10" stroke-linecap="round"/>
+  </g>
+
+  <!-- release tower -->
+  <g class="machine-shadow">
+    <path d="M912 158V380M1058 158V385" stroke="#314b58" stroke-width="10"/>
+    <path d="M894 158H1075" stroke="#17232c" stroke-width="16" stroke-linecap="round"/>
+    <path d="M900 153H1068" stroke="#66818a" stroke-width="8" stroke-linecap="round"/>
+    <rect x="918" y="187" width="62" height="64" rx="13" fill="#142634" stroke="#426170" stroke-width="5"/>
+    <path d="M932 214h34" stroke="#688996" stroke-width="5" stroke-linecap="round"/>
+    <path d="M930 250V429" stroke="#6f8992" stroke-width="9" fill="none"/>
+    <path d="M962 253 C946 310 970 331 1021 354 C1070 375 1061 418 1030 438" fill="none" stroke="#17232c" stroke-width="28" stroke-linecap="round"/>
+    <path d="M962 253 C946 310 970 331 1021 354 C1070 375 1061 418 1030 438" fill="none" stroke="#6d8790" stroke-width="17" stroke-linecap="round"/>
+  </g>
+  <text x="887" y="127" class="label">04 • RELEASE</text>
+
+  <!-- cord -->
+  <path id="cord" d="M930 440 Q902 345 930 250" fill="none" stroke="#e6c76c" stroke-width="3" stroke-dasharray="6 5"/>
+  <g id="gate" class="machine-shadow">
+    <rect x="923" y="238" width="54" height="10" rx="4" fill="url(#brass)" stroke="#47371e" stroke-width="3"/>
+    <circle cx="929" cy="243" r="6" fill="#c79428" stroke="#44321b" stroke-width="3"/>
+  </g>
+
+  <!-- second ball -->
+  <g id="ball2" class="machine-shadow">
+    <circle r="18" fill="url(#blueBall)" stroke="#123e52" stroke-width="4"/>
+    <path d="M-9 -9Q0-15 8-8" fill="none" stroke="#dcffff" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <!-- wheel assembly -->
+  <g>
+    <text x="927" y="615" class="label">05 • SPIN</text>
+    <g class="machine-shadow">
+      <path d="M1015 507L970 650M1015 507L1060 650" stroke="#405a65" stroke-width="13"/>
+      <path d="M946 652H1084" stroke="#17232c" stroke-width="13" stroke-linecap="round"/>
+    </g>
+    <g id="wheel" class="machine-shadow">
+      <circle cx="1015" cy="507" r="78" fill="#203744" stroke="#101a22" stroke-width="8"/>
+      <circle cx="1015" cy="507" r="67" fill="none" stroke="url(#brass)" stroke-width="10"/>
+      <g stroke="#d3a938" stroke-width="8" stroke-linecap="round">
+        <path d="M1015 444V570"/>
+        <path d="M952 507H1078"/>
+        <path d="M970 462L1060 552"/>
+        <path d="M1060 462L970 552"/>
+      </g>
+      <circle cx="1015" cy="507" r="22" fill="url(#steel)" stroke="#17232c" stroke-width="6"/>
+      <circle cx="1015" cy="507" r="7" fill="#17232c"/>
+      <circle cx="1015" cy="449" r="9" fill="#e96b45" stroke="#51242b" stroke-width="4"/>
+    </g>
+  </g>
+
+  <!-- connecting rod -->
+  <path id="linkRod" d="M1015 449L1135 641" fill="none" stroke="#a7bec2" stroke-width="9" stroke-linecap="round" class="machine-shadow"/>
+  <circle id="crankPin" cx="1015" cy="449" r="10" fill="#efc54d" stroke="#2a2820" stroke-width="4"/>
+
+  <!-- launcher -->
+  <g>
+    <text x="1083" y="720" class="label">06 • LAUNCH</text>
+    <g class="machine-shadow">
+      <path d="M1090 672H1200" stroke="#17232c" stroke-width="15" stroke-linecap="round"/>
+      <path d="M1135 645L1110 674M1135 645L1160 674" stroke="#536e78" stroke-width="11"/>
+      <circle cx="1135" cy="645" r="15" fill="url(#brass)" stroke="#302a1c" stroke-width="5"/>
+      <path d="M1150 652q22 25 42 0" fill="none" stroke="#edb834" stroke-width="5"/>
+    </g>
+    <g id="launcherArm" class="machine-shadow">
+      <path d="M1135 645L1098 584" stroke="url(#wood)" stroke-width="16" stroke-linecap="round"/>
+      <path d="M1084 578q14-15 29 0l-3 13q-14 10-25-1Z" fill="url(#steel)" stroke="#17232c" stroke-width="4"/>
+    </g>
+  </g>
+
+  <!-- projectile -->
+  <g id="projectile" class="machine-shadow">
+    <path d="M-15-8H9L18 0 9 8H-15Q-23 0-15-8Z" fill="#f06b4b" stroke="#57232b" stroke-width="4"/>
+    <path d="M-11-5L3-5" stroke="#ffd28c" stroke-width="3" stroke-linecap="round"/>
+    <path d="M-18-5L-27-12M-19 0L-31 0M-18 5L-27 12" stroke="#ffc94a" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <!-- bell frame and bell -->
+  <g class="machine-shadow">
+    <path d="M1268 143V241" stroke="#58717b" stroke-width="10"/>
+    <path d="M1217 145H1320" stroke="#17232c" stroke-width="17" stroke-linecap="round"/>
+    <path d="M1220 139H1317" stroke="#66828b" stroke-width="8" stroke-linecap="round"/>
+    <path d="M1268 234V269" stroke="#d5ae36" stroke-width="7"/>
+  </g>
+  <text x="1207" y="116" class="label">07 • RING!</text>
+  <g id="bell" class="machine-shadow">
+    <path d="M1229 329Q1237 277 1268 270Q1299 277 1307 329L1321 349H1215Z" fill="url(#brass)" stroke="#52371b" stroke-width="6"/>
+    <path d="M1215 349Q1268 360 1321 349" fill="none" stroke="#fff0a0" stroke-width="8" stroke-linecap="round"/>
+    <path d="M1268 347V373" stroke="#62431e" stroke-width="6"/>
+    <circle cx="1268" cy="378" r="11" fill="#e7b32c" stroke="#543719" stroke-width="4"/>
+    <path d="M1247 297Q1267 281 1287 299" fill="none" stroke="#fff4b2" stroke-width="5" opacity=".65"/>
+  </g>
+  <g id="ringLines" fill="none" stroke="#ffd95e" stroke-linecap="round" class="glow">
+    <path d="M1204 284q-29 38 0 78" stroke-width="5"/>
+    <path d="M1184 266q-44 55-1 113" stroke-width="4"/>
+    <path d="M1330 284q29 38 0 78" stroke-width="5"/>
+    <path d="M1350 266q44 55 1 113" stroke-width="4"/>
+  </g>
+
+  <!-- impact sparks -->
+  <g id="sparks" stroke="#ffe272" stroke-width="5" stroke-linecap="round" class="glow">
+    <path d="M1210 346l-26-2"/>
+    <path d="M1215 334l-22-16"/>
+    <path d="M1217 357l-20 19"/>
+    <circle cx="1207" cy="346" r="5" fill="#fff2a6" stroke="none"/>
+  </g>
+
+  <!-- foreground floor -->
+  <path d="M0 747H1400" stroke="#080e15" stroke-width="20"/>
+  <path d="M0 738H1400" stroke="#354a55" stroke-width="5"/>
+  <g opacity=".35">
+    <path d="M35 768h150M230 768h90M1050 768h130M1230 768h130" stroke="#66818b" stroke-width="3" stroke-dasharray="20 12"/>
+  </g>
+
+  <!-- sequence progress -->
+  <g transform="translate(390 766)">
+    <path d="M0 0H620" stroke="#263d49" stroke-width="5" stroke-linecap="round"/>
+    <g id="progressDots">
+      <circle class="indicator" data-step="0" cx="0" cy="0" r="8"/>
+      <circle class="indicator" data-step="1" cx="103" cy="0" r="8"/>
+      <circle class="indicator" data-step="2" cx="206" cy="0" r="8"/>
+      <circle class="indicator" data-step="3" cx="310" cy="0" r="8"/>
+      <circle class="indicator" data-step="4" cx="413" cy="0" r="8"/>
+      <circle class="indicator" data-step="5" cx="516" cy="0" r="8"/>
+      <circle class="indicator" data-step="6" cx="620" cy="0" r="8"/>
+    </g>
+  </g>
+
+  <g id="resetCard" transform="translate(700 685)" opacity="0">
+    <rect x="-145" y="-26" width="290" height="52" rx="26" fill="#0c1720" stroke="#edc556" stroke-width="2"/>
+    <text text-anchor="middle" y="6" fill="#f6da79" font-size="14" font-weight="800" letter-spacing="3">RESETTING THE MACHINE</text>
+  </g>
+
+  <rect id="flash" width="1400" height="800" fill="#fff2b0" opacity="0" pointer-events="none"/>
+</svg>
+
+<script>
+(() => {
+  const DURATION = 18000;
+  const svg = document.getElementById('scene');
+  const path1 = document.getElementById('ballOnePath');
+  const path2 = document.getElementById('ballTwoPath');
+  const ball1 = document.getElementById('ball1');
+  const ball2 = document.getElementById('ball2');
+  const dominoes = [...document.querySelectorAll('#dominoes > g')];
+  const lever = document.getElementById('lever');
+  const gate = document.getElementById('gate');
+  const cord = document.getElementById('cord');
+  const wheel = document.getElementById('wheel');
+  const linkRod = document.getElementById('linkRod');
+  const crankPin = document.getElementById('crankPin');
+  const launcher = document.getElementById('launcherArm');
+  const projectile = document.getElementById('projectile');
+  const bell = document.getElementById('bell');
+  const ringLines = document.getElementById('ringLines');
+  const sparks = document.getElementById('sparks');
+  const resetCard = document.getElementById('resetCard');
+  const flash = document.getElementById('flash');
+  const dots = [...document.querySelectorAll('.indicator')];
+
+  const len1 = path1.getTotalLength();
+  const len2 = path2.getTotalLength();
+  let start = performance.now();
+
+  const clamp = (v, a=0, b=1) => Math.max(a, Math.min(b, v));
+  const smooth = v => {
+    v = clamp(v);
+    return v * v * (3 - 2 * v);
+  };
+  const easeOut = v => 1 - Math.pow(1 - clamp(v), 3);
+  const segment = (t, a, b) => clamp((t - a) / (b - a));
+  const pointOn = (path, length, u) => {
+    const d = length * clamp(u);
+    const p = path.getPointAtLength(d);
+    const p2 = path.getPointAtLength(Math.min(length, d + 2));
+    return {x:p.x, y:p.y, angle:Math.atan2(p2.y-p.y,p2.x-p.x)*180/Math.PI};
+  };
+
+  function frame(now) {
+    const ms = (now - start) % DURATION;
+    const t = ms / 1000;
+
+    // Ball 1 rolls down the wooden ramp.
+    let b1u = smooth(segment(t, 0.8, 3.65));
+    const p1 = pointOn(path1, len1, b1u);
+    let b1Bounce = 0;
+    if (t > 3.55 && t < 4.15) {
+      const q = (t - 3.55) / .6;
+      b1Bounce = -Math.sin(q * Math.PI) * 10 * (1-q);
+    }
+    ball1.setAttribute('transform',
+      `translate(${p1.x} ${p1.y + b1Bounce}) rotate(${b1u * 920})`);
+    ball1.style.opacity = t < 4.45 ? 1 : Math.max(0, 1-(t-4.45)*4);
+
+    // Sequential domino toppling.
+    dominoes.forEach((d, i) => {
+      const x = +d.dataset.x + .5;
+      const u = easeOut(segment(t, 3.55 + i*.18, 4.08 + i*.18));
+      const angle = 78 * u;
+      d.setAttribute('transform', `rotate(${angle} ${x} 445)`);
+    });
+
+    // Lever depresses, lifting its far end and opening the release gate.
+    const leverU = smooth(segment(t, 5.0, 5.85));
+    const leverAngle = -18 * leverU;
+    lever.setAttribute('transform', `rotate(${leverAngle} 835 440)`);
+    gate.setAttribute('transform', `rotate(${-72 * leverU} 929 243)`);
+    const rightAngle = leverAngle * Math.PI/180;
+    const rx = 835 + 95*Math.cos(rightAngle);
+    const ry = 440 + 95*Math.sin(rightAngle);
+    cord.setAttribute('d', `M${rx.toFixed(1)} ${ry.toFixed(1)} Q900 350 930 250`);
+
+    // Ball 2 waits in the release box, then runs into the wheel.
+    let b2u = smooth(segment(t, 5.95, 8.7));
+    const p2 = pointOn(path2, len2, b2u);
+    ball2.setAttribute('transform',
+      `translate(${p2.x} ${p2.y}) rotate(${b2u * 790})`);
+    ball2.style.opacity = t < 9.15 ? 1 : Math.max(0, 1-(t-9.15)*5);
+
+    // Wheel rotation and crank linkage.
+    const wheelU = smooth(segment(t, 8.55, 11.25));
+    const wheelAngle = 630 * wheelU;
+    wheel.setAttribute('transform', `rotate(${wheelAngle} 1015 507)`);
+    const a = (wheelAngle - 90) * Math.PI / 180;
+    const cx = 1015 + Math.cos(a) * 58;
+    const cy = 507 + Math.sin(a) * 58;
+    crankPin.setAttribute('cx', cx);
+    crankPin.setAttribute('cy', cy);
+    linkRod.setAttribute('d', `M${cx.toFixed(1)} ${cy.toFixed(1)}L1135 641`);
+
+    // Catapult arm snaps upward.
+    let launchAngle = 0;
+    if (t >= 10.35 && t < 11.05) {
+      launchAngle = -8 * Math.sin(segment(t,10.35,11.05)*Math.PI*4);
+    } else if (t >= 11.05) {
+      launchAngle = 84 * easeOut(segment(t,11.05,11.28));
+    }
+    launcher.setAttribute('transform', `rotate(${launchAngle} 1135 645)`);
+
+    // Projectile follows a clear parabolic arc toward the bell.
+    const projU = smooth(segment(t, 11.18, 13.45));
+    let px, py, rot;
+    if (t < 11.18) {
+      px = 1096; py = 579; rot = -28;
+      projectile.style.opacity = 1;
+    } else if (t <= 13.62) {
+      px = 1174 + (1212-1174)*projU;
+      py = 594 + (344-594)*projU - 145 * Math.sin(Math.PI*projU);
+      const du = Math.min(1, projU+.012);
+      const nx = 1174 + (1212-1174)*du;
+      const ny = 594 + (344-594)*du - 145 * Math.sin(Math.PI*du);
+      rot = Math.atan2(ny-py,nx-px)*180/Math.PI;
+      projectile.style.opacity = t < 13.52 ? 1 : Math.max(0, 1-(t-13.52)*7);
+    } else {
+      px = 1212; py = 344; rot = 0;
+      projectile.style.opacity = 0;
+    }
+    projectile.setAttribute('transform', `translate(${px} ${py}) rotate(${rot})`);
+
+    // Bell rings with a damped oscillation.
+    let bellAngle = 0;
+    if (t >= 13.36) {
+      const bt = t - 13.36;
+      bellAngle = Math.sin(bt * 19) * 13 * Math.exp(-bt*.72);
+    }
+    bell.setAttribute('transform', `rotate(${bellAngle} 1268 270)`);
+    const ringOpacity = t >= 13.36 && t < 16.55
+      ? Math.max(0, .95 * Math.exp(-(t-13.36)*.34) * (.65 + .35*Math.abs(Math.sin((t-13.36)*10))))
+      : 0;
+    ringLines.style.opacity = ringOpacity;
+    const sparkU = segment(t,13.34,13.85);
+    sparks.style.opacity = t >= 13.34 && t < 13.85 ? 1-sparkU : 0;
+    sparks.setAttribute('transform', `translate(${-22*sparkU} 0) scale(${1+sparkU*.7})`);
+
+    // Progress lights.
+    const thresholds = [0.8, 3.55, 5.0, 5.95, 8.55, 11.05, 13.36];
+    dots.forEach((d,i) => {
+      const active = t >= thresholds[i];
+      d.setAttribute('fill', active ? '#ffd459' : '#36505c');
+      d.setAttribute('stroke', active ? '#fff1a3' : '#192b35');
+      d.setAttribute('stroke-width', active ? '3' : '2');
+      d.style.filter = active ? 'url(#glow)' : 'none';
+    });
+
+    // Gentle end card and transition before the automatic restart.
+    let resetOpacity = 0;
+    if (t > 16.35) resetOpacity = smooth(segment(t,16.35,16.85));
+    if (t > 17.5) resetOpacity *= 1-smooth(segment(t,17.5,17.9));
+    resetCard.setAttribute('opacity', resetOpacity);
+    let flashOpacity = 0;
+    if (t > 17.45) flashOpacity = .18 * smooth(segment(t,17.45,17.92));
+    if (t < .25) flashOpacity = .18 * (1-smooth(segment(t,0,.25)));
+    flash.setAttribute('opacity', flashOpacity);
+
+    requestAnimationFrame(frame);
+  }
+
+  ringLines.style.opacity = 0;
+  sparks.style.opacity = 0;
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

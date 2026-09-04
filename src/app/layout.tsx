@@ -9,10 +9,12 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://realbench-delta.vercel.app"),
   title: "RealBench — Frontend Capability Benchmark",
   description: "Compare one-shot animated frontend builds from frontier AI models. Same prompt, no repair, rendered side by side.",
+  alternates: { canonical: "/" },
   openGraph: {
     title: "RealBench — See what models can actually build",
     description: "A visual one-shot frontend benchmark for frontier AI models.",
     type: "website",
+    url: "/",
   },
   robots: { index: true, follow: true },
 };

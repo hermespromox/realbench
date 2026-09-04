@@ -126,7 +126,7 @@ def call_one(item: tuple[str, dict, str, dict], api_key: str) -> dict:
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
-            "HTTP-Referer": "https://realbench.vercel.app",
+            "HTTP-Referer": "https://realbench-ai.vercel.app",
             "X-Title": "RealBench",
         },
         method="POST",

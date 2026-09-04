@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Underwater Ecosystem</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#031c35}
+canvas{display:block;width:100vw;height:100vh}
+</style>
+</head>
+<body>
+<canvas id="ocean"></canvas>
+<script>
+const canvas=document.getElementById("ocean"),ctx=canvas.getContext("2d");
+let W=innerWidth,H=innerHeight,D=devicePixelRatio||1;
+function resize(){W=innerWidth;H=innerHeight;D=devicePixelRatio||1;canvas.width=W*D;canvas.height=H*D;ctx.setTransform(D,0,0,D,0,0)}
+addEventListener("resize",resize); resize();
+
+let seed=928371;
+function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+const TAU=Math.PI*2;
+
+const palette=["#f9bb68","#ed796b","#58d1c0","#83d7e8","#f0d77a","#c996e9","#ff9e9b"];
+const fish=[];
+for(let s=0;s<5;s++){
+  let dir=s%2? -1:1, lane=.27+s*.105;
+  for(let i=0;i<7;i++) fish.push({
+    school:s, phase:rnd(), yphase:rnd()*TAU, speed:(.018+rnd()*.014)*dir,
+    y:lane+(rnd()-.5)*.065, size:7+rnd()*8, color:palette[(s+i)%palette.length],
+    wob:rnd()*.8+0.35, tilt:rnd(), alpha:.72+rnd()*.25
+  });
+}
+for(let i=0;i<12;i++) fish.push({
+  school:-1, phase:rnd(), y:.16+rnd()*.57, yphase:rnd()*TAU,
+  speed:(.012+rnd()*.026)*(rnd()>.5?1:-1), size:9+rnd()*12,
+  color:palette[Math.floor(rnd()*palette.length)], wob:.3+rnd(), tilt:rnd(), alpha:.8+rnd()*.2
+});
+
+const jellies=Array.from({length:6},(_,i)=>({
+ x:rnd(), y:.2+rnd()*.48, size:15+rnd()*17, speed:.004+rnd()*.006,
+ phase:rnd()*TAU, color:["#a6eff0","#dda9f1","#86ddeb","#f4b8db"][i%4]
+}));
+const bubbles=Array.from({length:42},()=>({
+ x:rnd(), y:rnd(), size:1.5+rnd()*4.5, speed:.012+rnd()*.026,
+ phase:rnd()*TAU, wob:.6+rnd()*1.5, alpha:.2+rnd()*.48
+}));
+const particles=Array.from({length:150},()=>({
+ x:rnd(), y:rnd(), r:.35+rnd()*1.45, drift:(rnd()-.5)*.002,
+ phase:rnd()*TAU, a:.1+rnd()*.38
+}));
+const grass=Array.from({length:30},(_,i)=>({
+ x:i/29+(rnd()-.5)*.035, h:.055+rnd()*.16, lean:(rnd()-.5)*.055,
+ blades:2+Math.floor(rnd()*4), hue:145+rnd()*45, phase:rnd()*TAU
+}));
+
+function mod(a,b){return ((a%b)+b)%b}
+function fishShape(x,y,sz,ang,col,alpha,t){
+  ctx.save();ctx.translate(x,y);ctx.rotate(ang);
+  ctx.globalAlpha=alpha;
+  ctx.shadowColor=col;ctx.shadowBlur=8;
+  ctx.fillStyle=col;
+  ctx.beginPath();
+  ctx.moveTo(-sz*.72,0);
+  ctx.lineTo(-sz*1.42,-sz*.63);
+  ctx.lineTo(-sz*1.27,0);
+  ctx.lineTo(-sz*1.42,sz*.63);
+  ctx.closePath();ctx.fill();
+  ctx.shadowBlur=0;
+  let g=ctx.createLinearGradient(-sz,0,sz,0);g.addColorStop(0,"#ffffff33");g.addColorStop(.5,col);g.addColorStop(1,"#081d40aa");
+  ctx.fillStyle=g;
+  ctx.beginPath();ctx.ellipse(0,0,sz*1.05,sz*.56,0,0,TAU);ctx.fill();
+  ctx.fillStyle="#ffffff44";
+  ctx.beginPath();ctx.moveTo(-sz*.1,-sz*.4);ctx.lineTo(sz*.2,-sz*.95);ctx.lineTo(sz*.5,-sz*.34);ctx.closePath();ctx.fill();
+  ctx.fillStyle="#102b4a";ctx.beginPath();ctx.arc(sz*.66,-sz*.13,sz*.105,0,TAU);ctx.fill();
+  ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(sz*.685,-sz*.165,sz*.035,0,TAU);ctx.fill();
+  ctx.restore();
+}
+function drawJelly(j,t){
+  let x=mod((j.x+j.speed*t*.001)*W-35,W+70)-35;
+  let y=(j.y*H)+Math.sin(t*.00035+j.phase)*18;
+  let s=j.size*(.92+Math.sin(t*.001+j.phase)*.06);
+  ctx.save();ctx.translate(x,y);ctx.globalAlpha=.7;ctx.shadowColor=j.color;ctx.shadowBlur=18;
+  let grad=ctx.createLinearGradient(0,-s,0,s);grad.addColorStop(0,j.color+"dd");grad.addColorStop(1,j.color+"16");
+  ctx.fillStyle=grad;ctx.beginPath();ctx.arc(0,0,s,.95*Math.PI,2.05*Math.PI);ctx.quadraticCurveTo(s*.8,s*.45,0,s*.3);ctx.quadraticCurveTo(-s*.8,s*.45,-s,s*.0);ctx.fill();
+  ctx.shadowBlur=0;ctx.strokeStyle=j.color+"99";ctx.lineWidth=2;
+  for(let k=-2;k<=2;k++){ctx.beginPath();ctx.moveTo(k*s*.3,s*.1);ctx.bezierCurveTo(k*s*.4,s*.8,k*s*.1,s*1.1,k*s*.4,s*1.55);ctx.stroke()}
+  ctx.restore();
+}
+function drawSeaweed(t){
+  let ground=H*.91;
+  for(const g of grass){
+    let x=g.x*W;
+    for(let b=0;b<g.blades;b++){
+      let bx=x+(b-(g.blades-1)/2)*5, hh=g.h*H*(.7+rnd()*0.3);
+      let sway=g.lean*W*Math.sin(t*.0007+g.phase+b*.9);
+      ctx.beginPath();ctx.moveTo(bx,ground+8);
+      ctx.bezierCurveTo(bx-10+sway*.2,ground-hh*.35,bx+12+sway*.5,ground-hh*.7,bx+sway,ground-hh);
+      ctx.strokeStyle=`hsla(${g.hue},52%,35%,.9)`;ctx.lineWidth=3+b*.35;ctx.lineCap="round";ctx.stroke();
+      ctx.beginPath();ctx.moveTo(bx+2,ground+5);ctx.bezierCurveTo(bx-5,ground-hh*.4,bx+9,ground-hh*.65,bx+sway,ground-hh);
+      ctx.strokeStyle=`hsla(${g.hue+12},65%,48%,.48)`;ctx.lineWidth=1.1;ctx.stroke();
+    }
+  }
+}
+function render(ms){
+  let t=ms, sec=t/1000;
+  let bg=ctx.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,"#0b6685");bg.addColorStop(.3,"#075071");bg.addColorStop(.72,"#063654");bg.addColorStop(1,"#031b34");
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+
+  ctx.save();ctx.globalCompositeOperation="screen";
+  for(let i=0;i<9;i++){
+    let top=(i+.5)/9*W+Math.sin(sec*.16+i)*W*.035;
+    let spread=W*.09+Math.sin(sec*.3+i)*W*.025;
+    ctx.fillStyle=`rgba(120,224,226,${.035+.018*Math.sin(sec*.5+i)})`;
+    ctx.beginPath();ctx.moveTo(top-18,0);ctx.lineTo(top+18,0);ctx.lineTo(top+spread,H*.76);ctx.lineTo(top-spread,H*.76);ctx.closePath();ctx.fill();
+  }
+  ctx.restore();
+  ctx.globalAlpha=.12;
+  for(let i=0;i<6;i++){
+    let yy=H*(.08+i*.13)+Math.sin(sec*.7+i)*10;
+    ctx.fillStyle="#9be9e0";ctx.fillRect(0,yy,W,1.5);
+  }
+  ctx.globalAlpha=1;
+
+  for(const p of particles){
+    let x=mod(p.x*W+p.drift*W*t*.06,W), y=mod(p.y*H+Math.sin(sec*.25+p.phase)*4,H*.88);
+    ctx.fillStyle=`rgba(181,235,226,${p.a})`;ctx.beginPath();ctx.arc(x,y,p.r,0,TAU);ctx.fill();
+  }
+
+  // distant silhouettes
+  ctx.fillStyle="rgba(4,35,52,.34)";
+  for(let i=0;i<16;i++){let x=i*W/15+Math.sin(i)*18;ctx.beginPath();ctx.arc(x,H*.79,18,Math.PI,TAU);ctx.fill()}
+
+  for(const j of jellies) drawJelly(j,t);
+
+  for(const f of fish){
+    let x=mod((f.phase+f.speed*sec)*W,W+90)-45;
+    let lane=f.school>=0 ? f.y+Math.sin(sec*(.7+f.wob*.18)+f.yphase)*.018+Math.sin(sec*.32+f.phase*8)*.012 :
+      f.y+Math.sin(sec*(.65+f.wob*.23)+f.yphase)*.035;
+    let y=lane*H;
+    let dx=f.speed*W, dy=Math.cos(sec*(.65+f.wob*.18)+f.yphase)*.02*H;
+    let ang=Math.atan2(dy,dx);
+    fishShape(x,y,f.size,ang,f.color,f.alpha,t);
+  }
+
+  // sea floor
+  let floor=ctx.createLinearGradient(0,H*.86,0,H);
+  floor.addColorStop(0,"#123f4d");floor.addColorStop(1,"#061b2e");
+  ctx.fillStyle=floor;ctx.beginPath();ctx.moveTo(0,H*.9);
+  for(let x=0;x<=W;x+=24)ctx.lineTo(x,H*.9+Math.sin(x*.018)*7+Math.sin(x*.047)*3);
+  ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();
+  ctx.fillStyle="rgba(163,177,125,.22)";
+  for(let i=0;i<55;i++){let x=(i*97)%W,y=H*.93+(i%7)*7;ctx.beginPath();ctx.ellipse(x,y,2+(i%4),1,0,0,TAU);ctx.fill()}
+  drawSeaweed(t);
+
+  for(const b of bubbles){
+    let y=mod((b.y-b.speed*sec),1.08)*H;
+    let x=mod(b.x*W+Math.sin(sec*.9+b.phase)*b.wob*8,W);
+    ctx.globalAlpha=b.alpha*(.65+.35*Math.sin(sec+b.phase));
+    ctx.strokeStyle="#b9f5f1";ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(x,y,b.size,0,TAU);ctx.stroke();
+    if(b.size>4){ctx.fillStyle="#d5fffa55";ctx.beginPath();ctx.arc(x-b.size*.3,y-b.size*.35,b.size*.2,0,TAU);ctx.fill()}
+  }
+  ctx.globalAlpha=1;
+  requestAnimationFrame(render);
+}
+requestAnimationFrame(render);
+</script>
+</body>
+</html>

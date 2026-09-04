@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Night Grid</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#071018}
+  canvas{display:block;width:100vw;height:100vh}
+  .hud{
+    position:fixed;left:24px;top:20px;color:#b8d6df;
+    font:600 11px/1.4 Arial,sans-serif;letter-spacing:2.5px;
+    text-transform:uppercase;pointer-events:none;text-shadow:0 0 12px #49d8e2;
+  }
+  .hud b{display:block;color:#e7fbff;font-size:18px;letter-spacing:5px}
+  .status{margin-top:7px;color:#70aeb9;font-size:9px;letter-spacing:1.8px}
+  .pulse{display:inline-block;width:6px;height:6px;border-radius:50%;background:#62f1c8;box-shadow:0 0 9px #62f1c8;margin-right:7px}
+</style>
+</head>
+<body>
+<canvas id="city"></canvas>
+<div class="hud"><b>NIGHT GRID</b><div class="status"><i class="pulse"></i>AUTONOMOUS TRAFFIC NETWORK · LIVE</div></div>
+<script>
+const canvas=document.getElementById("city"), ctx=canvas.getContext("2d");
+let W,H,DPR,roadsX=[],roadsY=[],buildings=[],cars=[],walkers=[];
+const TAU=Math.PI*2;
+function rnd(n){let x=Math.sin(n*91.731)*43758.5453;return x-Math.floor(x)}
+function setup(){
+  DPR=Math.min(2,devicePixelRatio||1); W=innerWidth; H=innerHeight;
+  canvas.width=W*DPR; canvas.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
+  roadsX=[W*.18,W*.39,W*.62,W*.83]; roadsY=[H*.22,H*.49,H*.76];
+  buildings=[];
+  for(let ix=0;ix<roadsX.length-1;ix++) for(let iy=0;iy<roadsY.length-1;iy++){
+    let x0=roadsX[ix]+43,y0=roadsY[iy]+43,x1=roadsX[ix+1]-43,y1=roadsY[iy+1]-43;
+    let cols=ix%2?2:3, rows=iy%2?2:3;
+    for(let a=0;a<cols;a++)for(let b=0;b<rows;b++){
+      let gap=10, bw=(x1-x0-gap*(cols-1))/cols, bh=(y1-y0-gap*(rows-1))/rows;
+      buildings.push({x:x0+a*(bw+gap),y:y0+b*(bh+gap),w:bw,h:bh,
+        seed:ix*71+iy*113+a*17+b*29, height:18+rnd(ix*20+iy*9+a+b)*35});
+    }
+  }
+  cars=[];
+  for(let i=0;i<38;i++){
+    let horizontal=i%2===0, lane=(i%4<2?-1:1), road=horizontal?Math.floor(rnd(i+4)*roadsY.length):Math.floor(rnd(i+8)*roadsX.length);
+    cars.push({horizontal,lane,road,p:(rnd(i+30)*1000),speed:34+rnd(i+9)*30,kind:i%6,phase:rnd(i+90)*TAU});
+  }
+  walkers=[];
+  for(let i=0;i<15;i++) walkers.push({ix:1+(i%2),iy:i%3,side:i%2,phase:rnd(i+200),speed:.07+rnd(i)*.025});
+}
+addEventListener("resize",setup); setup();
+
+function traffic(ix,iy,t){
+  let cycle=10, q=((t+ix*.7+iy*.45)%cycle);
+  return q<5.2 ? "h" : "v";
+}
+function roadSurface(){
+  ctx.fillStyle="#0a151d";ctx.fillRect(0,0,W,H);
+  // subtle city ground tiles
+  for(let y=0;y<H;y+=34){ctx.strokeStyle="rgba(49,104,112,.06)";ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+  for(let x=0;x<W;x+=34){ctx.strokeStyle="rgba(49,104,112,.045)";ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+  for(let x of roadsX){
+    ctx.fillStyle="#15232b";ctx.fillRect(x-44,0,88,H);
+    ctx.fillStyle="#1b3038";ctx.fillRect(x-39,0,78,H);
+    ctx.fillStyle="rgba(77,166,168,.12)";ctx.fillRect(x-39,0,2,H);ctx.fillRect(x+37,0,2,H);
+  }
+  for(let y of roadsY){
+    ctx.fillStyle="#15232b";ctx.fillRect(0,y-44,W,88);
+    ctx.fillStyle="#1b3038";ctx.fillRect(0,y-39,W,78);
+    ctx.fillStyle="rgba(77,166,168,.12)";ctx.fillRect(0,y-39,W,2);ctx.fillRect(0,y+37,W,2);
+  }
+  // lane dashes
+  ctx.setLineDash([18,20]);ctx.lineWidth=1;
+  ctx.strokeStyle="rgba(148,201,192,.27)";
+  for(let x of roadsX){ctx.beginPath();ctx.moveTo(x-18,0);ctx.lineTo(x-18,H);ctx.stroke();ctx.beginPath();ctx.moveTo(x+18,0);ctx.lineTo(x+18,H);ctx.stroke()}
+  for(let y of roadsY){ctx.beginPath();ctx.moveTo(0,y-18);ctx.lineTo(W,y-18);ctx.stroke();ctx.beginPath();ctx.moveTo(0,y+18);ctx.lineTo(W,y+18);ctx.stroke()}
+  ctx.setLineDash([]);
+}
+function drawBuildings(t){
+  for(let b of buildings){
+    ctx.fillStyle="rgba(0,0,0,.35)";ctx.fillRect(b.x+7,b.y+9,b.w,b.h);
+    let g=ctx.createLinearGradient(b.x,b.y,b.x,b.y+b.h);
+    g.addColorStop(0,"#243945");g.addColorStop(1,"#172731");ctx.fillStyle=g;
+    ctx.fillRect(b.x,b.y,b.w,b.h);
+    ctx.strokeStyle="rgba(107,191,190,.27)";ctx.strokeRect(b.x+.5,b.y+.5,b.w-1,b.h-1);
+    ctx.fillStyle="rgba(125,207,205,.16)";ctx.fillRect(b.x+4,b.y+4,b.w-8,2);
+    let cols=Math.max(2,Math.floor(b.w/16)), rows=Math.max(2,Math.floor(b.h/16));
+    for(let i=0;i<cols;i++)for(let j=0;j<rows;j++){
+      let flick=Math.sin(t*.65+b.seed+i*4.1+j*8.8);
+      if(flick>.12){
+        let warm=(b.seed+i+j)%5===0;
+        ctx.fillStyle=warm?`rgba(255,193,102,${.22+flick*.2})`:`rgba(91,213,223,${.14+flick*.15})`;
+        ctx.fillRect(b.x+8+i*(b.w-15)/cols,b.y+10+j*(b.h-17)/rows,4,3);
+      }
+    }
+    // rooftop machinery
+    ctx.fillStyle="rgba(8,18,25,.7)";ctx.fillRect(b.x+b.w*.58,b.y+b.h*.2,Math.min(15,b.w*.2),10);
+    ctx.strokeStyle="rgba(123,190,192,.2)";ctx.strokeRect(b.x+b.w*.58,b.y+b.h*.2,Math.min(15,b.w*.2),10);
+  }
+}
+function crosswalks(t){
+  for(let ix=0;ix<roadsX.length;ix++)for(let iy=0;iy<roadsY.length;iy++){
+    let x=roadsX[ix],y=roadsY[iy], go=traffic(ix,iy,t);
+    ctx.fillStyle="rgba(165,219,211,.5)";
+    for(let k=-3;k<=3;k++){
+      if(go==="h")ctx.fillRect(x-39,y-34+k*9,78,4);
+      else ctx.fillRect(x-34+k*9,y-39,4,78);
+    }
+    // traffic signal poles
+    let glow=go==="h"?"#56e6b1":"#ff5767";
+    ctx.shadowBlur=10;ctx.shadowColor=glow;ctx.fillStyle=glow;
+    ctx.beginPath();ctx.arc(x-48,y-48,3,0,TAU);ctx.fill();
+    ctx.shadowBlur=0;ctx.fillStyle="#263a40";ctx.fillRect(x-51,y-61,6,10);
+    ctx.fillStyle=go==="h"?"#65f2c0":"#ef4d65";ctx.fillRect(x-50,y-60,4,4);
+    ctx.fillStyle=go==="v"?"#65f2c0":"#ef4d65";ctx.fillRect(x-50,y-55,4,4);
+  }
+}
+function blocked(c,t){
+  let speed=c.speed, pos=c.p%1000;
+  if(c.horizontal){
+    let y=roadsY[c.road]+c.lane*18;
+    for(let ix=0;ix<roadsX.length;ix++){
+      let d=c.lane>0?roadsX[ix]-pos:pos-roadsX[ix];
+      if(d>0&&d<30&&traffic(ix,c.road,t)!=="h") return 0;
+    }
+  }else{
+    let x=roadsX[c.road]+c.lane*18;
+    for(let iy=0;iy<roadsY.length;iy++){
+      let d=c.lane>0?roadsY[iy]-pos:pos-roadsY[iy];
+      if(d>0&&d<30&&traffic(c.road,iy,t)!=="v") return 0;
+    }
+  }
+  return speed;
+}
+function drawCars(t,dt){
+  let density=.55+.38*(.5+.5*Math.sin(t*.13-1));
+  cars.forEach((c,n)=>{
+    c.p+=(blocked(c,t)*dt*(c.lane>0?1:-1));
+    if(c.p>Math.max(W,H)+100)c.p=-100;
+    if(c.p<-100)c.p=Math.max(W,H)+100;
+    let alpha=Math.max(.12, density + Math.sin(c.phase+t*.35)*.18);
+    if(c.horizontal){
+      let x=c.p,y=roadsY[c.road]+c.lane*18, ang=c.lane>0?0:Math.PI;
+      carShape(x,y,ang,alpha,c.kind);
+    }else{
+      let x=roadsX[c.road]+c.lane*18,y=c.p,ang=c.lane>0?Math.PI/2:-Math.PI/2;
+      carShape(x,y,ang,alpha,c.kind);
+    }
+  });
+}
+function carShape(x,y,a,alpha,k){
+  ctx.save();ctx.translate(x,y);ctx.rotate(a);ctx.globalAlpha=alpha;
+  ctx.shadowBlur=10;ctx.shadowColor=k%3===0?"#ff8d55":"#63ddea";
+  ctx.fillStyle=k%3===0?"#d65f4e":k%3===1?"#42a7bd":"#758d9a";
+  ctx.beginPath();ctx.roundRect(-12,-5,24,10,3);ctx.fill();ctx.shadowBlur=0;
+  ctx.fillStyle="rgba(12,30,38,.75)";ctx.fillRect(-3,-4,8,8);
+  ctx.fillStyle="#dffff3";ctx.fillRect(8,-3,3,2);ctx.fillRect(8,1,3,2);
+  ctx.fillStyle="#fb5c58";ctx.fillRect(-11,-3,2,2);ctx.fillRect(-11,1,2,2);
+  ctx.restore();
+}
+function drawWalkers(t){
+  walkers.forEach((p,i)=>{
+    let x=roadsX[p.ix],y=roadsY[p.iy], phase=(t*p.speed+p.phase)%1;
+    let active=Math.sin(t*.55+i)>-.3;
+    if(!active)return;
+    let px,py;
+    if(p.side===0){px=x-28+phase*56;py=y-31}
+    else {px=x+31;py=y-28+phase*56}
+    ctx.fillStyle="#f0c58c";ctx.shadowBlur=7;ctx.shadowColor="#ffc878";
+    ctx.beginPath();ctx.arc(px,py,2.5,0,TAU);ctx.fill();ctx.shadowBlur=0;
+    ctx.strokeStyle="rgba(237,196,139,.65)";ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(px,py+3);ctx.lineTo(px,py+7);ctx.stroke();
+  });
+}
+let last=performance.now();
+function frame(now){
+  let dt=Math.min(.04,(now-last)/1000);last=now;let t=now/1000;
+  ctx.clearRect(0,0,W,H);
+  roadSurface();drawBuildings(t);crosswalks(t);drawWalkers(t);drawCars(t,dt);
+  // atmospheric vignette
+  let v=ctx.createRadialGradient(W*.5,H*.45,Math.min(W,H)*.2,W*.5,H*.5,Math.max(W,H)*.75);
+  v.addColorStop(0,"rgba(9,24,31,0)");v.addColorStop(1,"rgba(2,7,13,.55)");
+  ctx.fillStyle=v;ctx.fillRect(0,0,W,H);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

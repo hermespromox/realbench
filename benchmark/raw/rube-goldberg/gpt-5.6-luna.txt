@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rube Goldberg Machine</title>
+<style>
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101824}
+  svg{display:block;width:100vw;height:100vh;font-family:Arial,Helvetica,sans-serif}
+  .metal{fill:url(#metal);stroke:#263442;stroke-width:3}
+  .wood{fill:url(#wood);stroke:#492f22;stroke-width:4}
+  .gold{fill:url(#gold);stroke:#684a13;stroke-width:3}
+  .ink{stroke:#172431;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+  .thin{stroke:#506475;stroke-width:2;fill:none}
+  .label{font-weight:bold;letter-spacing:2px;fill:#dce9ee;font-size:13px}
+  .small{font-size:11px;letter-spacing:1.5px;fill:#8ca4af}
+  .glow{filter:url(#glow)}
+  .ballA{animation:ballA 16s linear infinite;transform-box:fill-box;transform-origin:center}
+  .ballB{animation:ballB 16s linear infinite;transform-box:fill-box;transform-origin:center}
+  .wheel{animation:wheel 16s linear infinite;transform-box:fill-box;transform-origin:center}
+  .lever{animation:lever 16s linear infinite;transform-box:fill-box;transform-origin:650px 470px}
+  .gate{animation:gate 16s linear infinite;transform-box:fill-box;transform-origin:730px 410px}
+  .catapult{animation:catapult 16s linear infinite;transform-box:fill-box;transform-origin:880px 480px}
+  .payload{animation:payload 16s linear infinite;transform-box:fill-box;transform-origin:center}
+  .clapper{animation:clapper 16s linear infinite;transform-box:fill-box;transform-origin:1080px 285px}
+  .ring{animation:ring 16s linear infinite;opacity:0}
+  .spark{animation:spark 16s linear infinite;opacity:0}
+  @keyframes ballA{
+    0%,2%{transform:translate(0,0) rotate(0)}
+    18%{transform:translate(115px,112px) rotate(540deg)}
+    28%{transform:translate(205px,202px) rotate(1080deg)}
+    34%{transform:translate(247px,244px) rotate(1370deg)}
+    39%,100%{transform:translate(247px,244px) rotate(1430deg)}
+  }
+  @keyframes ballB{
+    0%,39%{transform:translate(0,0)}
+    43%{transform:translate(22px,22px)}
+    50%{transform:translate(58px,67px)}
+    57%{transform:translate(100px,72px)}
+    61%,100%{transform:translate(100px,72px)}
+  }
+  @keyframes wheel{
+    0%,47%{transform:rotate(0)}
+    64%{transform:rotate(720deg)}
+    68%,100%{transform:rotate(800deg)}
+  }
+  @keyframes lever{
+    0%,35%{transform:rotate(0)}
+    40%{transform:rotate(-25deg)}
+    47%,100%{transform:rotate(-25deg)}
+  }
+  @keyframes gate{
+    0%,39%{transform:rotate(0)}
+    43%{transform:rotate(72deg)}
+    48%,100%{transform:rotate(72deg)}
+  }
+  @keyframes catapult{
+    0%,55%{transform:rotate(0)}
+    61%{transform:rotate(-48deg)}
+    65%,100%{transform:rotate(-48deg)}
+  }
+  @keyframes payload{
+    0%,61%{transform:translate(0,0) rotate(0);opacity:1}
+    66%{transform:translate(62px,-105px) rotate(160deg)}
+    72%{transform:translate(145px,-178px) rotate(360deg)}
+    78%{transform:translate(225px,-205px) rotate(600deg)}
+    83%{transform:translate(285px,-170px) rotate(790deg);opacity:1}
+    86%,100%{transform:translate(285px,-170px) rotate(820deg);opacity:0}
+  }
+  @keyframes clapper{
+    0%,76%{transform:rotate(0)}
+    78%{transform:rotate(-16deg)}
+    80%{transform:rotate(16deg)}
+    82%{transform:rotate(-12deg)}
+    84%{transform:rotate(9deg)}
+    88%,100%{transform:rotate(0)}
+  }
+  @keyframes ring{
+    0%,76%{opacity:0;transform:scale(.7)}
+    79%,86%{opacity:1;transform:scale(1)}
+    94%,100%{opacity:0;transform:scale(1.3)}
+  }
+  @keyframes spark{
+    0%,57%{opacity:0;transform:scale(.2)}
+    61%,68%{opacity:1;transform:scale(1)}
+    72%,100%{opacity:0;transform:scale(.2)}
+  }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice">
+<defs>
+  <linearGradient id="bg" x2="0" y2="1"><stop stop-color="#182837"/><stop offset="1" stop-color="#0b121c"/></linearGradient>
+  <linearGradient id="wood" x2="0" y2="1"><stop stop-color="#bd7844"/><stop offset="1" stop-color="#704027"/></linearGradient>
+  <linearGradient id="metal" x2="0" y2="1"><stop stop-color="#d9e4e5"/><stop offset=".45" stop-color="#738894"/><stop offset="1" stop-color="#344754"/></linearGradient>
+  <linearGradient id="gold" x2="0" y2="1"><stop stop-color="#ffe687"/><stop offset=".5" stop-color="#d69d25"/><stop offset="1" stop-color="#835318"/></linearGradient>
+  <pattern id="grid" width="44" height="44" patternUnits="userSpaceOnUse"><path d="M44 0H0V44" fill="none" stroke="#314351" stroke-width="1" opacity=".3"/></pattern>
+  <filter id="shadow"><feGaussianBlur stdDeviation="7"/></filter>
+  <filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+
+<rect width="1280" height="720" fill="url(#bg)"/>
+<rect width="1280" height="720" fill="url(#grid)"/>
+<path d="M0 595H1280" stroke="#071019" stroke-width="28"/>
+<path d="M0 582H1280" stroke="#405563" stroke-width="3"/>
+<text x="54" y="62" class="label" font-size="20">AUTOMATIC MOTION LABORATORY</text>
+<text x="55" y="84" class="small">RUBE GOLDBERG MACHINE · SEQUENCE 07</text>
+<circle cx="1170" cy="61" r="8" fill="#36e0a0" class="glow"/>
+<text x="1188" y="66" class="small">RUNNING</text>
+
+<!-- Ramp -->
+<path d="M75 182 L292 390 L355 390" fill="none" stroke="#111b24" stroke-width="31" stroke-linecap="round"/>
+<path d="M75 182 L292 390 L355 390" fill="none" stroke="#c28a55" stroke-width="22" stroke-linecap="round"/>
+<path d="M75 182 L292 390 L355 390" fill="none" stroke="#edc17d" stroke-width="3" stroke-dasharray="12 8"/>
+<path d="M96 198L68 236M130 230L102 268M165 263L137 300M202 298L174 334M239 333L211 369" class="ink" opacity=".45"/>
+<text x="74" y="140" class="label">01 · RELEASE</text>
+<text x="75" y="157" class="small">GRAVITY RAMP</text>
+<path d="M270 390v70M350 390v70" class="ink"/>
+<path d="M258 461h105" class="ink"/>
+
+<!-- first ball -->
+<g class="ballA">
+  <circle cx="75" cy="182" r="16" fill="#eb5d4d" stroke="#441f25" stroke-width="4"/>
+  <path d="M65 174q10 7 20 0" fill="none" stroke="#ffb273" stroke-width="3"/>
+  <circle cx="70" cy="177" r="3" fill="#fff3c4"/>
+</g>
+
+<!-- domino platform -->
+<rect x="335" y="489" width="285" height="16" rx="7" class="wood"/>
+<path d="M350 505v62M600 505v62" class="ink"/>
+<g fill="#e4574f" stroke="#421d2a" stroke-width="3">
+  <g><rect x="360" y="443" width="17" height="46" rx="3"/><circle cx="368" cy="454" r="2" fill="#ffd77d"/></g>
+  <g><rect x="389" y="443" width="17" height="46" rx="3"/><circle cx="397" cy="454" r="2" fill="#ffd77d"/></g>
+  <g><rect x="418" y="443" width="17" height="46" rx="3"/><circle cx="426" cy="454" r="2" fill="#ffd77d"/></g>
+  <g><rect x="447" y="443" width="17" height="46" rx="3"/><circle cx="455" cy="454" r="2" fill="#ffd77d"/></g>
+  <g><rect x="476" y="443" width="17" height="46" rx="3"/><circle cx="484" cy="454" r="2" fill="#ffd77d"/></g>
+  <g><rect x="505" y="443" width="17" height="46" rx="3"/><circle cx="513" cy="454" r="2" fill="#ffd77d"/></g>
+  <g><rect x="534" y="443" width="17" height="46" rx="3"/><circle cx="542" cy="454" r="2" fill="#ffd77d"/></g>
+  <g><rect x="563" y="443" width="17" height="46" rx="3"/><circle cx="571" cy="454" r="2" fill="#ffd77d"/></g>
+</g>
+<!-- animated domino overlays, rotating around bottoms -->
+<g fill="#e4574f" stroke="#421d2a" stroke-width="3">
+ <rect x="360" y="443" width="17" height="46" rx="3"><animateTransform attributeName="transform" type="rotate" values="0 368 489;0 368 489;-72 368 489;-72 368 489;0 368 489" keyTimes="0;.22;.24;.58;1" dur="16s" repeatCount="indefinite"/></rect>
+ <rect x="389" y="443" width="17" height="46" rx="3"><animateTransform attributeName="transform" type="rotate" values="0 397 489;0 397 489;-72 397 489;-72 397 489;0 397 489" keyTimes="0;.235;.255;.59;1" dur="16s" repeatCount="indefinite"/></rect>
+ <rect x="418" y="443" width="17" height="46" rx="3"><animateTransform attributeName="transform" type="rotate" values="0 426 489;0 426 489;-72 426 489;-72 426 489;0 426 489" keyTimes="0;.25;.27;.60;1" dur="16s" repeatCount="indefinite"/></rect>
+ <rect x="447" y="443" width="17" height="46" rx="3"><animateTransform attributeName="transform" type="rotate" values="0 455 489;0 455 489;-72 455 489;-72 455 489;0 455 489" keyTimes="0;.265;.285;.61;1" dur="16s" repeatCount="indefinite"/></rect>
+ <rect x="476" y="443" width="17" height="46" rx="3"><animateTransform attributeName="transform" type="rotate" values="0 484 489;0 484 489;-72 484 489;-72 484 489;0 484 489" keyTimes="0;.28;.30;.62;1" dur="16s" repeatCount="indefinite"/></rect>
+ <rect x="505" y="443" width="17" height="46" rx="3"><animateTransform attributeName="transform" type="rotate" values="0 513 489;0 513 489;-72 513 489;-72 513 489;0 513 489" keyTimes="0;.295;.315;.63;1" dur="16s" repeatCount="indefinite"/></rect>
+ <rect x="534" y="443" width="17" height="46" rx="3"><animateTransform attributeName="transform" type="rotate" values="0 542 489;0 542 489;-72 542 489;-72 542 489;0 542 489" keyTimes="0;.31;.33;.64;1" dur="16s" repeatCount="indefinite"/></rect>
+ <rect x="563" y="443" width="17" height="46" rx="3"><animateTransform attributeName="transform" type="rotate" values="0 571 489;0 571 489;-72 571 489;-72 571 489;0 571 489" keyTimes="0;.325;.345;.65;1" dur="16s" repeatCount="indefinite"/></rect>
+</g>
+<text x="362" y="538" class="label">02 · DOMINO CASCADE</text>
+
+<!-- lever and release ball -->
+<path d="M650 470v95M625 565h50" class="ink"/>
+<circle cx="650" cy="470" r="13" fill="#f0bd47" stroke="#4a341d" stroke-width="4"/>
+<g class="lever">
+ <rect x="578" y="458" width="145" height="18" rx="9" class="gold"/>
+ <circle cx="585" cy="467" r="8" fill="#ed5d4d"/>
+</g>
+<path d="M730 408v65" class="ink"/>
+<g class="gate"><rect x="716" y="401" width="28" height="10" rx="4" class="gold"/></g>
+<circle cx="730" cy="385" r="16" fill="#4bc4e4" stroke="#123b50" stroke-width="4" class="ballB"/>
+<text x="605" y="535" class="label">03 · TRIP LEVER</text>
+
+<!-- chute to wheel -->
+<path d="M730 455 Q760 510 808 486 Q833 474 848 451" fill="none" stroke="#17222c" stroke-width="27"/>
+<path d="M730 455 Q760 510 808 486 Q833 474 848 451" fill="none" stroke="#8babb0" stroke-width="17"/>
+<path d="M730 455 Q760 510 808 486 Q833 474 848 451" fill="none" stroke="#d7ece4" stroke-width="2" stroke-dasharray="8 8"/>
+
+<!-- wheel -->
+<circle cx="850" cy="450" r="79" fill="#101a22" opacity=".6"/>
+<g class="wheel">
+ <circle cx="850" cy="450" r="65" fill="none" stroke="#d3a83c" stroke-width="12"/>
+ <circle cx="850" cy="450" r="13" class="gold"/>
+ <path d="M850 385v52M915 450h-52M850 515v-52M785 450h52" stroke="#e6c45b" stroke-width="9"/>
+ <path d="M804 404l37 37M896 404l-37 37M896 496l-37-37M804 496l37-37" stroke="#718995" stroke-width="6"/>
+</g>
+<text x="795" y="555" class="label">04 · FLYWHEEL</text>
+
+<!-- sparks / crank -->
+<g class="spark glow" stroke="#ffd968" stroke-width="4">
+ <path d="M918 407l16 -15M927 425l22 -5M922 390l5 -20"/>
+</g>
+<path d="M850 450L880 480" stroke="#ddbd4e" stroke-width="8"/>
+<circle cx="880" cy="480" r="10" fill="#e85e45"/>
+
+<!-- catapult -->
+<path d="M840 570h95M853 570l27-90M922 570l-42-90" class="ink"/>
+<g class="catapult">
+ <path d="M875 480L890 416" stroke="#c68147" stroke-width="14" stroke-linecap="round"/>
+ <path d="M875 480L890 416" stroke="#edc27d" stroke-width="4" stroke-linecap="round"/>
+ <path d="M880 414h34q8 0 8 8v8h-42z" class="wood"/>
+</g>
+<g class="payload">
+ <rect x="894" y="392" width="25" height="25" rx="5" fill="#e95c4d" stroke="#501e25" stroke-width="4"/>
+ <path d="M900 399l13 11M913 399l-13 11" stroke="#ffd27b" stroke-width="3"/>
+</g>
+<text x="858" y="610" class="label">05 · LAUNCH</text>
+
+<!-- flight arc -->
+<path d="M900 405 Q1010 205 1090 280" fill="none" stroke="#76909a" stroke-width="2" stroke-dasharray="7 9" opacity=".6"/>
+<circle cx="988" cy="257" r="4" fill="#e8c859"/><circle cx="1035" cy="230" r="4" fill="#e8c859"/>
+
+<!-- bell -->
+<path d="M1050 285 Q1080 255 1110 285L1122 365H1038z" class="gold"/>
+<path d="M1035 365h90" stroke="#e4c45e" stroke-width="13" stroke-linecap="round"/>
+<path d="M1058 277q22-28 44 0" fill="none" stroke="#dcb447" stroke-width="9"/>
+<path d="M1080 277v-23" class="ink"/>
+<g class="clapper"><circle cx="1080" cy="375" r="13" fill="#a66d20" stroke="#503618" stroke-width="3"/></g>
+<g class="ring" fill="none" stroke="#ffd75c" stroke-width="4">
+ <path d="M1022 280q-25 22-5 52"/><path d="M1138 280q25 22 5 52"/>
+</g>
+<text x="1040" y="410" class="label">06 · RING!</text>
+<text x="1044" y="428" class="small">CHAIN COMPLETE</text>
+
+<!-- bolts and supports -->
+<g fill="#d3e0df">
+ <circle cx="50" cy="582" r="5"/><circle cx="280" cy="582" r="5"/><circle cx="650" cy="582" r="5"/>
+ <circle cx="850" cy="582" r="5"/><circle cx="1080" cy="582" r="5"/>
+</g>
+<g stroke="#293c49" stroke-width="3" opacity=".8">
+ <path d="M30 630h120M220 630h150M470 630h170M700 630h150M930 630h180"/>
+</g>
+<text x="53" y="680" class="small">POWER SOURCE: GRAVITY</text>
+<text x="1050" y="680" class="small">LOOP 16.0 SEC</text>
+</svg>
+</body>
+</html>

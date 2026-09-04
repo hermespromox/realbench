@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Metropolis Transit Grid - Autonomous Traffic Simulation</title>
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+  }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #0b0f17;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Courier New", monospace;
+  }
+  #cityCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    z-index: 1;
+  }
+  /* Modern High-Tech HUD Overlay */
+  .hud {
+    position: absolute;
+    z-index: 10;
+    pointer-events: none;
+    color: #94a3b8;
+    font-size: 11px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+  }
+  .hud-top-left {
+    top: 18px;
+    left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: rgba(11, 17, 28, 0.75);
+    padding: 10px 14px;
+    border-radius: 6px;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  }
+  .hud-title {
+    font-weight: 700;
+    color: #38bdf8;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: #10b981;
+    box-shadow: 0 0 8px #10b981;
+    animation: pulse 1.8s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+  }
+  .hud-stat {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    color: #cbd5e1;
+  }
+  .hud-stat span.val {
+    color: #38bdf8;
+    font-family: monospace;
+    font-weight: 600;
+  }
+  .hud-top-right {
+    top: 18px;
+    right: 20px;
+    background: rgba(11, 17, 28, 0.75);
+    padding: 10px 14px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(8px);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 170px;
+  }
+  .density-bar-container {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 3px;
+  }
+  .density-bar {
+    height: 100%;
+    width: 65%;
+    background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444);
+    border-radius: 3px;
+    transition: width 0.5s ease;
+  }
+  .hud-bottom-left {
+    bottom: 18px;
+    left: 20px;
+    color: #64748b;
+    font-size: 10px;
+    letter-spacing: 1px;
+    display: flex;
+    gap: 12px;
+  }
+  .hud-bottom-right {
+    bottom: 18px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(11, 17, 28, 0.65);
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .compass-n {
+    color: #ef4444;
+    font-weight: 800;
+  }
+</style>
+</head>
+<body>
+
+<div class="hud hud-top-left">
+  <div class="hud-title">
+    <span class="status-dot"></span>
+    METROPOLIS // TRAFFIC SYS V4.2
+  </div>
+  <div class="hud-stat">FLOW RATE: <span class="val" id="hudFlow">94.8%</span></div>
+  <div class="hud-stat">ACTIVE VEHICLES: <span class="val" id="hudVehicles">0</span></div>
+  <div class="hud-stat">TRANSIT TIME: <span class="val" id="hudClock">12:00:00</span></div>
+</div>
+
+<div class="hud hud-top-right">
+  <div class="hud-stat">DENSITY WAVE: <span class="val" id="hudDensityTxt">MODERATE</span></div>
+  <div class="density-bar-container">
+    <div class="density-bar" id="hudDensityBar"></div>
+  </div>
+  <div class="hud-stat" style="margin-top: 4px; font-size: 9px; color: #64748b;">
+    SIGNALS: <span style="color:#10b981;">AUTO ADAPTIVE</span>
+  </div>
+</div>
+
+<div class="hud hud-bottom-left">
+  <span>SURVEILLANCE SECTOR: 07-DOWNTOWN</span>
+  <span>|</span>
+  <span>GRID: SYNCHRONIZED</span>
+</div>
+
+<div class="hud hud-bottom-right">
+  <span class="compass-n">▲ N</span>
+  <span style="color:#64748b;">ELEV 480M</span>
+</div>
+
+<canvas id="cityCanvas"></canvas>
+
+<script>
+(() => {
+  const canvas = document.getElementById('cityCanvas');
+  const ctx = canvas.getContext('2d');
+
+  // DOM HUD references
+  const hudVehicles = document.getElementById('hudVehicles');
+  const hudClock = document.getElementById('hudClock');
+  const hudFlow = document.getElementById('hudFlow');
+  const hudDensityBar = document.getElementById('hudDensityBar');
+  const hudDensityTxt = document.getElementById('hudDensityTxt');
+
+  let width = 0;
+  let height = 0;
+  let dpr = 1;
+
+  // Grid Configuration
+  const ROAD_WIDTH = 64;
+  const SIDEWALK_WIDTH = 9;
+  const LANE_WIDTH = (ROAD_WIDTH - SIDEWALK_WIDTH * 2) / 4; // 11.5px per lane
+  // 4 lanes:
+  // Offset from road center:
+  // Direction -1 (West/North): outer = -17.25, inner = -5.75
+  // Direction +1 (East/South): inner = +5.75, outer = +17.25
+  const LANE_OFFSETS = [-17.25, -5.75, 5.75, 17.25];
+
+  let xCoords = [];
+  let yCoords = [];
+  let intersections = [];
+  let buildings = [];
+  let vehicles = [];
+  let pedestrians = [];
+  let clouds = [];
+
+  // Traffic signal period
+  const CYCLE_TIME = 15.0; // seconds
+
+  // Density wave period
+  let globalTime = 0;
+  let simTime = 12 * 3600; // Start at 12:00:00
+
+  // Random helper with deterministic feel
+  function pseudoRandom(seed) {
+    const x = Math.sin(seed++) * 10000;
+    return x - Math.floor(x);
+  }
+
+  // Handle Resize & Recompute City Layout
+  function setupGrid() {
+    dpr = window.devicePixelRatio || 1;
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    ctx.resetTransform();
+    ctx.scale(dpr, dpr);
+
+    // Dynamic pitch targeting ~200-240px per city block
+    const targetBlockSize = 210;
+    const cols = Math.max(3, Math.round(width / targetBlockSize));
+    const rows = Math.max(2, Math.round(height / targetBlockSize));
+
+    const pitchX = width / cols;
+    const pitchY = height / rows;
+
+    xCoords = [];
+    for (let c = 0; c <= cols; c++) {
+      xCoords.push(c * pitchX);
+    }
+
+    yCoords = [];
+    for (let r = 0; r <= rows; r++) {
+      yCoords.push(r * pitchY);
+    }
+
+    // Build Intersections
+    intersections = [];
+    for (let r = 0; r < yCoords.length; r++) {
+      for (let c = 0; c < xCoords.length; c++) {
+        intersections.push({
+          c, r,
+          x: xCoords[c],
+          y: yCoords[r],
+          seed: c * 17.3 + r * 31.7
+        });
+      }
+    }
+
+    // Generate Buildings
+    buildings = [];
+    for (let r = 0; r < yCoords.length - 1; r++) {
+      for (let c = 0; c < xCoords.length - 1; c++) {
+        const bx = xCoords[c] + ROAD_WIDTH / 2;
+        const by = yCoords[r] + ROAD_WIDTH / 2;
+        const bw = (xCoords[c + 1] - ROAD_WIDTH / 2) - bx;
+        const bh = (yCoords[r + 1] - ROAD_WIDTH / 2) - by;
+
+        if (bw > 30 && bh > 30) {
+          generateBlockBuildings(bx, by, bw, bh, c, r);
+        }
+      }
+    }
+
+    // Generate Clouds
+    clouds = [];
+    for (let i = 0; i < 7; i++) {
+      clouds.push({
+        x: Math.random() * width * 1.5 - width * 0.25,
+        y: Math.random() * height * 1.5 - height * 0.25,
+        radius: 120 + Math.random() * 180,
+        vx: 8 + Math.random() * 6,
+        vy: 3 + Math.random() * 4,
+        opacity: 0.05 + Math.random() * 0.08
+      });
+    }
+
+    initVehicles();
+    initPedestrians();
+  }
+
+  // Generate varied architectural rooftops
+  function generateBlockBuildings(bx, by, bw, bh, c, r) {
+    const seed = c * 59.13 + r * 83.71;
+    const rng = pseudoRandom(seed);
+    const margin = 5;
+    const x = bx + margin;
+    const y = by + margin;
+    const w = bw - margin * 2;
+    const h = bh - margin * 2;
+
+    // Split block into 1, 2 or 4 lots
+    if (rng > 0.45 && w > 120 && h > 120) {
+      // Split into 2 sub-buildings
+      if (w > h) {
+        const split = w * (0.45 + pseudoRandom(seed + 1) * 0.1);
+        buildings.push(createBuilding(x, y, split - 3, h, seed + 2));
+        buildings.push(createBuilding(x + split + 3, y, w - split - 3, h, seed + 3));
+      } else {
+        const split = h * (0.45 + pseudoRandom(seed + 1) * 0.1);
+        buildings.push(createBuilding(x, y, w, split - 3, seed + 2));
+        buildings.push(createBuilding(x, y + split + 3, w, h - split - 3, seed + 3));
+      }
+    } else {
+      // Single large landmark skyscraper / complex
+      buildings.push(createBuilding(x, y, w, h, seed));
+    }
+  }
+
+  function createBuilding(x, y, w, h, seed) {
+    const typeRng = pseudoRandom(seed * 2.1);
+    let type = 'commercial';
+    if (typeRng < 0.25) type = 'helipad';
+    else if (typeRng < 0.5) type = 'pool_terrace';
+    else if (typeRng < 0.75) type = 'tech_solar';
+
+    // Base tone: modern dark slate, steel blue, charcoal
+    const tones = [
+      '#151b26', '#1a2230', '#18212e', '#131924', '#1f2937', '#16202c'
+    ];
+    const baseColor = tones[Math.floor(pseudoRandom(seed * 4.3) * tones.length)];
+
+    // Fans
+    const fans = [];
+    const numFans = 1 + Math.floor(pseudoRandom(seed * 7.1) * 3);
+    for (let i = 0; i < numFans; i++) {
+      fans.push({
+        rx: 15 + pseudoRandom(seed * 9.2 + i) * (w - 30),
+        ry: 15 + pseudoRandom(seed * 9.8 + i) * (h - 30),
+        radius: 4 + pseudoRandom(seed + i) * 3,
+        speed: 4 + pseudoRandom(seed + i * 2) * 5
+      });
+    }
+
+    // Solar panels array
+    const solarPanels = [];
+    if (type === 'tech_solar' && w > 45 && h > 45) {
+      const rows = Math.min(4, Math.floor(h / 14));
+      const cols = Math.min(4, Math.floor(w / 14));
+      for (let ri = 0; ri < rows; ri++) {
+        for (let ci = 0; ci < cols; ci++) {
+          solarPanels.push({
+            rx: 10 + ci * 12,
+            ry: 10 + ri * 12,
+            pw: 9,
+            ph: 8
+          });
+        }
+      }
+    }
+
+    return {
+      x, y, w, h,
+      baseColor,
+      type,
+      fans,
+      solarPanels,
+      hasBeacon: pseudoRandom(seed * 8.4) > 0.5,
+      beaconFreq: 1.2 + pseudoRandom(seed * 3.7) * 2,
+      accentColor: pseudoRandom(seed * 6.2) > 0.5 ? '#38bdf8' : '#f59e0b',
+      poolAnimOffset: pseudoRandom(seed) * 10
+    };
+  }
+
+  // Traffic Light State Machine
+  // Phase 0: NS Green, EW Red (0 to 6.2s)
+  // Phase 1: NS Yellow, EW Red (6.2 to 7.8s)
+  // Phase 2: All Red (7.8 to 8.4s)
+  // Phase 3: NS Red, EW Green (8.4 to 13.6s)
+  // Phase 4: NS Red, EW Yellow (13.6 to 14.6s)
+  // Phase 5: All Red (14.6 to 15.0s)
+  function getSignalState(inter, time) {
+    const t = (time + inter.seed) % CYCLE_TIME;
+    let ns = 'red', ew = 'red';
+    let pedsWalkNS = false; // Crosswalk across EW road is safe when NS is green
+    let pedsWalkEW = false; // Crosswalk across NS road is safe when EW is green
+
+    if (t < 6.2) {
+      ns = 'green';
+      ew = 'red';
+      pedsWalkNS = true;
+    } else if (t < 7.8) {
+      ns = 'yellow';
+      ew = 'red';
+    } else if (t < 8.4) {
+      ns = 'red';
+      ew = 'red';
+    } else if (t < 13.6) {
+      ns = 'red';
+      ew = 'green';
+      pedsWalkEW = true;
+    } else if (t < 14.6) {
+      ns = 'red';
+      ew = 'yellow';
+    } else {
+      ns = 'red';
+      ew = 'red';
+    }
+    return { ns, ew, pedsWalkNS, pedsWalkEW };
+  }
+
+  // Vehicles Management
+  function initVehicles() {
+    vehicles = [];
+    // Spawn along horizontal avenues
+    yCoords.forEach((y, rIndex) => {
+      // 4 lanes per avenue
+      for (let laneIdx = 0; laneIdx < 4; laneIdx++) {
+        const dir = (laneIdx < 2) ? -1 : 1; // Left lanes go West, Right lanes go East
+        const laneOffset = LANE_OFFSETS[laneIdx];
+        const numCars = Math.floor(width / 130) + 1;
+        for (let k = 0; k < numCars; k++) {
+          const spawnX = (k * 130 + Math.random() * 60) % (width + 200) - 100;
+          vehicles.push(createVehicle('H', y, laneIdx, dir, laneOffset, spawnX));
+        }
+      }
+    });
+
+    // Spawn along vertical avenues
+    xCoords.forEach((x, cIndex) => {
+      for (let laneIdx = 0; laneIdx < 4; laneIdx++) {
+        const dir = (laneIdx < 2) ? -1 : 1; // Left lanes go North, Right lanes go South
+        const laneOffset = LANE_OFFSETS[laneIdx];
+        const numCars = Math.floor(height / 130) + 1;
+        for (let k = 0; k < numCars; k++) {
+          const spawnY = (k * 130 + Math.random() * 60) % (height + 200) - 100;
+          vehicles.push(createVehicle('V', x, laneIdx, dir, laneOffset, spawnY));
+        }
+      }
+    });
+  }
+
+  function createVehicle(axis, roadCoord, laneIdx, dir, laneOffset, pos) {
+    const types = ['sedan', 'sedan', 'sports', 'taxi', 'delivery', 'bus', 'emergency'];
+    const weights = [0.4, 0.2, 0.15, 0.12, 0.08, 0.04, 0.01];
+    let r = Math.random();
+    let type = 'sedan';
+    let cum = 0;
+    for (let i = 0; i < types.length; i++) {
+      cum += weights[i];
+      if (r <= cum) {
+        type = types[i];
+        break;
+      }
+    }
+
+    let length = 18;
+    let vwidth = 9;
+    let maxSpeed = 75 + Math.random() * 25; // px/sec
+    let color = '#94a3b8';
+
+    if (type === 'sports') {
+      length = 17;
+      vwidth = 9.5;
+      maxSpeed = 100 + Math.random() * 30;
+      const sColors = ['#ef4444', '#06b6d4', '#f97316', '#a855f7', '#ec4899'];
+      color = sColors[Math.floor(Math.random() * sColors.length)];
+    } else if (type === 'taxi') {
+      length = 19;
+      vwidth = 9;
+      maxSpeed = 80 + Math.random() * 15;
+      color = '#f59e0b';
+    } else if (type === 'bus') {
+      length = 36;
+      vwidth = 10.5;
+      maxSpeed = 60 + Math.random() * 10;
+      color = '#0284c7';
+    } else if (type === 'delivery') {
+      length = 26;
+      vwidth = 10.5;
+      maxSpeed = 68 + Math.random() * 10;
+      color = '#e2e8f0';
+    } else if (type === 'emergency') {
+      length = 22;
+      vwidth = 10;
+      maxSpeed = 115;
+      color = '#ffffff';
+    } else {
+      // Sedans
+      const carColors = ['#cbd5e1', '#64748b', '#334155', '#1e293b', '#b91c1c', '#1e3a8a', '#e0e7ff'];
+      color = carColors[Math.floor(Math.random() * carColors.length)];
+    }
+
+    // Inner lanes generally travel faster
+    const isInner = (laneIdx === 1 || laneIdx === 2);
+    if (isInner) maxSpeed *= 1.15;
+
+    return {
+      axis,          // 'H' or 'V'
+      roadCoord,     // the Y for H road, X for V road
+      laneIdx,
+      dir,           // +1 or -1
+      laneOffset,
+      pos,           // X if H, Y if V
+      speed: maxSpeed * 0.8,
+      targetSpeed: maxSpeed,
+      maxSpeed,
+      baseMaxSpeed: maxSpeed,
+      length,
+      width: vwidth,
+      color,
+      type,
+      isBraking: false,
+      strobeTimer: 0
+    };
+  }
+
+  // Pedestrians Management
+  function initPedestrians() {
+    pedestrians = [];
+    intersections.forEach(inter => {
+      // 4 corners of crosswalks
+      // We spawn crosswalk agents
+      const numPeds = 2 + Math.floor(Math.random() * 3);
+      for (let p = 0; p < numPeds; p++) {
+        pedestrians.push(createPedestrian(inter));
+      }
+    });
+  }
+
+  function createPedestrian(inter) {
+    // Choose which crossing leg: 'N', 'S', 'E', 'W'
+    const legs = ['N', 'S', 'E', 'W'];
+    const leg = legs[Math.floor(Math.random() * legs.length)];
+    const dir = Math.random() > 0.5 ? 1 : -1;
+
+    // Crosswalk dimensions
+    const roadHalf = ROAD_WIDTH / 2;
+    const offset = roadHalf + 8;
+
+    let x, y, targetX, targetY;
+    if (leg === 'N' || leg === 'S') {
+      // Crossing North or South across vertical avenue (traveling horizontally X)
+      const crossY = (leg === 'N') ? inter.y - offset : inter.y + offset;
+      const startX = (dir === 1) ? inter.x - roadHalf - 4 : inter.x + roadHalf + 4;
+      const endX = (dir === 1) ? inter.x + roadHalf + 4 : inter.x - roadHalf - 4;
+      x = startX;
+      y = crossY + (Math.random() * 6 - 3);
+      targetX = endX;
+      targetY = y;
+    } else {
+      // Crossing East or West across horizontal avenue (traveling vertically Y)
+      const crossX = (leg === 'W') ? inter.x - offset : inter.x + offset;
+      const startY = (dir === 1) ? inter.y - roadHalf - 4 : inter.y + roadHalf + 4;
+      const endY = (dir === 1) ? inter.y + roadHalf + 4 : inter.y - roadHalf - 4;
+      x = crossX + (Math.random() * 6 - 3);
+      y = startY;
+      targetX = x;
+      targetY = endY;
+    }
+
+    const clothes = ['#38bdf8', '#f43f5e', '#10b981', '#f59e0b', '#e2e8f0', '#a855f7'];
+
+    return {
+      inter,
+      leg,
+      dir,
+      x, y,
+      startX: x, startY: y,
+      targetX, targetY,
+      progress: Math.random() * 0.2, // 0 to 1
+      speed: 0.12 + Math.random() * 0.08,
+      state: 'waiting', // 'waiting' or 'crossing'
+      color: clothes[Math.floor(Math.random() * clothes.length)],
+      walkPhase: Math.random() * Math.PI * 2
+    };
+  }
+
+  // Update Simulation Loop
+  function update(dt) {
+    globalTime += dt;
+    simTime += dt * 3.5; // Clock runs slightly accelerated for dynamism
+
+    // Traffic Density Wave: fluctuates smoothly between 0.5 and 1.0 every 45 seconds
+    const densityFactor = 0.75 + 0.25 * Math.sin(globalTime * 0.14);
+
+    // Update HUD
+    const hours = Math.floor((simTime / 3600) % 24).toString().padStart(2

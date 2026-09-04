@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Autonomous Isometric Cyber-Factory</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #080a10;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", monospace;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    #ui-overlay {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      pointer-events: none;
+      color: #94a3b8;
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      line-height: 1.6;
+      background: rgba(10, 14, 24, 0.75);
+      padding: 12px 18px;
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-left: 3px solid #00f0ff;
+      border-radius: 4px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+    #ui-overlay .title {
+      color: #f8fafc;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 2px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    #ui-overlay .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background-color: #10b981;
+      border-radius: 50%;
+      box-shadow: 0 0 10px #10b981;
+      animation: blink 1.2s infinite ease-in-out;
+    }
+    #ui-overlay .stat {
+      color: #38bdf8;
+      font-weight: 600;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.3; transform: scale(0.8); }
+    }
+  </style>
+</head>
+<body>
+  <div id="ui-overlay">
+    <div class="title"><span class="pulse-dot"></span>NEXUS-9 AUTOMATION MATRIX</div>
+    <div>FACILITY: <span class="stat">SECTOR 04-B</span> // PROTOCOL: <span class="stat">CONTINUOUS</span></div>
+    <div>EFFICIENCY: <span class="stat" id="ui-eff">99.4%</span> // YIELD: <span class="stat" id="ui-counter">001428</span> UNITS</div>
+    <div>SYSTEMS: <span class="stat" style="color: #34d399;">NOMINAL [STAMP/WELD/AGV]</span></div>
+  </div>
+  <canvas id="factoryCanvas"></canvas>
+
+  <script>
+  (function() {
+    const canvas = document.getElementById('factoryCanvas');
+    const ctx = canvas.getContext('2d');
+    const effEl = document.getElementById('ui-eff');
+    const counterEl = document.getElementById('ui-counter');
+
+    let width = 0, height = 0;
+    let dpr = 1;
+    let baseScale = 1;
+    let cx = 0, cy = 0;
+
+    function resize() {
+      dpr = window.devicePixelRatio || 1;
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.resetTransform();
+      ctx.scale(dpr, dpr);
+
+      // Scale isometric view based on screen size
+      baseScale = Math.min(width / 1150, height / 850);
+      if (baseScale < 0.55) baseScale = 0.55;
+      if (baseScale > 1.3) baseScale = 1.3;
+
+      cx = width * 0.48;
+      cy = height * 0.48;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Isometric projection math
+    // Standard 30 degree axonometric
+    const COS30 = Math.cos(Math.PI / 6); // ~0.866
+    const SIN30 = Math.sin(Math.PI / 6); // 0.5
+
+    function toScreen(x, y, z) {
+      return {
+        x: cx + (x - y) * COS30 * baseScale,
+        y: cy + (x + y) * SIN30 * baseScale - (z || 0) * baseScale
+      };
+    }
+
+    // Color utilities
+    function hexToRgba(hex, alpha) {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    // Render Queue for isometric depth sorting
+    let renderQueue = [];
+    function pushDraw(depth, fn) {
+      renderQueue.push({ depth, fn });
+    }
+
+    // Draw an isometric box
+    function drawIsoBox(x, y, z, dx, dy, dz, colors) {
+      // colors: { top, left, right, stroke }
+      const p0 = toScreen(x, y, z);
+      const p1 = toScreen(x + dx, y, z);
+      const p2 = toScreen(x + dx, y + dy, z);
+      const p3 = toScreen(x, y + dy, z);
+
+      const pt0 = toScreen(x, y, z + dz);
+      const pt1 = toScreen(x + dx, y, z + dz);
+      const pt2 = toScreen(x + dx, y + dy, z + dz);
+      const pt3 = toScreen(x, y + dy, z + dz);
+
+      // Top face
+      if (colors.top) {
+        ctx.fillStyle = colors.top;
+        ctx.beginPath();
+        ctx.moveTo(pt0.x, pt0.y);
+        ctx.lineTo(pt1.x, pt1.y);
+        ctx.lineTo(pt2.x, pt2.y);
+        ctx.lineTo(pt3.x, pt3.y);
+        ctx.closePath();
+        ctx.fill();
+        if (colors.stroke) {
+          ctx.strokeStyle = colors.stroke;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+
+      // Left face (along Y axis: (x, y) to (x, y+dy))
+      if (colors.left) {
+        ctx.fillStyle = colors.left;
+        ctx.beginPath();
+        ctx.moveTo(pt0.x, pt0.y);
+        ctx.lineTo(pt3.x, pt3.y);
+        ctx.lineTo(p3.x, p3.y);
+        ctx.lineTo(p0.x, p0.y);
+        ctx.closePath();
+        ctx.fill();
+        if (colors.stroke) {
+          ctx.strokeStyle = colors.stroke;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+
+      // Right face (along X axis: (x+dx, y) to (x+dx, y+dy))
+      if (colors.right) {
+        ctx.fillStyle = colors.right;
+        ctx.beginPath();
+        ctx.moveTo(pt3.x, pt3.y);
+        ctx.lineTo(pt2.x, pt2.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.lineTo(p3.x, p3.y);
+        ctx.closePath();
+        ctx.fill();
+        if (colors.stroke) {
+          ctx.strokeStyle = colors.stroke;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Particles system for sparks, steam, glowing dust
+    const particles = [];
+    function emitParticle(x, y, z, vx, vy, vz, color, life, size) {
+      particles.push({ x, y, z, vx, vy, vz, color, life, maxLife: life, size });
+    }
+
+    function updateAndDrawParticles(dt) {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.life -= dt;
+        if (p.life <= 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.z += p.vz * dt;
+        p.vz -= 30 * dt; // gravity
+
+        const alpha = Math.max(0, p.life / p.maxLife);
+        const pt = toScreen(p.x, p.y, p.z);
+        const s = p.size * baseScale * alpha;
+
+        pushDraw(p.x + p.y + p.z * 0.1, () => {
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.fillStyle = p.color;
+          ctx.globalAlpha = alpha;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, Math.max(1, s), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        });
+      }
+    }
+
+    // FACTORY STATE & PRODUCTION PIPELINE
+    // Conveyor 1: runs from Y = -280 to Y = 160 at X = -90. Height Z = 28.
+    // Conveyor 2: runs from X = -20 to X = 250 at Y = 180. Height Z = 24.
+    // Conveyor 3: return or feeder conveyor at Y = -160, X from -240 to -90.
+    const CONV1_X = -90;
+    const CONV1_START_Y = -300;
+    const CONV1_END_Y = 160;
+    const CONV1_Z = 28;
+    const CONV_SPEED = 55; // units per second
+
+    // Storage rack grid for accumulated products
+    // At X = 130 to 220, Y = -220 to -110
+    const RACK_X = 130;
+    const RACK_Y = -230;
+    const RACK_COLS = 4;
+    const RACK_ROWS = 4;
+    const rackItems = [];
+    for (let r = 0; r < RACK_ROWS; r++) {
+      for (let c = 0; c < RACK_COLS; c++) {
+        // Initial partial fill
+        rackItems.push({
+          col: c,
+          row: r,
+          level: (r + c) % 3 === 0 ? 1 : ((r * 2 + c) % 4 === 1 ? 2 : 0),
+          glowPhase: Math.random() * Math.PI * 2
+        });
+      }
+    }
+
+    // Dynamic product pipeline items
+    let products = [];
+    let productSpawnTimer = 0;
+    const SPAWN_INTERVAL = 2.4; // new product every 2.4 seconds
+
+    let totalCompletedUnits = 1428;
+
+    // Robotic Arms State
+    // Arm 1: Hydraulic Stamping Press at Y = -160
+    // Arm 2: Pick & Place Circuit Arm at Y = -40, X = -145
+    // Arm 3: Laser Welding/Inspector Arm at Y = 60, X = -35
+    // Gantry Transfer Robot at Y = 160, between Conv1 and AGV / Conv2
+    const gantry = {
+      x: CONV1_X,
+      y: 160,
+      z: 50,
+      clawOpen: 0,
+      carrying: null,
+      targetX: CONV1_X,
+      targetY: 160,
+      phase: 0 // 0: wait for item, 1: grab, 2: lift & slide, 3: release, 4: return
+    };
+
+    // AGV (Autonomous Guided Vehicles)
+    const agvs = [
+      {
+        id: 1,
+        pathProgress: 0.15,
+        speed: 0.18,
+        carrying: 1,
+        lights: 0,
+        x: 0, y: 0, angle: 0
+      },
+      {
+        id: 2,
+        pathProgress: 0.65,
+        speed: 0.18,
+        carrying: 0,
+        lights: 0,
+        x: 0, y: 0, angle: 0
+      }
+    ];
+
+    // AGV Waypoint path loop
+    const agvTrack = [
+      { x: -10, y: 160 }, // Dock A (Receive from Conveyor 1)
+      { x: 50,  y: 160 },
+      { x: 50,  y: -30 },
+      { x: 180, y: -30 },
+      { x: 180, y: -160 }, // Dock B (Storage Rack Drop-off)
+      { x: 230, y: -160 },
+      { x: 230, y: 100 },
+      { x: 50,  y: 220 },
+      { x: -10, y: 220 }
+    ];
+
+    function getTrackPoint(t) {
+      // Loop parameterized by t in [0, 1]
+      const pts = agvTrack;
+      let totalLen = 0;
+      const lens = [];
+      for (let i = 0; i < pts.length; i++) {
+        const next = pts[(i + 1) % pts.length];
+        const dist = Math.hypot(next.x - pts[i].x, next.y - pts[i].y);
+        lens.push(dist);
+        totalLen += dist;
+      }
+      let curDist = (t % 1) * totalLen;
+      if (curDist < 0) curDist += totalLen;
+
+      for (let i = 0; i < pts.length; i++) {
+        if (curDist <= lens[i]) {
+          const frac = curDist / lens[i];
+          const next = pts[(i + 1) % pts.length];
+          const x = pts[i].x + (next.x - pts[i].x) * frac;
+          const y = pts[i].y + (next.y - pts[i].y) * frac;
+          const angle = Math.atan2(next.y - pts[i].y, next.x - pts[i].x);
+          return { x, y, angle };
+        }
+        curDist -= lens[i];
+      }
+      return { x: pts[0].x, y: pts[0].y, angle: 0 };
+    }
+
+    // MAIN ANIMATION LOOP
+    let lastTime = performance.now();
+    let simTime = 0;
+
+    function render(time) {
+      const dt = Math.min((time - lastTime) / 1000, 0.1);
+      lastTime = time;
+      simTime += dt;
+
+      renderQueue = [];
+
+      // Update UI elements periodically
+      if (Math.floor(simTime * 3) !== Math.floor((simTime - dt) * 3)) {
+        counterEl.textContent = String(totalCompletedUnits).padStart(6, '0');
+        const eff = (99.2 + Math.sin(simTime * 0.4) * 0.5).toFixed(1);
+        effEl.textContent = `${eff}%`;
+      }
+
+      // Background Clear with subtle cyber vignette
+      ctx.fillStyle = '#0a0d14';
+      ctx.fillRect(0, 0, width, height);
+
+      // Radial dark atmosphere glow
+      const grad = ctx.createRadialGradient(cx, cy, 50, cx, cy, Math.max(width, height) * 0.7);
+      grad.addColorStop(0, 'rgba(17, 24, 39, 0.7)');
+      grad.addColorStop(0.6, 'rgba(10, 13, 20, 0.95)');
+      grad.addColorStop(1, '#05070a');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, width, height);
+
+      // ==========================================
+      // 1. FLOOR & TILE GRID
+      // ==========================================
+      pushDraw(-1000, () => {
+        // High-tech factory floor base slab
+        drawIsoBox(-320, -320, -18, 640, 640, 18, {
+          top: '#0f141f',
+          left: '#080a0f',
+          right: '#05070a',
+          stroke: 'rgba(30, 41, 59, 0.4)'
+        });
+
+        // Floor Grid Lines
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(30, 58, 95, 0.28)';
+        for (let gx = -300; gx <= 300; gx += 40) {
+          const start = toScreen(gx, -300, 0);
+          const end = toScreen(gx, 300, 0);
+          ctx.beginPath();
+          ctx.moveTo(start.x, start.y);
+          ctx.lineTo(end.x, end.y);
+          ctx.stroke();
+        }
+        for (let gy = -300; gy <= 300; gy += 40) {
+          const start = toScreen(-300, gy, 0);
+          const end = toScreen(300, gy, 0);
+          ctx.beginPath();
+          ctx.moveTo(start.x, start.y);
+          ctx.lineTo(end.x, end.y);
+          ctx.stroke();
+        }
+
+        // AGV Navigation Floor Pathways (Luminous cyan dashed guides)
+        ctx.save();
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.35)';
+        ctx.lineWidth = 2.5 * baseScale;
+        ctx.setLineDash([8 * baseScale, 6 * baseScale]);
+        ctx.lineDashOffset = -simTime * 20 * baseScale;
+        ctx.beginPath();
+        for (let i = 0; i <= agvTrack.length; i++) {
+          const pt = agvTrack[i % agvTrack.length];
+          const sc = toScreen(pt.x, pt.y, 0.5);
+          if (i === 0) ctx.moveTo(sc.x, sc.y);
+          else ctx.lineTo(sc.x, sc.y);
+        }
+        ctx.stroke();
+
+        // Safe Zone Hazard Stripes along Conveyor Line
+        ctx.restore();
+        const hzStart = toScreen(CONV1_X - 25, CONV1_START_Y, 0.5);
+        const hzEnd = toScreen(CONV1_X - 25, CONV1_END_Y + 40, 0.5);
+        ctx.strokeStyle = 'rgba(234, 179, 8, 0.35)';
+        ctx.lineWidth = 4 * baseScale;
+        ctx.setLineDash([6 * baseScale, 6 * baseScale]);
+        ctx.beginPath();
+        ctx.moveTo(hzStart.x, hzStart.y);
+        ctx.lineTo(hzEnd.x, hzEnd.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      });
+
+      // ==========================================
+      // 2. CONVEYOR BELT 1 (Main Production Axis)
+      // ==========================================
+      const conv1Depth = CONV1_X + (CONV1_START_Y + CONV1_END_Y) / 2;
+      pushDraw(conv1Depth - 40, () => {
+        // Heavy Stanchions/Legs under conveyor
+        for (let sy = CONV1_START_Y + 20; sy <= CONV1_END_Y; sy += 70) {
+          drawIsoBox(CONV1_X - 14, sy - 5, 0, 28, 10, CONV1_Z, {
+            top: '#1e293b',
+            left: '#0f172a',
+            right: '#090d16',
+            stroke: '#334155'
+          });
+        }
+
+        // Conveyor Bed Frame
+        const length1 = CONV1_END_Y - CONV1_START_Y;
+        drawIsoBox(CONV1_X - 16, CONV1_START_Y, CONV1_Z - 6, 32, length1, 6, {
+          top: '#182030',
+          left: '#0c111a',
+          right: '#080c14',
+          stroke: '#293548'
+        });
+
+        // Moving Conveyor Surface with animated chevrons
+        drawIsoBox(CONV1_X - 12, CONV1_START_Y, CONV1_Z, 24, length1, 1, {
+          top: '#121722',
+          left: '#0d131c',
+          right: '#080d14'
+        });
+
+        // Moving tread dashes
+        ctx.strokeStyle = '#00f0ff';
+        ctx.lineWidth = 1.5 * baseScale;
+        ctx.globalAlpha = 0.45;
+        const treadSpacing = 24;
+        const offset = (simTime * CONV_SPEED) % treadSpacing;
+        for (let ty = CONV1_START_Y + offset; ty < CONV1_END_Y; ty += treadSpacing) {
+          const pLeft = toScreen(CONV1_X - 8, ty, CONV1_Z + 1.2);
+          const pRight = toScreen(CONV1_X + 8, ty, CONV1_Z + 1.2);
+          const pMid = toScreen(CONV1_X, ty + 5, CONV1_Z + 1.2);
+          ctx.beginPath();
+          ctx.moveTo(pLeft.x, pLeft.y);
+          ctx.lineTo(pMid.x, pMid.y);
+          ctx.lineTo(pRight.x, pRight.y);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1.0;
+
+        // Side Rails with hazard LEDs
+        drawIsoBox(CONV1_X - 15, CONV1_START_Y, CONV1_Z + 1, 2, length1, 5, {
+          top: '#334155',
+          left: '#1e293b',
+          right: '#0f172a'
+        });
+        drawIsoBox(CONV1_X + 13, CONV1_START_Y, CONV1_Z + 1, 2, length1, 5, {
+          top: '#334155',
+          left: '#1e293b',
+          right: '#0f172a'
+        });
+      });
+
+      // Conveyor 2 (Lateral Secondary / Packaging Belt)
+      const conv2Y = 180;
+      const conv2StartX = -20;
+      const conv2LenX = 260;
+      pushDraw(conv2StartX + conv2Y, () => {
+        // Legs
+        for (let sx = conv2StartX + 20; sx <= conv2StartX + conv2LenX; sx += 60) {
+          drawIsoBox(sx - 5, conv2Y - 12, 0, 10, 24, 22, {
+            top: '#1e293b',
+            left: '#0f172a',
+            right: '#090d16'
+          });
+        }
+        // Frame
+        drawIsoBox(conv2StartX, conv2Y - 14, 22, conv2LenX, 28, 4, {
+          top: '#151d2a',
+          left: '#0d131d',
+          right: '#080c14',
+          stroke: '#283548'
+        });
+        // Belt top
+        drawIsoBox(conv2StartX, conv2Y - 10, 26, conv2LenX, 20, 1, {
+          top: '#0f1622',
+          left: '#080d14',
+          right: '#06090e'
+        });
+
+        // Moving chevrons along X
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.5 * baseScale;
+        ctx.globalAlpha = 0.4;
+        const treadSpacing = 20;
+        const offset = (simTime * (CONV_SPEED * 0.75)) % treadSpacing;
+        for (let tx = conv2StartX + offset; tx < conv2StartX + conv2LenX; tx += treadSpacing) {
+          const p1 = toScreen(tx, conv2Y - 7, 27.2);
+          const pMid = toScreen(tx + 4, conv2Y, 27.2);
+          const p2 = toScreen(tx, conv2Y + 7, 27.2);
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(pMid.x, pMid.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1.0;
+      });
+
+      // ==========================================
+      // 3. PRODUCT SPAWNING & PIPELINE LOGIC
+      // ==========================================
+      productSpawnTimer += dt;
+      if (productSpawnTimer >= SPAWN_INTERVAL) {
+        productSpawnTimer = 0;
+        products.push({
+          id: Math.random(),
+          x: CONV1_X,
+          y: CONV1_START_Y,
+          z: CONV1_Z + 1,
+          stage: 0, // 0: Raw Ingot, 1: Stamped, 2: Chip Inserted, 3: Laser Sealed / Glowing, 4: Picked
+          glow: 0,
+          defect: false
+        });
+      }
+
+      // Update product positions
+      for (let i = products.length - 1; i >= 0; i--) {
+        const p = products[i];
+
+        if (p.stage < 4) {
+          p.y += CONV_SPEED * dt;
+
+          // Stage transitions as product passes stations
+          // Station 1: Hydraulic Stamping Press at Y = -160
+          if (p.stage === 0 && p.y >= -160) {
+            p.stage = 1;
+            p.glow = 1.0; // heated metal burst
+          }
+
+          // Station 2: Robotic Component Inserter at Y = -40
+          if (p.stage === 1 && p.y >= -40) {
+            p.stage = 2;
+          }
+
+          // Station 3: Laser Plasma Fusion Dome at Y = 50
+          if (p.stage === 2 && p.y >= 50) {
+            p.stage = 3;
+            p.glow = 1.2;
+          }
+
+          // End of Belt 1: Transfer Point
+          if (p.y >= CONV1_END_Y - 5) {
+            // Reached transfer gantry
+            if (!gantry.carrying && gantry.phase === 0) {
+              p.stage = 4;
+              gantry.carrying = p;
+              gantry.phase = 1; // start pick
+            } else if (p.y > CONV1_END_Y + 15) {
+              // Overflow fall-safe
+              products.splice(i, 1);
+              continue;
+            }
+          }
+        }
+
+        // Cool down glow effect over time
+        if (p.glow > 0) {
+          p.glow = Math.max(0, p.glow - dt * 0.7);
+        }
+
+        // Queue Product for Rendering (if not currently carried by gantry, gantry draws it)
+        if (p.stage < 4) {
+          const pDepth = p.x + p.y + p.z * 0.1;
+          const px = p.x - 7;
+          const py = p.y - 7;
+          const pz = p.z;
+          const stage = p.stage;
+          const glow = p.glow;
+
+          pushDraw(pDepth, () => {
+            let topCol = '#475569';
+            let leftCol = '#334155';
+            let rightCol = '#1e293b';
+            let coreCol = null;
+
+            if (stage === 1) {
+              // Stamped with beveled thermal indent
+              topCol = glow > 0.2 ? '#f97316' : '#64748b';
+              leftCol = glow > 0.2 ? '#c2410c' : '#475569';
+              rightCol = glow > 0.2 ? '#7c2d12' : '#334155';
+            } else if (stage >= 2) {
+              // Fitted with cyber circuit core
+              topCol = '#1e293b';
+              leftCol = '#0f172a';
+              rightCol = '#090d16';
+              coreCol = stage === 3 ? '#00f0ff' : '#10b981';
+            }
+
+            // Draw Cube Body
+            drawIsoBox(px, py, pz, 14, 14, 10, {
+              top: topCol,
+              left: leftCol,
+              right: rightCol,
+              stroke: stage >= 3 ? '#00f0ff' : 'rgba(255,255,255,0.1)'
+            });
+
+            // Glowing core or microchip on top
+            if (coreCol) {
+              const coreP = toScreen(px + 4, py + 4, pz + 10.5);
+              drawIsoBox(px + 3.5, py + 3.5, pz + 10.2, 7, 7, 1.5, {
+                top: coreCol,
+                left: coreCol,
+                right: coreCol
+              });
+
+              if (stage === 3) {
+                // Volumetric halo
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                ctx.fillStyle = 'rgba(0, 240, 255, 0.35)';
+                ctx.beginPath();
+                ctx.arc(coreP.x, coreP.y, 8 * baseScale, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+              }
+            }
+          });
+        }
+      }
+
+      // ==========================================
+      // 4. STATION 1: HYDRAULIC STAMPING PRESS (Y = -160)
+      // ==========================================
+      const stampY = -160;
+      const stampDepth = CONV1_X + stampY;
+      const stampCycle = (simTime * 2.2) % 2.0; // 2.0 sec cycle
+      let stampPistonH = 0; // 0 is up, 1 is slammed down
+      if (stampCycle < 0.25) {
+        stampPistonH = stampCycle / 0.25; // coming down fast
+      } else if (stampCycle < 0.40) {
+        stampPistonH = 1.0; // hold and stamp!
+      } else if (stampCycle < 0.85) {
+        stampPistonH = 1.0 - (stampCycle - 0.40) / 0.45; // retract smoothly
+      } else {
+        stampPistonH = 0.0; // idle open
+      }
+
+      // Trigger sparks right as stamp hits
+      if (stampCycle >= 0.25 && stampCycle < 0.28) {
+        for (let s = 0; s < 4; s++) {
+          const ang = Math.random() * Math.PI * 2;
+          const spd = 30 + Math.random() * 50;
+          emitParticle(
+            CONV1_X + (Math.random() - 0.5) * 8,
+            stampY + (Math.random() - 0.5) * 8,
+            CONV1_Z + 11,
+            Math.cos(ang) * spd,
+            Math.sin(ang) * spd,
+            20 + Math.random() * 40,
+            Math.random() > 0.4 ? '#ff9900' : '#ffe600',
+            0.35,
+            2.5
+          );
+        }
+      }
+
+      pushDraw(stampDepth, () => {
+        // Massive Arch Pillars
+        // Left Column
+        drawIsoBox(CONV1_X - 28, stampY - 14, 0, 10, 28, 85, {
+          top: '#334155',
+          left: '#1e293b',
+          right: '#0f172a',
+          stroke: '#475569'
+        });
+        // Right Column
+        drawIsoBox(CONV1_X + 18, stampY - 14, 0, 10, 28, 85, {
+          top: '#334155',
+          left: '#1e293b',
+          right: '#0f172a',
+          stroke: '#475569'
+        });
+        // Top Bridge Housing
+        drawIsoBox(CONV1_X - 32, stampY - 18, 80, 64, 36, 24, {
+          top: '#1e293b',
+          left: '#0f172a',
+          right: '#090d16',
+          stroke: '#38bdf8'
+        });
+
+        // Hydraulic Shaft (Piston)
+        const pistonZ = 80 - stampPistonH * 38;
+        drawIsoBox(CONV1_X - 6, stampY - 6, pistonZ, 12, 12, 28, {
+          top: '#94a3b8',
+          left: '#64748b',
+          right: '#475569',
+          stroke: '#cbd5e1'
+        });
+
+        // Heavy Stamping Die Head
+        drawIsoBox(CONV1_X - 11, stampY - 11, pistonZ - 8, 22, 22, 8, {
+          top: stampPistonH > 0.9 ? '#ff4500' : '#38bdf8',
+          left: '#1e293b',
+          right: '#0f172a',
+          stroke: '#00f0ff'
+        });
+
+        // Digital Status Display HUD above press
+        const hudPt = toScreen(CONV1_X, stampY, 115);
+        ctx.save();
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.strokeStyle = '#00f0ff';
+        ctx.lineWidth = 1;
+        ctx.fillRect(hudPt.x - 38 * baseScale, hudPt.y - 12 * baseScale, 76 * baseScale, 20 * baseScale);
+        ctx.strokeRect(hudPt.x - 38 * baseScale, hudPt.y - 12 * baseScale, 76 * baseScale, 20 * baseScale);
+
+        ctx.fillStyle = stampPistonH > 0.8 ? '#f59e0b' : '#38bdf8';
+        ctx.font = `bold ${8 * baseScale}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillText(stampPistonH > 0.8 ? 'PRESS: 450T' : 'READY // 100%', hudPt.x, hudPt.y + 2 * baseScale);
+        ctx.restore();
+      });
+
+      // ==========================================
+      // 5. STATION 2: PICK & PLACE DUAL-ARM ROBOT (Y = -40)
+      // ==========================================
+      const arm1BaseX = CONV1_X - 52;
+      const arm1BaseY = -40;
+      const arm1BaseZ = 0;
+      const arm1Depth = arm1BaseX + arm1BaseY;
+
+      // Kinematic angles calculated based on smooth loop
+      const armLoop = (simTime * 1.6) % (Math.PI * 2);
+      const armAngle1 = Math.sin(armLoop) * 0.7 + 0.4; // horizontal rotation
+      const armPitch1 = Math.sin(armLoop * 2) * 0.3 + 0.6; // shoulder elevation
+
+      // Feeder bin beside arm
+      pushDraw(arm1Depth - 10, () => {
+        // Component Supply Bin
+        drawIsoBox(arm1BaseX - 5, arm1BaseY - 35, 0, 22, 22, 26, {
+          top: '#1e293b',
+          left: '#0f172a',
+          right: '#080d15',
+          stroke: '#10b981'
+        });
+        // Supply cubes inside bin
+        drawIsoBox(arm1BaseX - 2, arm1BaseY - 32, 26, 14, 14, 4, {
+          top: '#10b981',
+          left: '#059669',
+          right: '#047857'
+        });
+
+        // Robot Base Pedestal
+        drawIsoBox(arm1BaseX - 12, arm1BaseY - 12, 0, 24, 24, 22, {
+          top: '#243044',
+          left: '#151f30',
+          right: '#0c131f',
+          stroke: '#475569'
+        });
+
+        // Turntable
+        drawIsoBox(arm1BaseX - 8, arm1BaseY - 8, 22, 16, 16, 5, {
+          top: '#ffb703',
+          left: '#d48b00',
+          right: '#9a6400'
+        });
+
+        // Inverse Kinematics / Segment Drawing for Arm
+        // Base joint at:
+        const j0 = { x: arm1BaseX, y: arm1BaseY, z: 27 };
+        // Joint 1 (Elbow)
+        const len1 = 34;
+        const j1 = {
+          x: j0.x + Math.cos(armAngle1) * Math.cos(armPitch1) * len1,
+          y: j0.y + Math.sin(armAngle1) * Math.cos(armPitch1) * len1,
+          z: j0.z + Math.sin(armPitch1) * len1
+        };
+        // Joint 2 (Wrist)
+        const len2 = 30;
+        const armPitch2 = -0.5 + Math.cos(armLoop * 2) * 0.4;
+        const j2 = {
+          x: j1.x + Math.cos(armAngle1) * Math.cos(armPitch2) * len2,
+          y: j1.y + Math.sin(armAngle1) * Math.cos(armPitch2) * len2,
+          z: Math.max(CONV1_Z + 12, j1.z + Math.sin(armPitch2) * len2)
+        };
+
+        // Draw segmented limbs with steel joint cylinders
+        function drawLimb(pA, pB, color, radius) {
+          const scA = toScreen(pA.x, pA.y, pA.z);
+          const scB = toScreen(pB.x, pB.y, pB.z);
+          ctx.save();
+          ctx.strokeStyle = color;
+          ctx.lineWidth = radius * baseScale;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(scA.x, scA.y);
+          ctx.lineTo(scB.x, scB.y);
+          ctx.stroke();
+
+          // Joint ball
+          ctx.fillStyle = '#f8fafc';
+          ctx.beginPath();
+          ctx.arc(scA.x, scA.y, (radius * 0.7) * baseScale, 0, Math.PI * 2);
+          ctx.arc(scB.x, scB.y, (radius * 0.7) * baseScale, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        drawLimb(j0, j1, '#475569', 8);
+        drawLimb(j1, j2, '#ffb703', 5.5);
+
+        // Gripper Claws & Micro-part
+        const scWrist = toScreen(j2.x, j2.y, j2.z);
+        ctx.save();
+        ctx.fillStyle = '#10b981';
+        ctx.beginPath();
+        ctx.arc(scWrist.x, scWrist.y + 4 * baseScale, 3.5 * baseScale, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Little laser guide beam pointing downwards to the conveyor
+        ctx.strokeStyle = 'rgba(16, 185, 129, 0.6)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([2, 4]);
+        ctx.beginPath();
+        ctx.moveTo(scWrist.x, scWrist.y);
+        ctx.lineTo(scWrist.x, scWrist.y + 14 * baseScale);
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      // ==========================================
+      // 6. STATION 3: PLASMA CHAMBER / LASER WELDER (Y = 50)
+      // ==========================================
+      const station3Y = 50;
+      const station3Depth = CONV1_X + station3Y;
+      pushDraw(station3Depth, () => {
+        // Enclosure Frame with Glass Neon Cylindrical Dome
+        drawIsoBox(CONV1_X - 22, station3Y - 18, CONV1_Z, 6, 36, 45, {
+          top: '#334155',
+          left: '#1e293b',
+          right: '#0f172a'
+        });
+        drawIsoBox(CONV1_X + 16, station3Y - 18, CONV1_Z, 6, 36, 45, {
+          top: '#334155',
+          left: '#1e293b',
+          right: '#0f172a'
+        });
+
+        // Top Roof with glowing core
+        drawIsoBox(CONV1_X - 22, station3Y - 18, CONV1_Z + 45, 44, 36, 8, {
+          top: '#0f172a',
+          left: '#090d16',
+          right: '#05070a',
+          stroke: '#00f0ff'
+        });
+
+        // Glowing Holographic / Laser Ring inside
+        const centerSc = toScreen(CONV1_X, station3Y, CONV1_Z + 18);
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        const ringGlow = ctx.createRadialGradient(centerSc.x, centerSc.y, 2, centerSc.x, centerSc.y, 25 * baseScale);
+        ringGlow.addColorStop(0, 'rgba(0, 240, 255, 0.8)');
+        ringGlow.addColorStop(0.5, 'rgba(0, 240, 255, 0.2)');
+        ringGlow.addColorStop(1, 'transparent');
+        ctx.fillStyle = ringGlow;
+        ctx.beginPath();
+        ctx.arc(centerSc.x, centerSc.y, 25 * baseScale, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Rotating laser beam emitter
+        const laserAngle = simTime * 5;
+        const lx = Math.cos(laserAngle) * 9;
+        const ly = Math.sin(laserAngle) * 9;
+        const beamStart = toScreen(CONV1_X, station3Y, CONV1_Z + 43);
+        const beamEnd = toScreen(CONV1_X + lx, station3Y + ly, CONV1_Z + 4);
+
+        ctx.strokeStyle = '#00f0ff';
+        ctx.lineWidth = 2 * baseScale;
+        ctx.beginPath();
+        ctx.moveTo(beamStart.x, beamStart.y);
+        ctx.lineTo(beamEnd.x, beamEnd.y);
+        ctx.stroke();
+
+        // Welding sparks
+        if (Math.random() > 0.3) {
+          emitParticle(
+            CONV1_X + lx,
+            station3Y + ly,
+            CONV1_Z + 5,
+            (Math.random() - 0.5) * 40,
+            (Math.random() - 0.5) * 40,
+            15 + Math.random() * 30,
+            '#00f0ff',
+            0.25,
+            2
+          );
+        }
+        ctx.restore();
+      });
+
+      // ==========================================
+      // 7. TRANSFER GANTRY ROBOT (Conv 1 -> AGV / Conv 2)
+      // ==========================================
+      // Handles picking from Conv 1 at (CONV1_X, 160) and loading onto AGV or Conv 2
+      const gantryY = 160;
+      const gantryDepth = CONV1_X + gantryY + 30;
+
+      // State machine update for Gantry Crane
+      if (gantry.phase === 1) {
+        // Lowering to pick
+        gantry.z -= dt * 65;
+        if (gantry.z <= CONV1_Z + 9) {
+          gantry.z = CONV1_Z + 9;
+          gantry.phase = 2; // Grabbed, start lifting
+        }
+      } else if (gantry.phase === 2) {
+        // Lift up and translate lateral along X axis to AGV / Conv2 dock
+        gantry.z = Math.min(65, gantry.z + dt * 60);
+        if (gantry.z >= 60) {
+          gantry.x += dt * 85;
+          if (gantry.x >= 25) {
+            gantry.x = 25;
+            gantry.phase = 3; // Release onto secondary belt / AGV
+          }
+        }
+      } else if (gantry.phase === 3) {
+        // Lower to deposit
+        gantry.z -= dt * 55;
+        if (gantry.z <= 32) {
+          // Deposit complete!
+          if (gantry.carrying) {
+            totalCompletedUnits++;
+            // Remove from products array
+            const idx = products.indexOf(gantry.carrying);
+            if (idx !== -1) products.splice(idx, 1);
+            gantry.carrying = null;
+          }
+          gantry.phase = 4; // Return to home
+        }
+      } else if (gantry.phase === 4) {
+        gantry.z = Math.min(65, gantry.z + dt * 60);
+        if (gantry.z >= 60) {
+          gantry.x -= dt * 90;
+          if (gantry.x <= CONV1_X) {
+            gantry.x = CONV1_X;
+            gantry.z = 50;
+            gantry.phase = 0; // ready for next
+          }
+        }
+      }
+
+      pushDraw(gantryDepth, () => {
+        // Overhead Rail Beam
+        drawIsoBox(CONV1_X - 25, gantryY - 8, 70, 95, 16, 8, {
+          top: '#334155',
+          left: '#1e293b',
+          right: '#0f172a',
+          stroke: '#64748b'
+        });
+
+        // Support Gantry Towers
+        drawIsoBox(CONV1_X - 25, gantryY - 8, 0, 8, 16, 70, {
+          top: '#1e293b',
+          left: '#0f172a',
+          right: '#090d16'
+        });
+        drawIsoBox(62, gantryY - 8, 0, 8, 16, 70, {
+          top: '#1e293b',
+          left: '#0f172a',
+          right: '#090d16'
+        });
+
+        // Moving Trolley Carriage
+        drawIsoBox(gantry.x - 8, gantryY - 10, 66, 16, 20, 9, {
+          top: '#ffb703',
+          left: '#d48b00',
+          right: '#9a6400',
+          stroke: '#fef08a'
+        });
+
+        // Telescoping Piston Rod
+        drawIsoBox(gantry.x - 2, gantryY - 2, gantry.z, 4, 4, 66 - gantry.z, {
+          top: '#cbd5e1',
+          left: '#94a3b8',
+          right: '#64748b'
+        });
+
+        // Magnetic Gripper Head
+        drawIsoBox(gantry.x - 9, gantryY - 9, gantry.z - 4, 18, 18, 4, {
+          top: '#00f0ff',
+          left: '#0284c7',
+          right: '#0369a1',
+          stroke: '#e0f2fe'
+        });
+
+        // Render Carried Box if active
+        if (gantry.carrying) {
+          drawIsoBox(gantry.x - 7, gantryY - 7, gantry.z - 14, 14, 14, 10, {
+            top: '#1e293b',
+            left: '#0f172a',
+            right: '#090d16',
+            stroke: '#00f0ff'
+          });
+          drawIsoBox(gantry.x - 3.5, gantryY - 3.5, gantry.z - 3.8, 7, 7, 1.5, {
+            top: '#00f0ff',
+            left: '#00f0ff',
+            right: '#00f0ff'
+          });
+        }
+      });
+
+      // ==========================================
+      // 8. AUTONOMOUS GUIDED VEHICLES (AGVs)
+      // ==========================================
+      agvs.forEach((agv) => {
+        agv.pathProgress = (agv.pathProgress + agv.speed * dt * 0.1) % 1.0;
+        const pt = getTrackPoint(agv.pathProgress);
+        agv.x = pt.x;
+        agv.y = pt.y;
+        agv.angle = pt.angle;
+
+        const agvDepth = agv.x + agv.y;
+        pushDraw(agvDepth, () => {
+          // AGV Chassis (rounded industrial low profile rover)
+          const agvW = 20;
+          const agvL = 26;
+          const agvH = 8;
+          drawIsoBox(agv.x - agvW / 2, agv.y - agvL / 2, 1, agvW, agvL, agvH, {
+            top: '#1e293b',
+            left: '#0f172a',
+            right: '#090d16',
+            stroke: '#ffb703'
+          });
+
+          // Hazard Yellow Side Accents
+          drawIsoBox(agv.x - agvW / 2, agv.y - agvL / 2, agvH - 2, 2, agvL, 2, {
+            top: '#ffb703',
+            left: '#d97706',
+            right: '#92400e'
+          });
+          drawIsoBox(agv.x + agvW / 2 - 2, agv.y - agvL / 2, agvH - 2, 2, agvL, 2, {
+            top: '#ffb703',
+            left: '#d97706',
+            right: '#92400e'
+          });
+
+          // Cyan Floor Underglow
+          const underglowSc = toScreen(agv.x, agv.y, 0.5);
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.fillStyle = 'rgba(0, 240, 255, 0.28)';
+          ctx.beginPath();
+          ctx.ellipse(underglowSc.x, underglowSc.y, 16 * baseScale, 9 * baseScale, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Blinking Corner Strobe Lights
+          const blinkOn = Math.sin(simTime * 8 + agv.id) > 0;
+          if (blinkOn) {
+            ctx.fillStyle = '#ffaa00';
+            const scLight1 = toScreen(agv.x - 8, agv.y - 10, agvH + 1);
+            const scLight2 = toScreen(agv.x + 8, agv.y + 10, agvH + 1);
+            ctx.beginPath();
+            ctx.arc(scLight1.x, scLight1.y, 2.5 * baseScale, 0, Math.PI * 2);
+            ctx.arc(scLight2.x, scLight2.y, 2.5 * baseScale, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+
+          // Cargo Container on AGV deck
+          if (agv.carrying) {

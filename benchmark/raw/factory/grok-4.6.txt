@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IsoForge</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #05070c;
+    font-family: Consolas, "Courier New", monospace;
+  }
+  canvas { display: block; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+(function () {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+
+  let W = 0, H = 0, DPR = 1;
+  let SX = 22, SY = 11, SZ = 18;
+  let OX = 0, OY = 0;
+  let t0 = 0;
+  let last = 0;
+
+  const INTERVAL = 1.85;
+  const sparks = [];
+  const motes = [];
+  const welds = [];
+  const floorMarks = [];
+  let throughput = 0;
+  let lastCount = -1;
+
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = Math.floor(W * DPR);
+    canvas.height = Math.floor(H * DPR);
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    SX = Math.min((W * 0.90) / 30, (H * 0.78) / 15);
+    SY = SX * 0.5;
+    SZ = SX * 0.82;
+    OX = W * 0.5 - 1.6 * SX;
+    OY = H * 0.18;
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  function iso(x, y, z) {
+    return {
+      x: OX + (x - y) * SX,
+      y: OY + (x + y) * SY - (z || 0) * SZ
+    };
+  }
+
+  function depth(x, y, z) {
+    return x + y + (z || 0) * 0.12;
+  }
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+  function smooth(t) { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); }
+  function hash(x, y) {
+    const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+    return s - Math.floor(s);
+  }
+  function hexRgb(hex) {
+    const n = parseInt(hex.replace("#", ""), 16);
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  }
+  function shade(hex, f) {
+    const c = hexRgb(hex);
+    const r = clamp(Math.round(c.r * f), 0, 255);
+    const g = clamp(Math.round(c.g * f), 0, 255);
+    const b = clamp(Math.round(c.b * f), 0, 255);
+    return "rgb(" + r + "," + g + "," + b + ")";
+  }
+  function rgba(hex, a) {
+    const c = hexRgb(hex);
+    return "rgba(" + c.r + "," + c.g + "," + c.b + "," + a + ")";
+  }
+
+  function drawPrism(x, y, z, w, d, h, top, left, right, opts) {
+    opts = opts || {};
+    const t00 = iso(x, y, z + h);
+    const t10 = iso(x + w, y, z + h);
+    const t11 = iso(x + w, y + d, z + h);
+    const t01 = iso(x, y + d, z + h);
+    const b10 = iso(x + w, y, z);
+    const b11 = iso(x + w, y + d, z);
+    const b01 = iso(x, y + d, z);
+
+    ctx.beginPath();
+    ctx.moveTo(t10.x, t10.y);
+    ctx.lineTo(t11.x, t11.y);
+    ctx.lineTo(b11.x, b11.y);
+    ctx.lineTo(b10.x, b10.y);
+    ctx.closePath();
+    ctx.fillStyle = right;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(t01.x, t01.y);
+    ctx.lineTo(t11.x, t11.y);
+    ctx.lineTo(b11.x, b11.y);
+    ctx.lineTo(b01.x, b01.y);
+    ctx.closePath();
+    ctx.fillStyle = left;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(t00.x, t00.y);
+    ctx.lineTo(t10.x, t10.y);
+    ctx.lineTo(t11.x, t11.y);
+    ctx.lineTo(t01.x, t01.y);
+    ctx.closePath();
+    ctx.fillStyle = top;
+    ctx.fill();
+
+    if (opts.edge) {
+      ctx.strokeStyle = opts.edge;
+      ctx.lineWidth = opts.ew || 0.7;
+      ctx.stroke();
+    }
+    if (opts.glow) {
+      ctx.save();
+      ctx.shadowColor = opts.glow;
+      ctx.shadowBlur = opts.blur || 12;
+      ctx.globalAlpha = 0.55;
+      ctx.beginPath();
+      ctx.moveTo(t00.x, t00.y);
+      ctx.lineTo(t10.x, t10.y);
+      ctx.lineTo(t11.x, t11.y);
+      ctx.lineTo(t01.x, t01.y);
+      ctx.closePath();
+      ctx.fillStyle = opts.glow;
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function drawTopPoly(pts, fill, stroke, lw) {
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = lw || 0.8;
+      ctx.stroke();
+    }
+  }
+
+  function drawFloor() {
+    const cols = ["#141c28", "#121924", "#162030", "#101820"];
+    for (let y = 0; y < 13; y++) {
+      for (let x = 0; x < 17; x++) {
+        const hsh = hash(x, y);
+        const c = cols[(x + y) % 4];
+        const top = shade(c, 0.92 + hsh * 0.18);
+        const p00 = iso(x, y, 0);
+        const p10 = iso(x + 1, y, 0);
+        const p11 = iso(x + 1, y + 1, 0);
+        const p01 = iso(x, y + 1, 0);
+        ctx.beginPath();
+        ctx.moveTo(p00.x, p00.y);
+        ctx.lineTo(p10.x, p10.y);
+        ctx.lineTo(p11.x, p11.y);
+        ctx.lineTo(p01.x, p01.y);
+        ctx.closePath();
+        ctx.fillStyle = top;
+        ctx.fill();
+        ctx.strokeStyle = "rgba(40, 70, 100, 0.18)";
+        ctx.lineWidth = 0.6;
+        ctx.stroke();
+      }
+    }
+
+    for (let i = 0; i < 17; i++) {
+      const a = iso(i, 0, 0);
+      const b = iso(i, 13, 0);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = "rgba(70, 180, 220, 0.045)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    for (let j = 0; j < 14; j++) {
+      const a = iso(0, j, 0);
+      const b = iso(17, j, 0);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = "rgba(70, 180, 220, 0.045)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    drawHazard(0.2, 0.15, 16.6, 0.55);
+    drawHazard(0.2, 12.3, 16.6, 0.55);
+  }
+
+  function drawHazard(x, y, w, d) {
+    const stripes = Math.max(6, Math.floor(w * 2.2));
+    for (let i = 0; i < stripes; i++) {
+      const u0 = i / stripes;
+      const u1 = (i + 1) / stripes;
+      const p0 = iso(x + u0 * w, y, 0.02);
+      const p1 = iso(x + u1 * w, y, 0.02);
+      const p2 = iso(x + u1 * w, y + d, 0.02);
+      const p3 = iso(x + u0 * w, y + d, 0.02);
+      ctx.beginPath();
+      ctx.moveTo(p0.x, p0.y);
+      ctx.lineTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.lineTo(p3.x, p3.y);
+      ctx.closePath();
+      ctx.fillStyle = i % 2 === 0 ? "#c8a21a" : "#1a1a16";
+      ctx.fill();
+    }
+  }
+
+  function drawBeltX(x, y, len, wid, h, t, speed, col) {
+    const top = shade(col, 1.05);
+    const left = shade(col, 0.62);
+    const right = shade(col, 0.45);
+    drawPrism(x, y, 0, len, wid, h, top, left, right, { edge: "rgba(0,0,0,0.25)" });
+
+    const railT = shade("#3a4658", 1.1);
+    drawPrism(x, y - 0.08, h, len, 0.08, 0.12, railT, shade("#3a4658", 0.7), shade("#3a4658", 0.5));
+    drawPrism(x, y + wid, h, len, 0.08, 0.12, railT, shade("#3a4658", 0.7), shade("#3a4658", 0.5));
+
+    const period = 0.55;
+    const off = (t * speed) % period;
+    const chevW = 0.28;
+    ctx.save();
+    for (let s = -period; s < len + period; s += period) {
+      const cx = x + s - off;
+      if (cx + chevW < x || cx > x + len) continue;
+      const p0 = iso(cx, y + 0.12, h + 0.01);
+      const p1 = iso(cx + chevW, y + 0.12, h + 0.01);
+      const p2 = iso(cx + chevW + 0.16, y + wid * 0.5, h + 0.01);
+      const p3 = iso(cx + chevW, y + wid - 0.12, h + 0.01);
+      const p4 = iso(cx, y + wid - 0.12, h + 0.01);
+      const p5 = iso(cx + 0.16, y + wid * 0.5, h + 0.01);
+      ctx.beginPath();
+      ctx.moveTo(p0.x, p0.y);
+      ctx.lineTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.lineTo(p3.x, p3.y);
+      ctx.lineTo(p4.x, p4.y);
+      ctx.lineTo(p5.x, p5.y);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(255, 170, 60, 0.28)";
+      ctx.fill();
+    }
+    ctx.restore();
+
+    const g0 = iso(x, y + wid * 0.5, h + 0.02);
+    const g1 = iso(x + len, y + wid * 0.5, h + 0.02);
+    ctx.strokeStyle = "rgba(80, 220, 255, 0.12)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(g0.x, g0.y);
+    ctx.lineTo(g1.x, g1.y);
+    ctx.stroke();
+  }
+
+  function drawBeltY(x, y, len, wid, h, t, speed, col) {
+    const top = shade(col, 1.05);
+    const left = shade(col, 0.62);
+    const right = shade(col, 0.45);
+    drawPrism(x, y, 0, wid, len, h, top, left, right, { edge: "rgba(0,0,0,0.25)" });
+    const railT = shade("#3a4658", 1.1);
+    drawPrism(x - 0.08, y, h, 0.08, len, 0.12, railT, shade("#3a4658", 0.7), shade("#3a4658", 0.5));
+    drawPrism(x + wid, y, h, 0.08, len, 0.12, railT, shade("#3a4658", 0.7), shade("#3a4658", 0.5));
+
+    const period = 0.55;
+    const off = (t * speed) % period;
+    for (let s = -period; s < len + period; s += period) {
+      const cy = y + s - off;
+      if (cy + 0.28 < y || cy > y + len) continue;
+      const p0 = iso(x + 0.12, cy, h + 0.01);
+      const p1 = iso(x + wid - 0.12, cy, h + 0.01);
+      const p2 = iso(x + wid - 0.12, cy + 0.28, h + 0.01);
+      const p3 = iso(x + wid * 0.5, cy + 0.42, h + 0.01);
+      const p4 = iso(x + 0.12, cy + 0.28, h + 0.01);
+      ctx.beginPath();
+      ctx.moveTo(p0.x, p0.y);
+      ctx.lineTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.lineTo(p3.x, p3.y);
+      ctx.lineTo(p4.x, p4.y);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(80, 220, 255, 0.22)";
+      ctx.fill();
+    }
+  }
+
+  function drawColumn(x, y, h, col) {
+    drawPrism(x, y, 0, 0.45, 0.45, h, shade(col, 1.15), shade(col, 0.7), shade(col, 0.5), { edge: "rgba(0,0,0,0.3)" });
+    drawPrism(x - 0.08, y - 0.08, h, 0.61, 0.61, 0.12, shade("#5aa8c8", 1.2), shade("#2a5060", 0.8), shade("#1a3040", 0.7), { glow: "rgba(80,200,255,0.25)", blur: 8 });
+  }
+
+  function drawPipeX(x, y, z, len, r, col) {
+    drawPrism(x, y, z, len, r, r, shade(col, 1.1), shade(col, 0.65), shade(col, 0.48));
+  }
+  function drawPipeY(x, y, z, len, r, col) {
+    drawPrism(x, y, z, r, len, r, shade(col, 1.1), shade(col, 0.65), shade(col, 0.48));
+  }
+
+  function drawLight(x, y, z, col, on, size) {
+    const p = iso(x, y, z);
+    ctx.save();
+    ctx.globalAlpha = on ? 0.95 : 0.18;
+    ctx.fillStyle = col;
+    ctx.shadowColor = col;
+    ctx.shadowBlur = on ? 16 : 2;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, size || 3.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawStamp(x, y, t) {
+    const baseCol = "#2c3948";
+    drawPrism(x, y, 0, 2.4, 2.0, 0.45, shade(baseCol, 1.1), shade(baseCol, 0.7), shade(baseCol, 0.5));
+    drawPrism(x + 0.15, y + 0.15, 0.45, 0.35, 1.7, 3.4, shade("#3d4d60", 1.05), shade("#3d4d60", 0.65), shade("#3d4d60", 0.48));
+    drawPrism(x + 1.9, y + 0.15, 0.45, 0.35, 1.7, 3.4, shade("#3d4d60", 1.05), shade("#3d4d60", 0.65), shade("#3d4d60", 0.48));
+    drawPrism(x + 0.1, y + 0.2, 3.7, 2.2, 1.6, 0.35, shade("#4a5d72", 1.15), shade("#4a5d72", 0.7), shade("#4a5d72", 0.5));
+
+    const phase = ((t - 3.0) % INTERVAL + INTERVAL) % INTERVAL;
+    let down = 0;
+    if (phase < 0.18) down = smooth(phase / 0.18);
+    else if (phase < 0.42) down = 1;
+    else if (phase < 0.62) down = 1 - smooth((phase - 0.42) / 0.2);
+    const pz = 2.55 - down * 1.55;
+    drawPrism(x + 0.85, y + 0.55, pz, 0.7, 0.9, 1.35, shade("#6a7d92", 1.2), shade("#6a7d92", 0.7), shade("#6a7d92", 0.5));
+    drawPrism(x + 0.7, y + 0.42, pz - 0.18, 1.0, 1.16, 0.18, shade("#c45a2a", 1.1), shade("#c45a2a", 0.65), shade("#c45a2a", 0.45), { glow: down > 0.85 ? "rgba(255,120,40,0.45)" : null, blur: 14 });
+
+    const ledOn = phase < 0.5;
+    drawLight(x + 0.4, y + 0.08, 3.95, "#ff4a2a", ledOn && down > 0.7, 3.4);
+    drawLight(x + 2.0, y + 0.08, 3.95, "#3dff9a", !ledOn || down < 0.3, 3.4);
+    drawLight(x + 1.2, y + 0.08, 4.05, "#4ec8ff", Math.sin(t * 8) > 0.2, 2.6);
+
+    if (down > 0.92 && Math.random() < 0.55) {
+      burstSparks(x + 1.2, y + 1.0, 0.85, 10, "#ffb347");
+    }
+  }
+
+  function drawAssembler(x, y, t) {
+    const baseCol = "#263242";
+    drawPrism(x, y, 0, 2.6, 2.4, 0.4, shade(baseCol, 1.12), shade(baseCol, 0.68), shade(baseCol, 0.5));
+    drawPrism(x + 0.2, y + 0.2, 0.4, 2.2, 2.0, 0.15, shade("#1b2836", 1), shade("#1b2836", 0.7), shade("#1b2836", 0.5));
+
+    const ang = t * 1.4;
+    const cx = x + 1.3, cy = y + 1.2;
+    for (let i = 0; i < 6; i++) {
+      const a = ang + i * Math.PI / 3;
+      const rx = Math.cos(a) * 0.72;
+      const ry = Math.sin(a) * 0.72;
+      drawPrism(cx + rx * 0.5 - 0.12, cy + ry * 0.5 - 0.12, 0.7, 0.24, 0.24, 0.18, shade("#3ad0ff", 1.2), shade("#1a6a88", 0.8), shade("#0e4055", 0.6));
+    }
+    drawPrism(cx - 0.28, cy - 0.28, 0.55, 0.56, 0.56, 0.55, shade("#4a6078", 1.15), shade("#4a6078", 0.7), shade("#4a6078", 0.5));
+
+    const toolZ = 2.1 + Math.sin(t * 3.2) * 0.35;
+    drawPrism(x + 0.15, y + 0.15, 2.6, 2.3, 0.18, 0.18, shade("#708398", 1.2), shade("#708398", 0.7), shade("#708398", 0.5));
+    drawPrism(x + 1.05, y + 0.9, toolZ, 0.5, 0.5, 2.7 - toolZ, shade("#8aa0b8", 1.15), shade("#8aa0b8", 0.65), shade("#8aa0b8", 0.48));
+    drawPrism(x + 1.15, y + 1.0, toolZ - 0.12, 0.3, 0.3, 0.12, shade("#ffe14a", 1), shade("#c9a020", 0.7), shade("#8a6a10", 0.5), { glow: "rgba(255,220,80,0.4)", blur: 10 });
+
+    drawPrism(x + 0.05, y + 1.9, 0.4, 0.7, 0.4, 1.1, shade("#2a3a4c", 1.1), shade("#2a3a4c", 0.7), shade("#2a3a4c", 0.5));
+    const blink = Math.floor(t * 6) % 3;
+    drawLight(x + 0.22, y + 2.05, 1.35, "#ff3344", blink === 0, 2.4);
+    drawLight(x + 0.4, y + 2.05, 1.35, "#ffcc22", blink === 1, 2.4);
+    drawLight(x + 0.58, y + 2.05, 1.35, "#33ff88", blink === 2, 2.4);
+
+    const ap = ((t - 9.0) % INTERVAL + INTERVAL) % INTERVAL;
+    if (ap > 0.05 && ap < 0.55 && Math.random() < 0.4) {
+      burstWelds(x + 1.3, y + 1.2, 1.1);
+    }
+  }
+
+  function drawPacker(x, y, t) {
+    const col = "#2a3646";
+    drawPrism(x, y, 0, 2.3, 2.2, 0.38, shade(col, 1.1), shade(col, 0.68), shade(col, 0.5));
+    drawPrism(x + 0.1, y + 0.1, 0.38, 0.18, 2.0, 2.4, shade("#354556", 1.05), shade("#354556", 0.65), shade("#354556", 0.48));
+    drawPrism(x + 2.02, y + 0.1, 0.38, 0.18, 2.0, 2.4, shade("#354556", 1.05), shade("#354556", 0.65), shade("#354556", 0.48));
+    drawPrism(x + 0.1, y + 0.1, 2.78, 2.1, 2.0, 0.16, shade("#4a5e72", 1.15), shade("#4a5e72", 0.7), shade("#4a5e72", 0.5));
+
+    const ph = ((t - 11.5) % INTERVAL + INTERVAL) % INTERVAL;
+    const close = ph < 0.5 ? smooth(Math.sin(ph / 0.5 * Math.PI)) : 0;
+    const inset = 0.15 + close * 0.45;
+    drawPrism(x + inset, y + 0.35, 0.7, 0.12, 1.5, 1.7, shade("#d07a28", 1.1), shade("#d07a28", 0.65), shade("#d07a28", 0.45));
+    drawPrism(x + 2.05 - inset, y + 0.35, 0.7, 0.12, 1.5, 1.7, shade("#d07a28", 1.1), shade("#d07a28", 0.65), shade("#d07a28", 0.45));
+
+    for (let i = 0; i < 5; i++) {
+      const on = (Math.floor(t * 10) + i) % 5 !== 0;
+      drawLight(x + 0.45 + i * 0.35, y + 0.18, 2.98, "#5cf0ff", on, 2.1);
+    }
+  }
+
+  function drawScanner(x, y, t) {
+    const col = "#243040";
+    drawPrism(x, y, 0, 0.4, 1.8, 2.5, shade(col, 1.1), shade(col, 0.68), shade(col, 0.5));
+    drawPrism(x + 1.5, y, 0, 0.4, 1.8, 2.5, shade(col, 1.1), shade(col, 0.68), shade(col, 0.5));
+    drawPrism(x, y, 2.5, 1.9, 1.8, 0.22, shade("#3d5166", 1.15), shade("#3d5166", 0.7), shade("#3d5166", 0.5));
+
+    const scan = (Math.sin(t * 4.2) * 0.5 + 0.5);
+    const zy = 0.25 + scan * 2.0;
+    const a = iso(x + 0.4, y + 0.15, zy);
+    const b = iso(x + 1.5, y + 0.15, zy);
+    const c = iso(x + 1.5, y + 1.65, zy);
+    const d = iso(x + 0.4, y + 1.65, zy);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.lineTo(c.x, c.y);
+    ctx.lineTo(d.x, d.y);
+    ctx.closePath();
+    ctx.fillStyle = "rgba(80, 255, 180, 0.12)";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(80, 255, 180, 0.55)";
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    drawLight(x + 0.2, y + 0.9, 2.7, "#66ffcc", true, 3);
+    drawLight(x + 1.7, y + 0.9, 2.7, "#66ffcc", Math.sin(t * 12) > 0, 3);
+  }
+
+  function drawHopper(x, y, t) {
+    drawPrism(x, y, 0, 1.8, 1.6, 0.5, shade("#2c3a4a", 1.1), shade("#2c3a4a", 0.68), shade("#2c3a4a", 0.5));
+    drawPrism(x + 0.15, y + 0.15, 0.5, 1.5, 1.3, 1.6, shade("#3a4c5e", 1.05), shade("#3a4c5e", 0.65), shade("#3a4c5e", 0.48));
+    drawPrism(x + 0.35, y + 0.35, 2.1, 1.1, 0.9, 0.15, shade("#1a242e", 1), shade("#1a242e", 0.7), shade("#1a242e", 0.5));
+    const pulse = 0.4 + 0.6 * (Math.sin(t * 5) * 0.5 + 0.5);
+    drawLight(x + 0.9, y + 0.2, 2.35, "#ff9933", pulse > 0.5, 3.2);
+    const hop = iso(x + 0.9, y + 0.8, 2.35);
+    ctx.fillStyle = "rgba(255,150,50,0.08)";
+    ctx.beginPath();
+    ctx.arc(hop.x, hop.y, 18, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawExitBay(x, y, t) {
+    drawPrism(x, y, 0, 2.8, 2.4, 0.3, shade("#1e2a36", 1.1), shade("#1e2a36", 0.7), shade("#1e2a36", 0.5));
+    drawPrism(x + 0.1, y + 0.1, 0.3, 0.2, 2.2, 2.8, shade("#314050", 1), shade("#314050", 0.65), shade("#314050", 0.48));
+    drawPrism(x + 2.5, y + 0.1, 0.3, 0.2, 2.2, 2.8, shade("#314050", 1), shade("#314050", 0.65), shade("#314050", 0.48));
+    drawPrism(x + 0.1, y + 0.1, 3.1, 2.6, 2.2, 0.18, shade("#4a6280", 1.2), shade("#4a6280", 0.7), shade("#4a6280", 0.5), { glow: "rgba(90,180,255,0.2)", blur: 10 });
+
+    const glow = 0.15 + 0.12 * (Math.sin(t * 2.5) * 0.5 + 0.5);
+    const a = iso(x + 0.4, y + 2.2, 0.4);
+    const b = iso(x + 2.4, y + 2.2, 0.4);
+    const c = iso(x + 2.4, y + 2.2, 2.9);
+    const d = iso(x + 0.4, y + 2.2, 2.9);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.lineTo(c.x, c.y);
+    ctx.lineTo(d.x, d.y);
+    ctx.closePath();
+    ctx.fillStyle = "rgba(80,200,255," + glow + ")";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(160,230,255,0.45)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  function drawControlPanel(x, y, t) {
+    drawPrism(x, y, 0, 1.4, 1.1, 1.6, shade("#2a3544", 1.12), shade("#2a3544", 0.68), shade("#2a3544", 0.5));
+    const scr = iso(x + 0.2, y + 0.15, 1.35);
+    const scr2 = iso(x + 1.15, y + 0.15, 1.35);
+    const scr3 = iso(x + 1.15, y + 0.15, 0.7);
+    const scr4 = iso(x + 0.2, y + 0.15, 0.7);
+    ctx.beginPath();
+    ctx.moveTo(scr.x, scr.y);
+    ctx.lineTo(scr2.x, scr2.y);
+    ctx.lineTo(scr3.x, scr3.y);
+    ctx.lineTo(scr4.x, scr4.y);
+    ctx.closePath();
+    ctx.fillStyle = "#061018";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(60,200,255,0.4)";
+    ctx.stroke();
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(scr.x, scr.y);
+    ctx.lineTo(scr2.x, scr2.y);
+    ctx.lineTo(scr3.x, scr3.y);
+    ctx.lineTo(scr4.x, scr4.y);
+    ctx.closePath();
+    ctx.clip();
+    for (let i = 0; i < 5; i++) {
+      const yy = scr.y + ((t * 28 + i * 10) % 40);
+      ctx.strokeStyle = "rgba(40, 220, 180, 0.35)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(scr.x, yy);
+      ctx.lineTo(scr2.x, yy);
+      ctx.stroke();
+    }
+    ctx.restore();
+    for (let i = 0; i < 4; i++) {
+      drawLight(x + 0.28 + i * 0.28, y + 0.22, 0.45, i % 2 ? "#33ffaa" : "#ffaa33", Math.sin(t * 5 + i) > 0, 2.2);
+    }
+  }
+
+  function drawRobot(baseX, baseY, t, kind) {
+    const offset = kind === 0 ? 5.0 : 6.6;
+    const phase = ((t - offset) % INTERVAL + INTERVAL) % INTERVAL;
+
+    const pick = kind === 0 ? { x: 9.15, y: 3.35, z: 0.95 } : { x: 9.15, y: 7.05, z: 0.95 };
+    const place = kind === 0 ? { x: 9.15, y: 7.05, z: 0.95 } : { x: 14.35, y: 7.05, z: 0.95 };
+    const home = { x: baseX + 0.15, y: baseY - 0.9, z: 2.1 };
+
+    let tgt = { x: home.x, y: home.y, z: home.z };
+    let open = 1;
+    let holding = false;
+
+    if (phase < 0.22) {
+      const u = smooth(phase / 0.22);
+      tgt = { x: lerp(home.x, pick.x, u), y: lerp(home.y, pick.y, u), z: lerp(home.z, pick.z + 0.9, u) };
+      open = 1;
+    } else if (phase < 0.34) {
+      const u = smooth((phase - 0.22) / 0.12);
+      tgt = { x: pick.x, y: pick.y, z: lerp(pick.z + 0.9, pick.z, u) };
+      open = 1 - u;
+    } else if (phase < 0.48) {
+      const u = smooth((phase - 0.34) / 0.14);
+      tgt = { x: pick.x, y: pick.y, z: lerp(pick.z, pick.z + 1.15, u) };
+      open = 0;
+      holding = true;
+    } else if (phase < 0.92) {
+      const u = smooth((phase - 0.48) / 0.44);
+      tgt = { x: lerp(pick.x, place.x, u), y: lerp(pick.y, place.y, u), z: lerp(pick.z + 1.15, place.z + 1.15, u) };
+      open = 0;
+      holding = true;
+    } else if (phase < 1.08) {
+      const u = smooth((phase - 0.92) / 0.16);
+      tgt = { x: place.x, y: place.y, z: lerp(place.z + 1.15, place.z, u) };
+      open = 0;
+      holding = true;
+    } else if (phase < 1.22) {
+      const u = smooth((phase - 1.08) / 0.14);
+      tgt = { x: place.x, y: place.y, z: place.z };
+      open = u;
+      holding = u < 0.4;
+    } else if (phase < 1.45) {
+      const u = smooth((phase - 1.22) / 0.23);
+      tgt = { x: place.x, y: place.y, z: lerp(place.z, place.z + 1.0, u) };
+      open = 1;
+    } else {
+      const u = smooth((phase - 1.45) / 0.4);
+      tgt = { x: lerp(place.x, home.x, u), y: lerp(place.y, home.y, u), z: lerp(place.z + 1.0, home.z, u) };
+      open = 1;
+    }
+
+    const pedestal = "#3a4a5c";
+    drawPrism(baseX - 0.45, baseY - 0.45, 0, 0.9, 0.9, 0.55, shade(pedestal, 1.15), shade(pedestal, 0.7), shade(pedestal, 0.5));
+    drawPrism(baseX - 0.28, baseY - 0.28, 0.55, 0.56, 0.56, 0.7, shade("#4a5c70", 1.1), shade("#4a5c70", 0.68), shade("#4a5c70", 0.5));
+
+    const baseTop = { x: baseX, y: baseY, z: 1.35 };
+    const elbow = {
+      x: (baseTop.x + tgt.x) * 0.5,
+      y: (baseTop.y + tgt.y) * 0.5,
+      z: Math.max(baseTop.z, tgt.z) + 1.15
+    };
+
+    drawBeam(baseTop, elbow, 7.5, kind === 0 ? "#c8d4e0" : "#e0d0b8");
+    drawBeam(elbow, tgt, 6.2, kind === 0 ? "#a8b8c8" : "#d0c0a0");
+    drawJoint(baseTop, 5.5, "#ff7a2a");
+    drawJoint(elbow, 4.8, "#ffb347");
+    drawJoint(tgt, 3.8, "#5ce1ff");
+
+    const gx = tgt.x, gy = tgt.y, gz = tgt.z;
+    const spread = 0.06 + open * 0.16;
+    drawPrism(gx - 0.18, gy - spread - 0.06, gz - 0.08, 0.36, 0.08, 0.16, shade("#dde8f0", 1.1), shade("#8899aa", 0.8), shade("#667788", 0.6));
+    drawPrism(gx - 0.18, gy + spread, gz - 0.08, 0.36, 0.08, 0.16, shade("#dde8f0", 1.1), shade("#8899aa", 0.8), shade("#667788", 0.6));
+
+    drawLight(baseX, baseY - 0.4, 1.35, kind === 0 ? "#ff7a2a" : "#5ce1ff", Math.sin(t * 10 + kind) > -0.2, 2.8);
+
+    return { tgt: tgt, holding: holding, open: open };
+  }
+
+  function drawBeam(a, b, width, col) {
+    const p = iso(a.x, a.y, a.z);
+    const q = iso(b.x, b.y, b.z);
+    ctx.save();
+    ctx.strokeStyle = shade(col, 0.45);
+    ctx.lineWidth = width + 2;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(q.x, q.y);
+    ctx.stroke();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(q.x, q.y);
+    ctx.stroke();
+    ctx.strokeStyle = rgba("#ffffff", 0.28);
+    ctx.lineWidth = width * 0.28;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(q.x, q.y);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawJoint(p, r, col) {
+    const s = iso(p.x, p.y, p.z);
+    ctx.save();
+    ctx.fillStyle = col;
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.beginPath();
+    ctx.arc(s.x - r * 0.25, s.y - r * 0.25, r * 0.35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function productPose(age, idx, robots) {
+    const BH = 0.42;
+    let x = 1.1, y = 3.25, z = BH + 0.28;
+    let stage = "raw";
+    let vis = true;
+    let yaw = 0;
+
+    if (age < 0) return null;
+    if (age < 2.85) {
+      x = lerp(1.05, 5.35, age / 2.85);
+      y = 3.25;
+      z = BH + 0.28;
+      stage = "raw";
+    } else if (age < 3.45) {
+      x = 5.35;
+      y = 3.25;
+      z = BH + 0.28 - Math.sin(((age - 2.85) / 0.6) * Math.PI) * 0.04;
+      stage = age > 3.1 ? "stamped" : "raw";
+    } else if (age < 5.05) {
+      x = lerp(5.35, 9.15, (age - 3.45) / 1.6);
+      y = 3.25;
+      z = BH + 0.28;
+      stage = "stamped";
+    } else if (age < 6.55) {
+      const r = robots[0];
+      x = r.tgt.x;
+      y = r.tgt.y;
+      z = r.tgt.z + 0.18;
+      stage = "stamped";
+    } else if (age < 8.85) {
+      x = lerp(9.15, 11.55, (age - 6.55) / 2.3);
+      y = 7.05;
+      z = BH + 0.28;
+      stage = "stamped";
+    } else if (age < 9.7) {
+      x = 11.55;
+      y = 7.05;
+      z = BH + 0.28 + Math.sin((age - 8.85) * 8) * 0.03;
+      stage = age > 9.15 ? "assembled" : "stamped";
+    } else if (age < 11.35) {
+      x = lerp(11.55, 13.85, (age - 9.7) / 1.65);
+      y = 7.05;
+      z = BH + 0.28;
+      stage = "assembled";
+    } else if (age < 12.2) {
+      x = 13.85;
+      y = 7.05;
+      z = BH + 0.28;
+      stage = age > 11.7 ? "packed" : "assembled";
+    } else if (age < 13.4) {
+      x = lerp(13.85, 14.55, (age - 12.2) / 1.2);
+      y = 7.05;
+      z = BH + 0.28;
+      stage = "packed";
+    } else if (age < 15.1) {
+      x = 14.55;
+      y = lerp(7.05, 10.35, (age - 13.4) / 1.7);
+      z = BH + 0.28;
+      stage = "packed";
+    } else if (age < 18.4) {
+      const slot = idx % 8;
+      const col = slot % 4;
+      const row = Math.floor(slot / 4);
+      const layer = Math.floor((idx % 16) / 8);
+      x = 11.2 + col * 0.72;
+      y = 10.15 + row * 0.72;
+      z = 0.35 + layer * 0.55;
+      stage = "packed";
+    } else if (age < 21.2) {
+      const u = (age - 18.4) / 2.8;
+      x = lerp(11.2 + (idx % 4) * 0.72, 15.3, u);
+      y = 11.55;
+      z = 0.7;
+      stage = "packed";
+    } else {
+      vis = false;
+    }
+    return vis ? { x: x, y: y, z: z, stage: stage, yaw: yaw } : null;
+  }
+
+  function drawProduct(p) {
+    const s = 0.46;
+    let top, left, right, extra = null;
+    if (p.stage === "raw") {
+      top = "#6a7380"; left = "#4a5360"; right = "#323840";
+    } else if (p.stage === "stamped") {
+      top = "#3aa0d8"; left = "#1f6a92"; right = "#154860";
+      extra = "#7ee0ff";
+    } else if (p.stage === "assembled") {
+      top = "#5b7cff"; left = "#3348aa"; right = "#223070";
+      extra = "#c0d0ff";
+    } else {
+      top = "#e8a23a"; left = "#b06a18"; right = "#7a480e";
+      extra = "#ffe09a";
+    }
+    const w = p.stage === "packed" ? 0.58 : s;
+    const d = p.stage === "packed" ? 0.5 : s;
+    const h = p.stage === "assembled" ? 0.52 : p.stage === "packed" ? 0.48 : 0.42;
+    drawPrism(p.x - w * 0.5, p.y - d * 0.5, p.z - h * 0.15, w, d, h, top, left, right, extra ? { glow: rgba(extra, 0.18), blur: 8, edge: "rgba(0,0,0,0.25)" } : { edge: "rgba(0,0,0,0.25)" });
+    if (p.stage === "packed") {
+      const a = iso(p.x - 0.12, p.y - 0.08, p.z + h * 0.7);
+      const b = iso(p.x + 0.12, p.y - 0.08, p.z + h * 0.7);
+      ctx.strokeStyle = "rgba(20,20,20,0.45)";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+    if (p.stage === "assembled") {
+      drawPrism(p.x - 0.08, p.y - 0.08, p.z + h * 0.7, 0.16, 0.16, 0.22, "#d0e4ff", "#6888bb", "#406090");
+    }
+  }
+
+  function agvPos(t, id) {
+    const loop = [
+      { x: 1.3, y: 1.15 },
+      { x: 15.4, y: 1.15 },
+      { x: 15.4, y: 11.7 },
+      { x: 1.3, y: 11.7 }
+    ];
+    const segs = [];
+    let total = 0;
+    for (let i = 0; i < loop.length; i++) {
+      const a = loop[i];
+      const b = loop[(i + 1) % loop.length];
+      const len = Math.hypot(b.x - a.x, b.y - a.y);
+      segs.push({ a: a, b: b, len: len });
+      total += len;
+    }
+    const speed = 1.55;
+    const dist = (t * speed + id * total / 3) % total;
+    let acc = 0;
+    for (let i = 0; i < segs.length; i++) {
+      if (acc + segs[i].len >= dist) {
+        const u = (dist - acc) / segs[i].len;
+        const a = segs[i].a, b = segs[i].b;
+        const x = lerp(a.x, b.x, u);
+        const y = lerp(a.y, b.y, u);
+        const ang = Math.atan2(b.y - a.y, b.x - a.x);
+        return { x: x, y: y, ang: ang, u: u, seg: i };
+      }
+      acc += segs[i].len;
+    }
+    return { x: loop[0].x, y: loop[0].y, ang: 0, u: 0, seg: 0 };
+  }
+
+  function drawAGV(p, t, id) {
+    const w = 0.78, d = 0.52, h = 0.28;
+    const alongX = Math.abs(Math.cos(p.ang)) > 0.5;
+    const bw = alongX ? w : d;
+    const bd = alongX ? d : w;
+    drawPrism(p.x - bw * 0.5, p.y - bd * 0.5, 0.08, bw, bd, h, shade("#3d4c5c", 1.2), shade("#3d4c5c", 0.7), shade("#3d4c5c", 0.5), { edge: "rgba(0,0,0,0.3)" });
+    drawPrism(p.x - bw * 0.35, p.y - bd * 0.28, 0.08 + h, bw * 0.7, bd * 0.56, 0.14, shade("#1a2834", 1), shade("#1a2834", 0.7), shade("#1a2834", 0.5));
+    const gcol = id === 0 ? "#5ce1ff" : id === 1 ? "#ffb347" : "#66ffaa";
+    drawLight(p.x, p.y - bd * 0.4, 0.22, gcol, true, 2.6);
+    drawLight(p.x, p.y + bd * 0.4, 0.22, "#ff3344", Math.sin(t * 14 + id) > 0, 2.2);
+
+    const glow = iso(p.x, p.y, 0.02);
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+    ctx.fillStyle = gcol;
+    ctx.beginPath();
+    ctx.ellipse(glow.x, glow.y + 6, 16, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    const carry = (id === 1 && p.seg === 2) || (id === 0 && p.seg === 1 && p.u > 0.4);
+    if (carry) {
+      drawPrism(p.x - 0.22, p.y - 0.18, 0.52, 0.44, 0.36, 0.38, "#e8a23a", "#b06a18", "#7a480e");
+    }
+  }
+
+  function burstSparks(x, y, z, n, col) {
+    for (let i = 0; i < n; i++) {
+      sparks.push({
+        x: x, y: y, z: z,
+        vx: (Math.random() - 0.5) * 2.4,
+        vy: (Math.random() - 0.5) * 2.4,
+        vz: Math.random() * 2.8 + 0.4,
+        life: 0.45 + Math.random() * 0.35,
+        max: 0.8,
+        col: col
+      });
+    }
+  }
+  function burstWelds(x, y, z) {
+    for (let i = 0; i < 6; i++) {
+      welds.push({
+        x: x + (Math.random() - 0.5) * 0.4,
+        y: y + (Math.random() - 0.5) * 0.4,
+        z: z,
+        vx: (Math.random() - 0.5) * 1.6,
+        vy: (Math.random() - 0.5) * 1.6,
+        vz: Math.random() * 1.8,
+        life: 0.25 + Math.random() * 0.2,
+        max: 0.45
+      });
+    }
+  }
+
+  function initMotes() {
+    motes.length = 0;
+    for (let i = 0; i < 55; i++) {
+      motes.push({
+        x: Math.random() * 17,
+        y: Math.random() * 13,
+        z: Math.random() * 4.5 + 0.3,
+        s: 0.4 + Math.random() * 1.2,
+        ph: Math.random() * Math.PI * 2
+      });
+    }
+  }
+  initMotes();
+
+  function drawPathGlow(t) {
+    const pts = [
+      [1.3, 1.15], [15.4, 1.15], [15.4, 11.7], [1.3, 11.7], [1.3, 1.15]
+    ];
+    ctx.save();
+    ctx.strokeStyle = "rgba(80, 200, 255, 0.16)";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 10]);
+    ctx.lineDashOffset = -t * 28;
+    ctx.beginPath();
+    for (let i = 0; i < pts.length; i++) {
+      const p = iso(pts[i][0], pts[i][1], 0.03);
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawFan(x, y, z, t, r) {
+    const c = iso(x, y, z);
+    ctx.save();
+    ctx.translate(c.x, c.y);
+    ctx.rotate(t * 4.5);
+    ctx.strokeStyle = "rgba(180,200,220,0.7)";
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 3; i++) {
+      ctx.rotate((Math.PI * 2) / 3);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(r, 0);
+      ctx.stroke();
+    }
+    ctx.restore();
+    drawLight(x, y, z, "#9ad4ff", true, 2);
+  }
+
+  function drawHUD(t) {
+    const nProd = Math.max(0, Math.floor((t + 0.05) / INTERVAL) + 1);
+    const shipped = Math.max(0, Math.floor((t - 21.2) / INTERVAL) + 1);
+    throughput = shipped;
+
+    ctx.save();
+    ctx.globalAlpha = 0.92;
+    ctx.fillStyle = "rgba(6, 12, 20, 0.55)";
+    ctx.fillRect(18, 16, 340, 86);
+    ctx.strokeStyle = "rgba(80, 200, 255, 0.35)";
+    ctx.strokeRect(18.5, 16.5, 339, 85);
+
+    ctx.fillStyle = "#7ee0ff";
+    ctx.font = "13px Consolas, monospace";
+    ctx.fillText("ISO-FORGE  //  FABRICATION CELL 07", 30, 36);
+    ctx.fillStyle = "#9aa8b8";
+    ctx.font = "11px Consolas, monospace";
+    ctx.fillText("MODE  AUTONOMOUS     SHIFT  CONTINUOUS", 30, 54);
+    ctx.fillStyle = "#ffb347";
+    ctx.fillText("THROUGHPUT  " + throughput.toString().padStart(4, "0") + "  UNITS", 30, 72);
+    ctx.fillStyle = "#66ffaa";
+    ctx.fillText("LINE  ACTIVE   ROBOTS  2   AGV  3", 30, 90);
+    ctx.restore();
+
+    ctx.save();
+    ctx.fillStyle = "rgba(6, 12, 20, 0.5)";
+    ctx.fillRect(W - 268, 16, 250, 70);
+    ctx.strokeStyle = "rgba(255, 170, 60, 0.3)";
+    ctx.strokeRect(W - 267.5, 16.5, 249, 69);
+    ctx.fillStyle = "#ffb347";
+    ctx.font = "11px Consolas, monospace";
+    ctx.fillText("STAMP   " + bar(t, 3.0), W - 254, 38);
+    ctx.fillText("ASSEMB  " + bar(t, 9.0), W - 254, 56);
+    ctx.fillText("PACK    " + bar(t, 11.5), W - 254, 74);
+    ctx.restore();
+
+    const msgs = [
+      "INFEED BUFFER NOMINAL",
+      "VISION GATE ALIGNED",
+      "END EFFECTOR TORQUE OK",
+      "AGV LANE CLEAR",
+      "QUALITY YIELD 99.2%",
+      "COOLANT LOOP STABLE"
+    ];
+    const mi = Math.floor(t / 2.4) % msgs.length;
+    ctx.fillStyle = "rgba(100, 220, 255, 0.55)";
+    ctx.font = "11px Consolas, monospace";
+    ctx.fillText("> " + msgs[mi], 24, H - 22);
+
+    ctx.fillStyle = "rgba(255,255,255,0.08)";
+    ctx.font = "10px Consolas, monospace";
+    ctx.fillText("T+" + t.toFixed(1) + "s", W - 90, H - 22);
+  }
+
+  function bar(t, off) {
+    const ph = ((t - off) % INTERVAL + INTERVAL) % INTERVAL;
+    const n = Math.round((ph / INTERVAL) * 10);
+    let s = "[";
+    for (let i = 0; i < 10; i++) s += i < n ? "█" : "░";
+    return s + "]";
+  }
+
+  function drawVignette() {
+    const g = ctx.createRadialGradient(W * 0.5, H * 0.48, Math.min(W, H) * 0.2, W * 0.5, H * 0.5, Math.max(W, H) * 0.72);
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(1, "rgba(0,0,0,0.55)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  function drawBackdrop(t) {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "#0b1220");
+    g.addColorStop(0.45, "#081018");
+    g.addColorStop(1, "#05070c");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    for (let i = 0; i < 40; i++) {
+      const px = (hash(i, 3) * W + t * 3 * (i % 5 - 2)) % W;
+      const py = hash(i, 9) * H * 0.45;
+      ctx.fillStyle = "rgba(180,220,255," + (0.08 + hash(i, 1) * 0.12) + ")";
+      ctx.fillRect(px, py, 1.2, 1.2);
+    }
+
+    ctx.strokeStyle = "rgba(40, 90, 130, 0.05)";
+    ctx.lineWidth = 1;
+    const gs = 46;
+    const o = (t * 8) % gs;
+    for (let x = -gs + o; x < W + gs; x += gs) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x - 80, H);
+      ctx.stroke();
+    }
+  }
+
+  function drawOverheadLights(t) {
+    const spots = [
+      [3, 3, 5.2], [8, 3, 5.2], [12, 7, 5.2], [15, 10, 5.2], [5, 8, 5.2]
+    ];
+    for (let i = 0; i < spots.length; i++) {
+      const s = spots[i];
+      const p = iso(s[0], s[1], s[2]);
+      const f = iso(s[0], s[1], 0);
+      const pulse = 0.55 + 0.45 * Math.sin(t * 2 + i);
+      ctx.save();
+      const grd = ctx.createRadialGradient(f.x, f.y, 4, f.x, f.y, 70);
+      grd.addColorStop(0, "rgba(120, 190, 255," + (0.10 * pulse) + ")");
+      grd.addColorStop(1, "rgba(120,190,255,0)");
+      ctx.fillStyle = grd;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, 70, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(200,230,255,0.7)";
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function updateParticles(dt) {
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      const s = sparks[i];
+      s.life -= dt;
+      s.x += s.vx * dt;
+      s.y += s.vy * dt;
+      s.z += s.vz * dt;
+      s.vz -= 6 * dt;
+      if (s.life <= 0 || s.z < 0) sparks.splice(i, 1);
+    }
+    for (let i = welds.length - 1; i >= 0; i--) {
+      const s = welds[i];
+      s.life -= dt;
+      s.x += s.vx * dt;

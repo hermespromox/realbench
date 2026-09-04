@@ -1,0 +1,719 @@
+{
+  "name": "RealBench",
+  "methodology": "One-shot, same prompt, no repair, self-contained HTML, no external assets",
+  "generated_at": "2026-09-04T12:08:08.402005+00:00",
+  "models": {
+    "grok-4.6": {
+      "id": "x-ai/grok-4.6",
+      "name": "Grok 4.6",
+      "vendor": "xAI",
+      "color": "#111111"
+    },
+    "gpt-5.6-luna": {
+      "id": "openai/gpt-5.6-luna",
+      "name": "GPT-5.6 Luna",
+      "vendor": "OpenAI",
+      "color": "#10a37f"
+    },
+    "gemini-3.8-flash": {
+      "id": "google/gemini-3.8-flash",
+      "name": "Gemini 3.8 Flash",
+      "vendor": "Google",
+      "color": "#4285f4"
+    }
+  },
+  "scenarios": {
+    "solar-system": {
+      "name": "Solar System",
+      "icon": "◉",
+      "capability": "Geometry / depth",
+      "prompt": "Create a single self-contained HTML file showing a cinematic animated solar system. The Sun is centered, 8 planets orbit around it at different speeds, moons orbit selected planets, orbit paths are subtly visible, stars slowly drift in the background, and the whole scene has a sense of depth. The animation must run continuously and loop naturally. Use only HTML, CSS, SVG, Canvas and vanilla JavaScript. No external libraries, images, fonts or network requests."
+    },
+    "city-traffic": {
+      "name": "City Traffic",
+      "icon": "▦",
+      "capability": "Complexity / agents",
+      "prompt": "Create a self-contained HTML animation showing a stylized modern city from a top-down perspective. Cars continuously move through streets and intersections, traffic lights change automatically, pedestrians cross at selected intersections, building lights subtly animate, and traffic density changes over time. The scene should feel alive and continuously animated. No interaction. No external libraries or assets."
+    },
+    "aquarium": {
+      "name": "Living Aquarium",
+      "icon": "≈",
+      "capability": "Organic motion",
+      "prompt": "Create a self-contained animated underwater ecosystem in a single HTML file. Show at least 25 fish moving independently, several schools of small fish, jellyfish drifting slowly, bubbles rising, seaweed moving with underwater currents, floating particles, and animated light rays coming from the surface. Movements should feel organic rather than synchronized. The animation should loop seamlessly. No interaction and no external assets."
+    },
+    "rube-goldberg": {
+      "name": "Rube Goldberg",
+      "icon": "↝",
+      "capability": "Visual causality",
+      "prompt": "Create a self-contained HTML animation of an elaborate Rube Goldberg machine. A ball rolls down a ramp, knocks over dominoes, triggers a lever, releases another ball, spins a wheel, launches an object through the air and finally rings a bell. The entire chain reaction must be clearly understandable visually and restart automatically after completing. No user interaction. No external libraries or assets."
+    },
+    "factory": {
+      "name": "Future Factory",
+      "icon": "⌬",
+      "capability": "System coordination",
+      "prompt": "Create a self-contained HTML animation showing a futuristic automated factory from an isometric perspective. Conveyor belts continuously move products through the factory. Robotic arms pick up and place objects, machines stamp and assemble components, autonomous carts move between stations, indicator lights blink and completed products accumulate before leaving the factory. The entire workflow should run continuously as a coherent production process. No interaction and no external libraries or assets."
+    }
+  },
+  "results": [
+    {
+      "scenario": "solar-system",
+      "model": "grok-4.6",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 207.06,
+      "provider": "xAI",
+      "usage": {
+        "prompt_tokens": 419,
+        "completion_tokens": 14878,
+        "total_tokens": 15297,
+        "cost": 0.089914,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 128,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.089914,
+          "upstream_inference_prompt_cost": 0.000646,
+          "upstream_inference_completions_cost": 0.089268
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 4976,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 24532,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9
+      },
+      "path": "/runs/solar-system/grok-4.6.html",
+      "generated_at": "2026-09-04T11:58:46.868933+00:00"
+    },
+    {
+      "scenario": "solar-system",
+      "model": "gpt-5.6-luna",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 31.31,
+      "provider": "OpenAI",
+      "usage": {
+        "prompt_tokens": 213,
+        "completion_tokens": 3980,
+        "total_tokens": 4193,
+        "cost": 0.0048186,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.0048186,
+          "upstream_inference_prompt_cost": 4.26e-05,
+          "upstream_inference_completions_cost": 0.004776
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 756,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 9129,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9
+      },
+      "path": "/runs/solar-system/gpt-5.6-luna.html",
+      "generated_at": "2026-09-04T11:55:51.120886+00:00"
+    },
+    {
+      "scenario": "solar-system",
+      "model": "gemini-3.8-flash",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 64.69,
+      "provider": "Google",
+      "usage": {
+        "prompt_tokens": 212,
+        "completion_tokens": 12868,
+        "total_tokens": 13080,
+        "cost": 0.048414,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.048414,
+          "upstream_inference_prompt_cost": 0.000159,
+          "upstream_inference_completions_cost": 0.048255
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 1241,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 30308,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 3,
+        "dom_nodes_approx": 21
+      },
+      "path": "/runs/solar-system/gemini-3.8-flash.html",
+      "generated_at": "2026-09-04T11:56:24.495416+00:00"
+    },
+    {
+      "scenario": "city-traffic",
+      "model": "grok-4.6",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 308.2,
+      "provider": "xAI",
+      "usage": {
+        "prompt_tokens": 396,
+        "completion_tokens": 20510,
+        "total_tokens": 20906,
+        "cost": 0.12366,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 128,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.12366,
+          "upstream_inference_prompt_cost": 0.0006,
+          "upstream_inference_completions_cost": 0.12306
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 8147,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 30877,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9
+      },
+      "path": "/runs/city-traffic/grok-4.6.html",
+      "generated_at": "2026-09-04T12:00:59.317455+00:00"
+    },
+    {
+      "scenario": "city-traffic",
+      "model": "gpt-5.6-luna",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 30.69,
+      "provider": "OpenAI",
+      "usage": {
+        "prompt_tokens": 189,
+        "completion_tokens": 3681,
+        "total_tokens": 3870,
+        "cost": 0.004455,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.004455,
+          "upstream_inference_prompt_cost": 3.78e-05,
+          "upstream_inference_completions_cost": 0.0044172
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 516,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 8331,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 13
+      },
+      "path": "/runs/city-traffic/gpt-5.6-luna.html",
+      "generated_at": "2026-09-04T11:56:55.188893+00:00"
+    },
+    {
+      "scenario": "city-traffic",
+      "model": "gemini-3.8-flash",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 93.89,
+      "provider": "Google",
+      "usage": {
+        "prompt_tokens": 189,
+        "completion_tokens": 15996,
+        "total_tokens": 16185,
+        "cost": 0.06012675,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.06012675,
+          "upstream_inference_prompt_cost": 0.00014175,
+          "upstream_inference_completions_cost": 0.059985
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 9422,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": false,
+        "self_contained": true,
+        "bytes": 17077,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": true,
+        "uses_raf": false,
+        "animation_signals": 1,
+        "dom_nodes_approx": 32
+      },
+      "path": "/runs/city-traffic/gemini-3.8-flash.html",
+      "generated_at": "2026-09-04T11:58:29.080124+00:00"
+    },
+    {
+      "scenario": "aquarium",
+      "model": "grok-4.6",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 186.86,
+      "provider": "xAI",
+      "usage": {
+        "prompt_tokens": 402,
+        "completion_tokens": 13574,
+        "total_tokens": 13976,
+        "cost": 0.082056,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 128,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.082056,
+          "upstream_inference_prompt_cost": 0.000612,
+          "upstream_inference_completions_cost": 0.081444
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 5767,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 18708,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9
+      },
+      "path": "/runs/aquarium/grok-4.6.html",
+      "generated_at": "2026-09-04T12:01:35.939053+00:00"
+    },
+    {
+      "scenario": "aquarium",
+      "model": "gpt-5.6-luna",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 28.2,
+      "provider": "OpenAI",
+      "usage": {
+        "prompt_tokens": 199,
+        "completion_tokens": 3266,
+        "total_tokens": 3465,
+        "cost": 0.003959,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.003959,
+          "upstream_inference_prompt_cost": 3.98e-05,
+          "upstream_inference_completions_cost": 0.0039192
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 492,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 7364,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9
+      },
+      "path": "/runs/aquarium/gpt-5.6-luna.html",
+      "generated_at": "2026-09-04T11:59:15.070990+00:00"
+    },
+    {
+      "scenario": "aquarium",
+      "model": "gemini-3.8-flash",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 71.07,
+      "provider": "Google",
+      "usage": {
+        "prompt_tokens": 197,
+        "completion_tokens": 13475,
+        "total_tokens": 13672,
+        "cost": 0.050679,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.050679,
+          "upstream_inference_prompt_cost": 0.00014775,
+          "upstream_inference_completions_cost": 0.05053125
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 837,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 32076,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 3,
+        "dom_nodes_approx": 9
+      },
+      "path": "/runs/aquarium/gemini-3.8-flash.html",
+      "generated_at": "2026-09-04T12:00:26.145808+00:00"
+    },
+    {
+      "scenario": "rube-goldberg",
+      "model": "grok-4.6",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 226.96,
+      "provider": "xAI",
+      "usage": {
+        "prompt_tokens": 405,
+        "completion_tokens": 15191,
+        "total_tokens": 15596,
+        "cost": 0.091764,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 128,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.091764,
+          "upstream_inference_prompt_cost": 0.000618,
+          "upstream_inference_completions_cost": 0.091146
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 2613,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 31016,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9
+      },
+      "path": "/runs/rube-goldberg/grok-4.6.html",
+      "generated_at": "2026-09-04T12:04:13.104725+00:00"
+    },
+    {
+      "scenario": "rube-goldberg",
+      "model": "gpt-5.6-luna",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 60.69,
+      "provider": "OpenAI",
+      "usage": {
+        "prompt_tokens": 197,
+        "completion_tokens": 6098,
+        "total_tokens": 6295,
+        "cost": 0.007357,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.007357,
+          "upstream_inference_prompt_cost": 3.94e-05,
+          "upstream_inference_completions_cost": 0.0073176
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 1261,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 13043,
+        "uses_canvas": false,
+        "uses_svg": true,
+        "uses_css_animation": true,
+        "uses_raf": false,
+        "animation_signals": 10,
+        "dom_nodes_approx": 154
+      },
+      "path": "/runs/rube-goldberg/gpt-5.6-luna.html",
+      "generated_at": "2026-09-04T12:02:00.007452+00:00"
+    },
+    {
+      "scenario": "rube-goldberg",
+      "model": "gemini-3.8-flash",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 64.36,
+      "provider": "Google",
+      "usage": {
+        "prompt_tokens": 197,
+        "completion_tokens": 12579,
+        "total_tokens": 12776,
+        "cost": 0.047319,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.047319,
+          "upstream_inference_prompt_cost": 0.00014775,
+          "upstream_inference_completions_cost": 0.04717125
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 828,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 29822,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 10
+      },
+      "path": "/runs/rube-goldberg/gemini-3.8-flash.html",
+      "generated_at": "2026-09-04T12:02:40.302478+00:00"
+    },
+    {
+      "scenario": "factory",
+      "model": "grok-4.6",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 368.39,
+      "provider": "xAI",
+      "usage": {
+        "prompt_tokens": 409,
+        "completion_tokens": 23764,
+        "total_tokens": 24173,
+        "cost": 0.14321,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 128,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.14321,
+          "upstream_inference_prompt_cost": 0.000626,
+          "upstream_inference_completions_cost": 0.142584
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 7764,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": false,
+        "self_contained": true,
+        "bytes": 35338,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": false,
+        "animation_signals": 0,
+        "dom_nodes_approx": 9
+      },
+      "path": "/runs/factory/grok-4.6.html",
+      "generated_at": "2026-09-04T12:08:08.401465+00:00"
+    },
+    {
+      "scenario": "factory",
+      "model": "gpt-5.6-luna",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 40.56,
+      "provider": "OpenAI",
+      "usage": {
+        "prompt_tokens": 202,
+        "completion_tokens": 3556,
+        "total_tokens": 3758,
+        "cost": 0.0043076,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.0043076,
+          "upstream_inference_prompt_cost": 4.04e-05,
+          "upstream_inference_completions_cost": 0.0042672
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 476,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 7247,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9
+      },
+      "path": "/runs/factory/gpt-5.6-luna.html",
+      "generated_at": "2026-09-04T12:03:20.859469+00:00"
+    },
+    {
+      "scenario": "factory",
+      "model": "gemini-3.8-flash",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 80.95,
+      "provider": "Google",
+      "usage": {
+        "prompt_tokens": 201,
+        "completion_tokens": 15996,
+        "total_tokens": 16197,
+        "cost": 0.06013575,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.06013575,
+          "upstream_inference_prompt_cost": 0.00015075,
+          "upstream_inference_completions_cost": 0.059985
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 2328,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": false,
+        "self_contained": true,
+        "bytes": 36476,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": true,
+        "uses_raf": false,
+        "animation_signals": 1,
+        "dom_nodes_approx": 20
+      },
+      "path": "/runs/factory/gemini-3.8-flash.html",
+      "generated_at": "2026-09-04T12:04:41.807964+00:00"
+    }
+  ]
+}

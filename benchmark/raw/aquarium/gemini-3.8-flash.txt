@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Underwater Ecosystem</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #020b14;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<script>
+(function() {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+
+  let width = 0;
+  let height = 0;
+  let dpr = 1;
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', () => {
+    resize();
+    initKelp();
+  });
+  resize();
+
+  // Ocean Current & Global Time
+  let time = 0;
+
+  // -------------------------------------------------------------
+  // Seaweed / Kelp System
+  // -------------------------------------------------------------
+  let kelpStems = [];
+  function initKelp() {
+    kelpStems = [];
+    const count = Math.floor(width / 32) + 12;
+    for (let i = 0; i < count; i++) {
+      const x = (i / count) * (width + 120) - 60 + (Math.random() * 24 - 12);
+      const segments = 12 + Math.floor(Math.random() * 10);
+      const segLength = 22 + Math.random() * 18;
+      const baseWidth = 14 + Math.random() * 12;
+      const speed = 0.5 + Math.random() * 0.5;
+      const phase = Math.random() * Math.PI * 2;
+      const depth = Math.random(); // 0: back, 1: front
+      const hue = 145 + Math.random() * 30; // lush olive green to aqua kelp
+      const sat = 45 + Math.random() * 25;
+      const light = 12 + depth * 18;
+      kelpStems.push({
+        x, segments, segLength, baseWidth, speed, phase, depth,
+        color: `hsl(${hue}, ${sat}%, ${light}%)`,
+        leafColor: `hsl(${hue + 8}, ${sat + 10}%, ${light + 6}%)`,
+        targetHeight: segments * segLength
+      });
+    }
+    kelpStems.sort((a, b) => a.depth - b.depth);
+  }
+  initKelp();
+
+  function drawKelp(passDepthMin, passDepthMax) {
+    for (const k of kelpStems) {
+      if (k.depth < passDepthMin || k.depth >= passDepthMax) continue;
+      ctx.save();
+      let curX = k.x;
+      let curY = height + 10;
+      
+      const points = [{x: curX, y: curY}];
+      for (let s = 1; s <= k.segments; s++) {
+        const segRatio = s / k.segments;
+        const currentWave = Math.sin(time * 1.2 * k.speed + k.phase + s * 0.28) * (18 + s * 4.5);
+        const currentDrift = Math.cos(time * 0.6 * k.speed + s * 0.15) * (8 + s * 2);
+        curX += (currentWave + currentDrift) * 0.12;
+        curY -= k.segLength * (1 - segRatio * 0.15);
+        points.push({x: curX, y: curY});
+      }
+
+      // Draw Main Stalk
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        const xc = (points[i].x + points[i-1].x) / 2;
+        const yc = (points[i].y + points[i-1].y) / 2;
+        ctx.quadraticCurveTo(points[i-1].x, points[i-1].y, xc, yc);
+      }
+      ctx.lineWidth = k.baseWidth;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = k.color;
+      ctx.stroke();
+
+      // Draw Leaves
+      for (let i = 2; i < points.length - 1; i += 2) {
+        const p = points[i];
+        const dir = (i % 4 === 0) ? 1 : -1;
+        const leafAngle = Math.sin(time * 1.5 + k.phase + i) * 0.3 + (dir * 0.7);
+        const leafLen = (k.baseWidth * 2.8) * (1 - (i / points.length) * 0.4);
+        const lx = p.x + Math.cos(leafAngle) * leafLen;
+        const ly = p.y + Math.sin(leafAngle) * leafLen * 0.5 - 6;
+
+        ctx.beginPath();
+        ctx.fillStyle = k.leafColor;
+        ctx.ellipse((p.x + lx) / 2, (p.y + ly) / 2, leafLen * 0.6, leafLen * 0.26, leafAngle, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
+  // -------------------------------------------------------------
+  // Light Rays (God Rays) & Caustics
+  // -------------------------------------------------------------
+  function drawLightRays() {
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    const rayCount = 7;
+    for (let i = 0; i < rayCount; i++) {
+      const offset = (i / rayCount) * (width + 400) - 200;
+      const sweep = Math.sin(time * 0.35 + i * 1.7) * 90;
+      const x1 = offset + sweep;
+      const x2 = x1 + Math.tan(0.28) * height + Math.cos(time * 0.4 + i) * 110;
+      const rayWidthTop = 45 + Math.sin(time * 0.6 + i * 2) * 20;
+      const rayWidthBottom = 160 + Math.cos(time * 0.5 + i) * 60;
+      const alpha = 0.04 + Math.sin(time * 0.8 + i * 1.2) * 0.025;
+
+      const grad = ctx.createLinearGradient(x1, 0, x2, height * 0.85);
+      grad.addColorStop(0, `rgba(180, 245, 255, ${alpha * 2})`);
+      grad.addColorStop(0.3, `rgba(100, 220, 240, ${alpha * 1.5})`);
+      grad.addColorStop(0.7, `rgba(40, 160, 200, ${alpha * 0.8})`);
+      grad.addColorStop(1, 'rgba(10, 80, 120, 0)');
+
+      ctx.beginPath();
+      ctx.moveTo(x1 - rayWidthTop / 2, 0);
+      ctx.lineTo(x1 + rayWidthTop / 2, 0);
+      ctx.lineTo(x2 + rayWidthBottom / 2, height);
+      ctx.lineTo(x2 - rayWidthBottom / 2, height);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // -------------------------------------------------------------
+  // Marine Snow / Floating Micro-Particles
+  // -------------------------------------------------------------
+  const PARTICLE_COUNT = 130;
+  const particles = [];
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    particles.push({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      radius: 0.8 + Math.random() * 2.2,
+      alpha: 0.15 + Math.random() * 0.5,
+      driftX: (Math.random() - 0.4) * 0.4,
+      driftY: -0.15 - Math.random() * 0.35,
+      pulseSpeed: 1 + Math.random() * 2
+    });
+  }
+
+  function updateAndDrawParticles() {
+    ctx.save();
+    for (const p of particles) {
+      p.x += p.driftX + Math.sin(time * 0.8 + p.y * 0.01) * 0.25;
+      p.y += p.driftY + Math.cos(time * 0.5 + p.x * 0.01) * 0.15;
+      if (p.y < -10) { p.y = height + 10; p.x = Math.random() * width; }
+      if (p.x < -10) p.x = width + 10;
+      if (p.x > width + 10) p.x = -10;
+
+      const a = p.alpha * (0.6 + Math.sin(time * p.pulseSpeed + p.x) * 0.4);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(200, 245, 255, ${a})`;
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // -------------------------------------------------------------
+  // Rising Bubbles System
+  // -------------------------------------------------------------
+  const BUBBLE_COUNT = 45;
+  const bubbles = [];
+  for (let i = 0; i < BUBBLE_COUNT; i++) {
+    bubbles.push({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      size: 2 + Math.random() * 7,
+      speed: 0.8 + Math.random() * 1.8,
+      wobbleAmp: 0.8 + Math.random() * 1.5,
+      wobbleFreq: 2 + Math.random() * 3,
+      seed: Math.random() * 100
+    });
+  }
+
+  function updateAndDrawBubbles() {
+    ctx.save();
+    for (const b of bubbles) {
+      b.y -= b.speed;
+      b.x += Math.sin(time * b.wobbleFreq + b.seed) * b.wobbleAmp;
+
+      if (b.y < -20) {
+        b.y = height + 20 + Math.random() * 40;
+        b.x = Math.random() * width;
+        b.speed = 0.8 + Math.random() * 1.8;
+      }
+
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(180, 240, 255, 0.45)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(210, 250, 255, 0.15)';
+      ctx.fill();
+
+      // Bubble highlight dot
+      ctx.beginPath();
+      ctx.arc(b.x - b.size * 0.35, b.y - b.size * 0.35, b.size * 0.25, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // -------------------------------------------------------------
+  // Jellyfish (4 Drifting, Pulsing Jellyfish)
+  // -------------------------------------------------------------
+  const jellyfishList = [
+    { x: 0.22, y: 0.45, size: 36, speed: 0.7, color: 'rgba(235, 130, 215, ', tentColor: 'rgba(240, 150, 230, ', pulseFreq: 1.1, phase: 0 },
+    { x: 0.48, y: 0.65, size: 28, speed: 0.55, color: 'rgba(110, 205, 255, ', tentColor: 'rgba(140, 225, 255, ', pulseFreq: 1.3, phase: 2 },
+    { x: 0.76, y: 0.32, size: 44, speed: 0.8, color: 'rgba(180, 140, 255, ', tentColor: 'rgba(200, 160, 255, ', pulseFreq: 0.95, phase: 4.2 },
+    { x: 0.88, y: 0.78, size: 26, speed: 0.65, color: 'rgba(255, 160, 190, ', tentColor: 'rgba(255, 180, 210, ', pulseFreq: 1.4, phase: 1.3 }
+  ];
+
+  function drawJellyfish(j) {
+    ctx.save();
+    // Smooth pulsing motion: quick power stroke upwards, slow expansion
+    const pulseCycle = (time * j.pulseFreq + j.phase) % (Math.PI * 2);
+    const pulse = Math.sin(pulseCycle);
+    const squeeze = Math.sin(pulseCycle * 2) * 0.15;
+    
+    // Drifting coordinates
+    const jx = (j.x * width + Math.sin(time * 0.3 + j.phase) * 60);
+    // Jellyfish slowly ascends with pulse, wraps vertically
+    const jy = ((j.y * height - time * (12 * j.speed)) % (height + 200) + (height + 200)) % (height + 200) - 100;
+
+    const baseRad = j.size;
+    const radX = baseRad * (1 + (pulse > 0 ? -0.2 * pulse : 0.1 * Math.abs(pulse)));
+    const radY = baseRad * (1 + (pulse > 0 ? 0.3 * pulse : -0.15 * Math.abs(pulse)));
+    const tilt = Math.sin(time * 0.5 + j.phase) * 0.15;
+
+    ctx.translate(jx, jy);
+    ctx.rotate(tilt);
+
+    // Tentacles trailing down
+    const tentacleCount = 7;
+    for (let t = 0; t < tentacleCount; t++) {
+      const txOffset = ((t / (tentacleCount - 1)) - 0.5) * (radX * 1.3);
+      const tentLen = radY * 3.5 + (t % 2) * (radY * 0.8);
+      ctx.beginPath();
+      ctx.moveTo(txOffset, radY * 0.2);
+      
+      let prevX = txOffset;
+      let prevY = radY * 0.2;
+      const segs = 7;
+      for (let s = 1; s <= segs; s++) {
+        const segDist = (tentLen / segs) * s;
+        const lag = s * 0.35;
+        const wave = Math.sin(time * 2.5 * j.pulseFreq - lag + t) * (6 + s * 2.2);
+        const ny = radY * 0.2 + segDist;
+        const nx = txOffset + wave;
+        ctx.quadraticCurveTo(prevX, prevY, (prevX + nx) / 2, (prevY + ny) / 2);
+        prevX = nx;
+        prevY = ny;
+      }
+      ctx.strokeStyle = j.tentColor + '0.45)';
+      ctx.lineWidth = 1.6 - (t % 3) * 0.3;
+      ctx.stroke();
+    }
+
+    // Outer Bell Body
+    ctx.beginPath();
+    ctx.moveTo(-radX, 0);
+    ctx.bezierCurveTo(-radX, -radY * 1.5, radX, -radY * 1.5, radX, 0);
+    ctx.bezierCurveTo(radX * 0.8, radY * 0.45, -radX * 0.8, radY * 0.45, -radX, 0);
+    ctx.closePath();
+
+    const bellGrad = ctx.createRadialGradient(0, -radY * 0.4, 2, 0, 0, radX * 1.2);
+    bellGrad.addColorStop(0, j.color + '0.85)');
+    bellGrad.addColorStop(0.6, j.color + '0.4)');
+    bellGrad.addColorStop(0.95, j.color + '0.65)');
+    bellGrad.addColorStop(1, 'rgba(255, 255, 255, 0.7)');
+
+    ctx.fillStyle = bellGrad;
+    ctx.fill();
+
+    // Inner glowing rim / organs
+    ctx.beginPath();
+    ctx.ellipse(0, -radY * 0.3, radX * 0.45, radY * 0.35, 0, 0, Math.PI * 2);
+    ctx.fillStyle = j.color + '0.5)';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.ellipse(0, 0, radX * 0.7, radY * 0.22, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  // -------------------------------------------------------------
+  // Independent Solitary Fish (At least 28 unique fish)
+  // -------------------------------------------------------------
+  // Species types:
+  // 0: Angelfish / disc shape
+  // 1: Sleek tropical predator / barracuda style
+  // 2: Chubby reef fish (damselfish / clownfish)
+  // 3: Graceful regal blue tang style
+  // 4: Sea Turtle (solitary majestic creature)
+
+  const SPECIES = [
+    { type: 'angel', length: 34, height: 28, baseColor: '#f9a825', stripeColor: '#212121', finColor: '#ffe082', maxSpd: 1.3 },
+    { type: 'sleek', length: 48, height: 13, baseColor: '#00bcd4', stripeColor: '#006064', finColor: '#80deea', maxSpd: 2.1 },
+    { type: 'reef',  length: 28, height: 18, baseColor: '#ff5722', stripeColor: '#ffffff', finColor: '#ffab91', maxSpd: 1.5 },
+    { type: 'tang',  length: 38, height: 22, baseColor: '#1e88e5', stripeColor: '#fdd835', finColor: '#64b5f6', maxSpd: 1.7 },
+    { type: 'turtle',length: 68, height: 44, baseColor: '#2e7d32', stripeColor: '#81c784', finColor: '#1b5e20', maxSpd: 0.8 }
+  ];
+
+  const INDEPENDENT_FISH_COUNT = 30; // Exceeds the 25 required
+  const soloFish = [];
+
+  for (let i = 0; i < INDEPENDENT_FISH_COUNT; i++) {
+    // 1 sea turtle, and distributed mix of the other 4 species
+    let spIdx = 0;
+    if (i === 0) {
+      spIdx = 4; // Turtle
+    } else {
+      spIdx = (i % 4);
+    }
+    const sp = SPECIES[spIdx];
+    const dir = Math.random() > 0.5 ? 1 : -1;
+
+    soloFish.push({
+      species: sp,
+      spIdx: spIdx,
+      x: Math.random() * window.innerWidth,
+      y: 80 + Math.random() * (window.innerHeight - 180),
+      vx: (0.6 + Math.random() * sp.maxSpd) * dir,
+      vy: (Math.random() - 0.5) * 0.4,
+      targetY: 80 + Math.random() * (window.innerHeight - 180),
+      sizeMult: 0.8 + Math.random() * 0.45,
+      wagPhase: Math.random() * Math.PI * 2,
+      wagSpeed: 3 + Math.random() * 3,
+      depth: 0.2 + Math.random() * 0.8, // Parallax and lighting
+      fidgetTimer: Math.random() * 120
+    });
+  }
+
+  function updateAndDrawSoloFish() {
+    for (let f of soloFish) {
+      // Logic & AI wandering
+      f.fidgetTimer--;
+      if (f.fidgetTimer <= 0) {
+        f.fidgetTimer = 100 + Math.random() * 200;
+        f.targetY = 70 + Math.random() * (height - 160);
+        // Occasionally speed up or slow down
+        const dir = f.vx >= 0 ? 1 : -1;
+        f.vx = dir * (0.6 + Math.random() * f.species.maxSpd);
+      }
+
+      // Smooth vertical movement towards targetY
+      const dy = f.targetY - f.y;
+      f.vy += dy * 0.0008;
+      f.vy *= 0.94; // damping
+      f.y += f.vy;
+
+      f.x += f.vx;
+
+      // Natural vertical gentle bobbing
+      const bob = Math.sin(time * 2.2 + f.wagPhase) * 0.4;
+      f.y += bob;
+
+      // Screen wrap with smooth margin
+      const margin = 100;
+      if (f.vx > 0 && f.x > width + margin) {
+        f.x = -margin;
+        f.y = 80 + Math.random() * (height - 180);
+        f.targetY = f.y;
+      } else if (f.vx < 0 && f.x < -margin) {
+        f.x = width + margin;
+        f.y = 80 + Math.random() * (height - 180);
+        f.targetY = f.y;
+      }
+
+      // Tail wag oscillation
+      f.wagPhase += f.wagSpeed * 0.04;
+      const tailWag = Math.sin(f.wagPhase);
+
+      // Rendering
+      drawIndividualFish(f, tailWag);
+    }
+  }
+
+  function drawIndividualFish(f, tailWag) {
+    ctx.save();
+    ctx.translate(f.x, f.y);
+
+    const facing = f.vx >= 0 ? 1 : -1;
+    ctx.scale(facing * f.sizeMult * (0.7 + f.depth * 0.35), f.sizeMult * (0.7 + f.depth * 0.35));
+
+    // Slight pitch based on vertical velocity
+    const pitch = Math.max(-0.3, Math.min(0.3, f.vy * 0.35 * facing));
+    ctx.rotate(pitch);
+
+    const sp = f.species;
+
+    if (sp.type === 'turtle') {
+      drawTurtle(tailWag);
+    } else if (sp.type === 'angel') {
+      drawAngelFish(sp, tailWag);
+    } else if (sp.type === 'sleek') {
+      drawSleekFish(sp, tailWag);
+    } else if (sp.type === 'reef') {
+      drawReefFish(sp, tailWag);
+    } else if (sp.type === 'tang') {
+      drawTangFish(sp, tailWag);
+    }
+
+    ctx.restore();
+  }
+
+  function drawTurtle(tailWag) {
+    // Shell (Carapace)
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 36, 26, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#245a27';
+    ctx.fill();
+    ctx.strokeStyle = '#69a86b';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Shell scutes / pattern
+    ctx.beginPath();
+    ctx.arc(0, 0, 16, 0, Math.PI * 2);
+    ctx.strokeStyle = '#4e8c52';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Flippers (front flapping)
+    const flipperWave = Math.sin(time * 2.2) * 0.45;
+    ctx.save();
+    ctx.translate(14, -14);
+    ctx.rotate(-0.6 + flipperWave);
+    ctx.beginPath();
+    ctx.ellipse(18, -12, 24, 9, 0.4, 0, Math.PI * 2);
+    ctx.fillStyle = '#316935';
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(14, 14);
+    ctx.rotate(0.6 - flipperWave);
+    ctx.beginPath();
+    ctx.ellipse(18, 12, 24, 9, -0.4, 0, Math.PI * 2);
+    ctx.fillStyle = '#316935';
+    ctx.fill();
+    ctx.restore();
+
+    // Back flippers & tiny tail
+    const rearWave = Math.sin(time * 2.2 + 1) * 0.25;
+    ctx.save();
+    ctx.translate(-26, -12);
+    ctx.rotate(-0.3 + rearWave);
+    ctx.beginPath();
+    ctx.ellipse(-8, -4, 12, 6, -0.4, 0, Math.PI * 2);
+    ctx.fillStyle = '#224e26';
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(-26, 12);
+    ctx.rotate(0.3 - rearWave);
+    ctx.beginPath();
+    ctx.ellipse(-8, 4, 12, 6, 0.4, 0, Math.PI * 2);
+    ctx.fillStyle = '#224e26';
+    ctx.fill();
+    ctx.restore();
+
+    // Head
+    ctx.beginPath();
+    ctx.ellipse(40, 0, 12, 9, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#3b773f';
+    ctx.fill();
+
+    // Eye
+    ctx.beginPath();
+    ctx.arc(44, -3, 2.2, 0, Math.PI * 2);
+    ctx.fillStyle = '#0a1a0c';
+    ctx.fill();
+  }
+
+  function drawAngelFish(sp, tailWag) {
+    const wag = tailWag * 7;
+    // Caudal Fin
+    ctx.beginPath();
+    ctx.moveTo(-16, 0);
+    ctx.lineTo(-34 + wag * 0.6, -14 + wag);
+    ctx.quadraticCurveTo(-26, 0, -34 + wag * 0.6, 14 + wag);
+    ctx.closePath();
+    ctx.fillStyle = sp.finColor;
+    ctx.fill();
+
+    // Long dorsal and ventral fins
+    ctx.beginPath();
+    ctx.moveTo(2, -14);
+    ctx.quadraticCurveTo(-6, -42, -22, -48 + wag * 0.5);
+    ctx.quadraticCurveTo(-10, -22, -8, -12);
+    ctx.fillStyle = sp.finColor;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(0, 14);
+    ctx.quadraticCurveTo(-8, 44, -24, 52 + wag * 0.5);
+    ctx.quadraticCurveTo(-10, 24, -8, 12);
+    ctx.fillStyle = sp.finColor;
+    ctx.fill();
+
+    // Body
+    ctx.beginPath();
+    ctx.moveTo(22, 0);
+    ctx.quadraticCurveTo(8, -18, -16, 0);
+    ctx.quadraticCurveTo(8, 18, 22, 0);
+    ctx.fillStyle = sp.baseColor;
+    ctx.fill();
+
+    // Stripes
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = sp.stripeColor;
+    ctx.beginPath();
+    ctx.moveTo(3, -16);
+    ctx.lineTo(-4, 16);
+    ctx.moveTo(11, -11);
+    ctx.lineTo(6, 11);
+    ctx.moveTo(-7, -11);
+    ctx.lineTo(-12, 11);
+    ctx.stroke();
+
+    // Eye
+    ctx.beginPath();
+    ctx.arc(14, -4, 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(15, -4, 1.6, 0, Math.PI * 2);
+    ctx.fillStyle = '#050a10';
+    ctx.fill();
+  }
+
+  function drawSleekFish(sp, tailWag) {
+    const wag = tailWag * 6;
+    // Tail Fin
+    ctx.beginPath();
+    ctx.moveTo(-22, 0);
+    ctx.lineTo(-38 + wag * 0.5, -12 + wag);
+    ctx.lineTo(-32 + wag * 0.5, 0);
+    ctx.lineTo(-38 + wag * 0.5, 12 + wag);
+    ctx.closePath();
+    ctx.fillStyle = sp.finColor;
+    ctx.fill();
+
+    // Dorsal Fin
+    ctx.beginPath();
+    ctx.moveTo(-4, -6);
+    ctx.quadraticCurveTo(-12, -16, -18, -6);
+    ctx.fillStyle = sp.finColor;
+    ctx.fill();
+
+    // Torpedo Body
+    ctx.beginPath();
+    ctx.moveTo(26, 0);
+    ctx.quadraticCurveTo(8, -8, -22, wag * 0.3);
+    ctx.quadraticCurveTo(8, 8, 26, 0);
+    ctx.fillStyle = sp.baseColor;
+    ctx.fill();
+
+    // Lateral Stripe
+    ctx.beginPath();
+    ctx.moveTo(20, 0);
+    ctx.quadraticCurveTo(6, 1, -20, wag * 0.3);
+    ctx.strokeStyle = sp.stripeColor;
+    ctx.lineWidth = 2.4;
+    ctx.stroke();
+
+    // Pectoral Fin flutter
+    const pecAngle = Math.sin(time * 8 + f.wagPhase) * 0.3;
+    ctx.save();
+    ctx.translate(6, 2);
+    ctx.rotate(pecAngle);
+    ctx.beginPath();
+    ctx.ellipse(0, 3, 6, 2, 0.4, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.fill();
+    ctx.restore();
+
+    // Eye
+    ctx.beginPath();
+    ctx.arc(18, -2, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(19, -2, 1.3, 0, Math.PI * 2);
+    ctx.fillStyle = '#001a1e';
+    ctx.fill();
+  }
+
+  function drawReefFish(sp, tailWag) {
+    const wag = tailWag * 5.5;
+    // Tail Fin
+    ctx.beginPath();
+    ctx.moveTo(-12, 0);
+    ctx.quadraticCurveTo(-22, -10 + wag, -26 + wag * 0.4, -10 + wag);
+    ctx.quadraticCurveTo(-20, 0, -26 + wag * 0.4, 10 + wag);
+    ctx.quadraticCurveTo(-22, 10 + wag, -12, 0);
+    ctx.fillStyle = sp.finColor;
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Rounded Body
+    ctx.beginPath();
+    ctx.moveTo(16, 0);
+    ctx.quadraticCurveTo(4, -13, -14, wag * 0.25);
+    ctx.quadraticCurveTo(4, 13, 16, 0);
+    ctx.fillStyle = sp.baseColor;
+    ctx.fill();
+
+    // Clownfish White Curved Stripes with Black Outline
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(6, -11);
+    ctx.quadraticCurveTo(8, 0, 5, 11);
+    ctx.moveTo(-4, -9);
+    ctx.quadraticCurveTo(-3, 0, -5, 9);
+    ctx.stroke();
+
+    // Eye
+    ctx.beginPath();
+    ctx.arc(10, -3, 2.4, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffcc80';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(11, -3, 1.3, 0, Math.PI * 2);
+    ctx.fillStyle = '#000000';
+    ctx.fill();
+  }
+
+  function drawTangFish(sp, tailWag) {
+    const wag = tailWag * 6;
+    // Vibrant yellow caudal fin with black edge
+    ctx.beginPath();
+    ctx.moveTo(-16, 0);
+    ctx.lineTo(-30 + wag * 0.5, -11 + wag);
+    ctx.lineTo(-26 + wag * 0.5, 0);
+    ctx.lineTo(-30 + wag * 0.5, 11 + wag);
+    ctx.closePath();
+    ctx.fillStyle = sp.stripeColor; // Yellow fin
+    ctx.fill();
+
+    // Deep oval body
+    ctx.beginPath();
+    ctx.moveTo(20, 0);
+    ctx.quadraticCurveTo(6, -14, -16, wag * 0.3);
+    ctx.quadraticCurveTo(6, 14, 20, 0);
+    ctx.fillStyle = sp.baseColor;
+    ctx.fill();
+
+    // Blue Tang distinctive bold black curved swoosh
+    ctx.beginPath();
+    ctx.moveTo(10, -5);
+    ctx.bezierCurveTo(-4, -12, -12, -8, -14, wag * 0.3);
+    ctx.bezierCurveTo(-10, 6, 2, 4, 8, -2);
+    ctx.fillStyle = '#102027';
+    ctx.fill();
+
+    // Eye
+    ctx.beginPath();
+    ctx.arc(13, -3, 2.4, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(14, -3, 1.3, 0, Math.PI * 2);
+    ctx.fillStyle = '#051119';
+    ctx.fill();
+  }
+
+  // -------------------------------------------------------------
+  // Schools of Small Fish (Boids / Coordinated Swarms)
+  // -------------------------------------------------------------
+  // School 1: Turquoise / Cyan sparkling baitfish
+  // School 2: Golden shimmering anchovies
+  // School 3: Ruby / Pink micro-darters
+  const schools = [
+    {
+      count: 32,
+      baseSpeed: 2.2,
+      color: '#4dd0e1',
+      bellyColor: '#e0f7fa',
+      length: 14,
+      cx: 200, cy: 180,
+      pathPhase: 0,
+      pathRadiusX: 240, pathRadiusY: 80,
+      boids: []
+    },
+    {
+      count: 28,
+      baseSpeed: 2.5,
+      color: '#ffd54f',
+      bellyColor: '#fffde7',
+      length: 12,
+      cx: 600, cy: 380,
+      pathPhase: 2.5,
+      pathRadiusX: 300, pathRadiusY: 100,
+      boids: []
+    },
+    {
+      count: 24,
+      baseSpeed: 1.9,
+      color: '#ff80ab',
+      bellyColor: '#fce4ec',
+      length: 11,
+      cx: 400, cy: 520,
+      pathPhase: 4.8,
+      pathRadiusX: 200, pathRadiusY: 70,
+      boids: []
+    }
+  ];
+
+  // Initialize boids for each school
+  schools.forEach((sch, sIdx) => {
+    for (let i = 0; i < sch.count; i++) {
+      sch.boids.push({
+        x: (width * 0.3) + Math.random() * 200,
+        y: (height * 0.3) + Math.random() * 150,
+        vx: (Math.random() - 0.5) * 2,
+        vy: (Math.random() - 0.5) * 1.5,
+        offsetPhase: Math.random() * Math.PI * 2,
+        localWag: Math.random() * Math.PI * 2,
+        speedJitter: 0.85 + Math.random() * 0.3
+      });
+    }
+  });
+
+  function updateAndDrawSchools() {
+    schools.forEach((sch, sIdx) => {
+      // Swarm center path moves smoothly in organic Lissajous curves across the screen
+      const currentPathTime = time * 0.4 + sch.pathPhase;
+      const targetCenterX = (width * 0.5) + Math.sin(currentPathTime) * (width * 0.38);
+      const targetCenterY = (height * 0.45) + Math.sin(currentPathTime * 1.7) * (height * 0.28) + Math.cos(currentPathTime * 0.8) * 40;
+
+      // Calculate center of mass for cohesion
+      let comX = 0, comY = 0;
+      let avgVx = 0, avgVy = 0;
+      for (const b of sch.boids) {
+        comX += b.x;
+        comY += b.y;
+        avgVx += b.vx;
+        avgVy += b.vy;
+      }
+      comX /= sch.count;
+      comY /= sch.count;
+      avgVx /= sch.count;
+      avgVy /= sch.count;
+
+      for (let i = 0; i < sch.count; i++) {
+        const b = sch.boids[i];
+
+        // 1. Cohesion to target flock center + slight individual offset
+        const toTargetX = targetCenterX + Math.cos(b.offsetPhase + time) * 45 - b.x;
+        const toTargetY = targetCenterY + Math.sin(b.offsetPhase + time * 1.2) * 35 - b.y;
+        b.vx += toTargetX * 0.0008;
+        b.vy += toTargetY * 0.0008;
+
+        // 2. Alignment with average flock velocity
+        b.vx += (avgVx - b.vx) * 0.04;
+        b.vy += (avgVy - b.vy) * 0.04;
+
+        // 3. Separation from nearby boids
+        for (let j = 0; j < sch.count; j++) {
+          if (i === j) continue;
+          const other = sch.boids[j];
+          const dx = b.x - other.x;
+          const dy = b.y - other.y;
+          const distSq = dx * dx + dy * dy;
+          if (distSq < 225 && distSq > 0) { // < 15px
+            const dist = Math.sqrt(distSq);
+            b.vx += (dx / dist) * 0.22;
+            b.vy += (dy / dist) * 0.22;
+          }
+        }
+
+        // Speed clamping
+        const spd = Math.hypot(b.vx, b.vy);
+        const maxS = sch.baseSpeed * b.speedJitter;
+        if (spd > maxS) {
+          b.vx = (b.vx / spd) * maxS;
+          b.vy = (b.vy / spd) * maxS;
+        } else if (spd < maxS * 0.5) {
+          b.vx = (b.vx / spd) * maxS * 0.7;
+          b.vy = (b.vy / spd) * maxS * 0.7;
+        }
+
+        b.x += b.vx;
+        b.y += b.vy;
+
+        // Draw small schooling fish
+        b.localWag += 0.35;
+        const heading = Math.atan2(b.vy, b.vx);
+        const tailOsc = Math.sin(b.localWag) * 3;
+
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(heading);
+
+        // Body
+        ctx.beginPath();
+        ctx.moveTo(sch.length, 0);
+        ctx.quadraticCurveTo(0, -sch.length * 0.3, -sch.length * 0.8, tailOsc * 0.5);
+        ctx.quadraticCurveTo(0, sch.length * 0.3, sch.length, 0);
+        ctx.fillStyle = sch.color;
+        ctx.fill();
+
+        // Shimmering belly
+        ctx.beginPath();
+        ctx.moveTo(sch.length * 0.8, 0);
+        ctx.quadraticCurveTo(0, sch.length * 0.22, -sch.length * 0.6, 0);
+        ctx.fillStyle = sch.bellyColor;
+        ctx.fill();
+
+        // Tiny tail fin
+        ctx.beginPath();
+        ctx.moveTo(-sch.length * 0.8, tailOsc * 0.5);
+        ctx.lineTo(-sch.length * 1.3, -sch.length * 0.35 + tailOsc);
+        ctx.lineTo(-sch.length * 1.1, tailOsc * 0.5);
+        ctx.lineTo(-sch.length * 1.3, sch.length * 0.35 + tailOsc);
+        ctx.closePath();
+        ctx.fillStyle = sch.color;
+        ctx.fill();
+
+        ctx.restore();
+      }
+    });
+  }
+
+  // -------------------------------------------------------------
+  // Ocean Floor / Seabed Rocks & Sand Dunes
+  // -------------------------------------------------------------
+  function drawSeabed() {
+    ctx.save();
+    // Deep back reef silhouette
+    ctx.beginPath();
+    ctx.moveTo(0, height);
+    for (let x = 0; x <= width; x += 40) {
+      const y = height - 60 - Math.sin(x * 0.005) * 35 - Math.cos(x * 0.015) * 15;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(width, height);
+    ctx.closePath();
+    ctx.fillStyle = '#01121d';
+    ctx.fill();
+
+    // Foreground sandy dune gradient
+    ctx.beginPath();
+    ctx.moveTo(0, height);
+    for (let x = 0; x <= width; x += 30) {
+      const y = height - 42 - Math.sin(x * 0.008 + 1) * 20 - Math.cos(x * 0.02) * 10;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(width, height);
+    ctx.closePath();
+
+    const sandGrad = ctx.createLinearGradient(0, height - 70, 0, height);
+    sandGrad.addColorStop(0, '#062836');
+    sandGrad.addColorStop(1, '#021019');
+    ctx.fillStyle = sandGrad;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // -------------------------------------------------------------
+  // Water Surface & Shimmering Wave Crest
+  // -------------------------------------------------------------
+  function drawSurface() {
+    ctx.save();
+    const surfaceHeight = 28;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(width, 0);
+    ctx.lineTo(width, surfaceHeight);
+    for (let x = width; x >= 0; x -= 20) {
+      const wave = Math.sin(x * 0.015 + time * 1.8) * 4 + Math.cos(x * 0.03 - time * 1.2) * 2.5;
+      ctx.lineTo(x, surfaceHeight + wave);
+    }
+    ctx.closePath();
+
+    const surfGrad = ctx.createLinearGradient(0, 0, 0, surfaceHeight + 10);
+    surfGrad.addColorStop(0, 'rgba(160, 245, 255, 0.4)');
+    surfGrad.addColorStop(0.5, 'rgba(80, 200, 230, 0.25)');
+    surfGrad.addColorStop(1, 'rgba(10, 80, 110, 0)');
+    ctx.fillStyle = surfGrad;
+    ctx.fill();
+
+    // Surface highlight line
+    ctx.beginPath();
+    for (let x = 0; x <= width; x += 15) {
+      const wave = Math.sin(x * 0.015 + time * 1.8) * 4 + Math.cos(x * 0.03 - time * 1.2) * 2.5;
+      if (x === 0) ctx.moveTo(x, surfaceHeight + wave);
+      else ctx.lineTo(x, surfaceHeight + wave);
+    }
+    ctx.strokeStyle = 'rgba(215, 250, 255, 0.5)';
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // -------------------------------------------------------------
+  // Main Animation Loop
+  // -------------------------------------------------------------
+  let lastTimestamp = performance.now();
+
+  function animate(now) {
+    const dt = Math.min((now - lastTimestamp) / 1000, 0.1);
+    lastTimestamp = now;
+    time += dt;
+
+    // 1. Ocean Background Gradient (Vibrant Cyan-Turquoise top to Deep Abyssal Midnight Blue)
+    const oceanGrad = ctx.createLinearGradient(0, 0, 0, height);
+    oceanGrad.addColorStop(0, '#0a4257');    // Sunlit bright aqua-cyan
+    oceanGrad.addColorStop(0.22, '#063144'); // Deep turquoise
+    oceanGrad.addColorStop(0.55, '#031c2d'); // Indigo marine
+    oceanGrad.addColorStop(0.85, '#02121d'); // Pelagic deep
+    oceanGrad.addColorStop(1, '#010a12');    // Ocean floor abyss
+    ctx.fillStyle = oceanGrad;
+    ctx.fillRect(0, 0, width, height);
+
+    // 2. Animated God Rays from surface
+    drawLightRays();
+
+    // 3. Background Kelp / Seaweed (Far layer, darker)
+    drawKelp(0, 0.5);
+
+    // 4. Background Seabed contours
+    drawSeabed();
+
+    // 5. Coordinated Schools of small fish
+    updateAndDrawSchools();
+
+    // 6. Midground Jellyfish (Slow, hypnotic drift)
+    for (let i = 0; i < jellyfishList.length; i++) {
+      if (i % 2 === 0) drawJellyfish(jellyfishList[i]);
+    }
+
+    // 7. Independent Standalone Fish (>= 28 fish)
+    updateAndDrawSoloFish();
+
+    // 8. Foreground Jellyfish
+    for (let i = 0; i < jellyfishList.length; i++) {
+      if (i % 2 !== 0) drawJellyfish(jellyfishList[i]);
+    }
+
+    // 9. Foreground Kelp / Seaweed (Vibrant emerald, swaying in front of fish)
+    drawKelp(0.5, 1.01);
+
+    // 10. Rising Bubbles
+    updateAndDrawBubbles();
+
+    // 11. Marine Snow / Floating Micro-plankton
+    updateAndDrawParticles();
+
+    // 12. Surface waves & caustics rim
+    drawSurface();
+
+    // 13. Subtle atmospheric ambient vignette
+    const vignette = ctx.createRadialGradient(width * 0.5, height * 0.45, width * 0.25, width * 0.5, height * 0.5, width * 0.85);
+    vignette.addColorStop(0, 'rgba(0,0,0,0)');
+    vignette.addColorStop(0.7, 'rgba(2, 10, 18, 0.1)');
+    vignette.addColorStop(1, 'rgba(1, 6, 12, 0.45)');
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, width, height);
+
+    requestAnimationFrame(animate);
+  }
+
+  requestAnimationFrame(animate);
+})();
+</script>
+</body>
+</html>

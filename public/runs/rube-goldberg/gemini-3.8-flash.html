@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Grand Rube Goldberg Contraption</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  body, html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #12151c;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Courier New", monospace;
+  }
+  #canvas-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: radial-gradient(circle at 50% 40%, #1e2638 0%, #0d111a 100%);
+  }
+  canvas {
+    display: block;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+  }
+</style>
+</head>
+<body>
+<div id="canvas-container">
+  <canvas id="contraption"></canvas>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('contraption');
+  const ctx = canvas.getContext('2d');
+
+  const CW = 1600;
+  const CH = 900;
+
+  function resize() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const scale = Math.min(w / CW, h / CH);
+    canvas.width = CW;
+    canvas.height = CH;
+    canvas.style.width = (CW * scale) + 'px';
+    canvas.style.height = (CH * scale) + 'px';
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Color Palette & Gradients
+  const PALETTE = {
+    woodDark: '#4a2c16',
+    woodMed: '#784724',
+    woodLight: '#a1663b',
+    brass1: '#ffd966',
+    brass2: '#bfa038',
+    brass3: '#6a5416',
+    steel1: '#e8edf2',
+    steel2: '#8b9bb4',
+    steel3: '#485568',
+    copper1: '#e87d46',
+    copper2: '#a44e22',
+    dominoFront: '#f7ede2',
+    dominoSide: '#cfc4b6',
+    dot: '#252525',
+    bgGrid: 'rgba(90, 120, 160, 0.08)',
+    accentGlow: 'rgba(255, 215, 0, 0.6)'
+  };
+
+  // Particles container
+  let particles = [];
+
+  function spawnSparks(x, y, count, color = '#ffdf7e') {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 4 + 1;
+      particles.push({
+        x: x,
+        y: y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 1.5,
+        life: 1.0,
+        decay: Math.random() * 0.03 + 0.02,
+        color: color,
+        size: Math.random() * 3 + 1.5
+      });
+    }
+  }
+
+  function spawnWave(x, y) {
+    particles.push({
+      type: 'wave',
+      x: x,
+      y: y,
+      radius: 5,
+      maxRadius: 75,
+      life: 1.0,
+      decay: 0.018,
+      color: 'rgba(255, 230, 120,'
+    });
+  }
+
+  // Animation Timeline Config (Total ~ 18 seconds)
+  const CYCLE_TIME = 18.0; // Seconds
+
+  /*
+    TIMING BREAKDOWN:
+    0.00s - 0.40s: Initial pause / spotlight
+    0.40s - 3.20s: Ball 1 rolls down zigzag ramps (Ramp A, Ramp B)
+    3.20s - 5.20s: Ball 1 topples Domino cascade (10 dominoes)
+    5.20s - 6.60s: Last domino hits seesaw lever; lever tilts, pulls pin out
+    6.60s - 8.80s: Pin release drops Ball 2 down curved spiral chute into paddle wheel
+    8.80s - 11.20s: Paddle wheel spins, driving gears; wind-up cable triggers catapult catch
+    11.20s - 13.00s: Catapult releases arm, launches Weight object high in arc
+    13.00s - 15.50s: Flying object strikes Gong/Bell! Rings repeatedly with sonic waves
+    15.50s - 17.00s: Triumph / Flash / Celebration display
+    17.00s - 18.00s: Fade down & reset smooth
+  */
+
+  // DOMINOES SETUP
+  const DOMINO_COUNT = 9;
+  const dominoes = [];
+  const dominoStartX = 600;
+  const dominoY = 320;
+  const dominoSpacing = 32;
+  const dominoW = 10;
+  const dominoH = 46;
+
+  for (let i = 0; i < DOMINO_COUNT; i++) {
+    dominoes.push({
+      x: dominoStartX + i * dominoSpacing,
+      y: dominoY,
+      tilt: 0,
+      dots: (i % 6) + 1
+    });
+  }
+
+  // Helper Drawing Functions
+  function drawWoodBeam(x, y, w, h, angle = 0) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+
+    // Drop shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(3, 5, w, h);
+
+    // Base wood
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, PALETTE.woodLight);
+    grad.addColorStop(0.4, PALETTE.woodMed);
+    grad.addColorStop(1, PALETTE.woodDark);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+
+    // Bevel edges
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(1, 1, w - 2, h - 2);
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx.strokeRect(0, 0, w, h);
+
+    // Brass screws at ends
+    ctx.fillStyle = PALETTE.brass2;
+    if (w > 25) {
+      ctx.beginPath();
+      ctx.arc(8, h / 2, 3, 0, Math.PI * 2);
+      ctx.arc(w - 8, h / 2, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawMetallicBall(x, y, radius, type = 'steel') {
+    ctx.save();
+    // Shadow
+    ctx.beginPath();
+    ctx.ellipse(x + 4, y + radius * 0.9, radius * 0.9, radius * 0.35, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fill();
+
+    // Ball Body
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    const grad = ctx.createRadialGradient(
+      x - radius * 0.35, y - radius * 0.35, radius * 0.1,
+      x, y, radius
+    );
+    if (type === 'steel') {
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.3, PALETTE.steel1);
+      grad.addColorStop(0.7, PALETTE.steel2);
+      grad.addColorStop(1, PALETTE.steel3);
+    } else if (type === 'gold') {
+      grad.addColorStop(0, '#fff4b8');
+      grad.addColorStop(0.3, PALETTE.brass1);
+      grad.addColorStop(0.7, PALETTE.brass2);
+      grad.addColorStop(1, PALETTE.brass3);
+    } else if (type === 'copper') {
+      grad.addColorStop(0, '#ffd1b3');
+      grad.addColorStop(0.3, PALETTE.copper1);
+      grad.addColorStop(1, PALETTE.copper2);
+    }
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Outer rim highlight
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawGear(x, y, outerR, innerR, teeth, angle) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+
+    ctx.beginPath();
+    for (let i = 0; i < teeth; i++) {
+      const a = (i / teeth) * Math.PI * 2;
+      const aNext = ((i + 1) / teeth) * Math.PI * 2;
+      const aMid1 = a + (aNext - a) * 0.25;
+      const aMid2 = a + (aNext - a) * 0.65;
+      const toothR = outerR + 6;
+
+      if (i === 0) {
+        ctx.moveTo(Math.cos(a) * outerR, Math.sin(a) * outerR);
+      }
+      ctx.lineTo(Math.cos(aMid1) * toothR, Math.sin(aMid1) * toothR);
+      ctx.lineTo(Math.cos(aMid2) * toothR, Math.sin(aMid2) * toothR);
+      ctx.lineTo(Math.cos(aNext) * outerR, Math.sin(aNext) * outerR);
+    }
+    ctx.closePath();
+
+    const gGrad = ctx.createRadialGradient(0, 0, innerR, 0, 0, outerR + 6);
+    gGrad.addColorStop(0, PALETTE.brass1);
+    gGrad.addColorStop(0.7, PALETTE.brass2);
+    gGrad.addColorStop(1, PALETTE.brass3);
+    ctx.fillStyle = gGrad;
+    ctx.fill();
+    ctx.strokeStyle = '#3e2e05';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Inner cutouts
+    ctx.beginPath();
+    ctx.arc(0, 0, innerR, 0, Math.PI * 2);
+    ctx.fillStyle = '#221908';
+    ctx.fill();
+
+    // Spokes
+    ctx.strokeStyle = PALETTE.brass2;
+    ctx.lineWidth = 3.5;
+    for (let s = 0; s < 4; s++) {
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      const sa = (s / 4) * Math.PI * 2;
+      ctx.lineTo(Math.cos(sa) * outerR, Math.sin(sa) * outerR);
+      ctx.stroke();
+    }
+
+    // Hub
+    ctx.beginPath();
+    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+    ctx.fillStyle = PALETTE.steel1;
+    ctx.fill();
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  function drawBackground() {
+    // Blueprint / technical grid pattern
+    ctx.strokeStyle = PALETTE.bgGrid;
+    ctx.lineWidth = 1;
+    const step = 40;
+    ctx.beginPath();
+    for (let x = 0; x < CW; x += step) {
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, CH);
+    }
+    for (let y = 0; y < CH; y += step) {
+      ctx.moveTo(0, y);
+      ctx.lineTo(CW, y);
+    }
+    ctx.stroke();
+
+    // Workshop backplate wooden beams
+    drawWoodBeam(40, 830, 1520, 24, 0); // Main bottom support
+    drawWoodBeam(120, 80, 24, 760, 0);  // Left vertical tower
+    drawWoodBeam(1460, 80, 24, 760, 0); // Right vertical tower
+
+    // Title banner in technical draft style
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 235, 180, 0.85)';
+    ctx.font = '700 20px "Courier New", monospace';
+    ctx.letterSpacing = '3px';
+    ctx.fillText("AUTOMATED RUBE GOLDBERG ENGINE", 170, 70);
+    ctx.font = '12px "Courier New", monospace';
+    ctx.fillStyle = 'rgba(200, 215, 230, 0.6)';
+    ctx.fillText("CHAIN REACTION SYSTEM v4.2 • CONTINUOUS KINETIC CYCLE", 170, 90);
+
+    // Decorative gauge in header
+    ctx.beginPath();
+    ctx.arc(1410, 75, 18, 0, Math.PI * 2);
+    ctx.fillStyle = '#1e2430';
+    ctx.fill();
+    ctx.strokeStyle = PALETTE.brass2;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawStageLabel(text, x, y, active) {
+    ctx.save();
+    ctx.font = '10px "Courier New", monospace';
+    ctx.fillStyle = active ? '#ffd24c' : 'rgba(160, 180, 205, 0.4)';
+    if (active) {
+      ctx.shadowColor = '#ffd24c';
+      ctx.shadowBlur = 8;
+    }
+    ctx.fillText(text, x, y);
+    ctx.restore();
+  }
+
+  // MAIN ANIMATION LOOP
+  let startTime = null;
+
+  function render(now) {
+    if (!startTime) startTime = now;
+    const elapsed = (now - startTime) / 1000;
+    const time = elapsed % CYCLE_TIME; // Loop time
+
+    // Clear Screen
+    ctx.clearRect(0, 0, CW, CH);
+
+    // Draw background & architecture
+    drawBackground();
+
+    // Update & draw particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.life -= p.decay;
+      if (p.life <= 0) {
+        particles.splice(i, 1);
+        continue;
+      }
+      if (p.type === 'wave') {
+        p.radius += 2.2;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = p.color + (p.life * 0.9) + ')';
+        ctx.lineWidth = 3.5 * p.life;
+        ctx.stroke();
+      } else {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.15; // gravity
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.life;
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+      }
+    }
+
+    // ==========================================
+    // STAGE 1: RAMPS & BALL 1 (0.4s - 3.2s)
+    // ==========================================
+    const s1Active = time >= 0.4 && time < 3.2;
+    drawStageLabel("01 // GRAVITY CHUTE", 180, 130, s1Active);
+
+    // Ramp 1 (slanted down to right)
+    const ramp1X = 160, ramp1Y = 160, ramp1W = 280, ramp1Angle = 0.22;
+    drawWoodBeam(ramp1X, ramp1Y, ramp1W, 14, ramp1Angle);
+
+    // Funnel / Deflector
+    ctx.save();
+    ctx.fillStyle = PALETTE.copper2;
+    ctx.beginPath();
+    ctx.moveTo(425, 220);
+    ctx.lineTo(460, 225);
+    ctx.lineTo(435, 275);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Ramp 2 (slanted down to left)
+    const ramp2X = 460, ramp2Y = 260, ramp2W = 260, ramp2Angle = 3.02; // tilted left
+    drawWoodBeam(ramp2X, ramp2Y, ramp2W, 14, ramp2Angle);
+
+    // Ramp 3 (slanted down towards domino table)
+    const ramp3X = 220, ramp3Y = 320, ramp3W = 370, ramp3Angle = 0.05;
+    drawWoodBeam(ramp3X, ramp3Y, ramp3W, 14, ramp3Angle);
+
+    // Ball 1 trajectory calculation
+    let b1x = 180, b1y = 150;
+    const b1Radius = 14;
+
+    if (time < 0.4) {
+      b1x = 180;
+      b1y = 147;
+    } else if (time >= 0.4 && time < 1.4) {
+      // Rolling down Ramp 1
+      const progress = (time - 0.4) / 1.0;
+      const ease = progress * progress; // accelerating
+      b1x = 180 + Math.cos(ramp1Angle) * ramp1W * 0.9 * ease;
+      b1y = 147 + Math.sin(ramp1Angle) * ramp1W * 0.9 * ease;
+    } else if (time >= 1.4 && time < 1.7) {
+      // Drop & bounce off deflector to Ramp 2
+      const progress = (time - 1.4) / 0.3;
+      b1x = 425 + progress * 5;
+      b1y = 205 + progress * progress * 60;
+    } else if (time >= 1.7 && time < 2.5) {
+      // Rolling left down Ramp 2
+      const progress = (time - 1.7) / 0.8;
+      const ease = progress * progress;
+      b1x = 430 - ease * 210;
+      b1y = 268 + ease * 30;
+    } else if (time >= 2.5 && time < 2.7) {
+      // Falling from Ramp 2 to Ramp 3
+      const progress = (time - 2.5) / 0.2;
+      b1x = 220 + progress * 5;
+      b1y = 295 + progress * progress * 20;
+    } else if (time >= 2.7 && time < 3.25) {
+      // Rolling right on Ramp 3 directly into domino 0
+      const progress = (time - 2.7) / 0.55;
+      b1x = 225 + progress * 365;
+      b1y = 313 + progress * 7;
+      if (time > 3.2 && time < 3.24) {
+        spawnSparks(595, 305, 4, '#ffc04d');
+      }
+    } else {
+      // Settled at base of domino
+      b1x = 595;
+      b1y = 320;
+    }
+
+    drawMetallicBall(b1x, b1y, b1Radius, 'steel');
+
+    // ==========================================
+    // STAGE 2: DOMINO CASCADE (3.2s - 5.3s)
+    // ==========================================
+    const s2Active = time >= 3.2 && time < 5.3;
+    drawStageLabel("02 // MOMENTUM TRANSFER", dominoStartX + 30, dominoY - 55, s2Active);
+
+    // Domino shelf
+    drawWoodBeam(dominoStartX - 20, dominoY + 4, dominoSpacing * (DOMINO_COUNT + 1) + 10, 12, 0);
+
+    // Calculate topple angle for each domino
+    dominoes.forEach((dom, index) => {
+      const dominoStartTime = 3.2 + index * 0.18;
+      let angle = 0;
+      if (time > dominoStartTime) {
+        const fallProgress = Math.min(1.0, (time - dominoStartTime) / 0.16);
+        // Overlap angle so it leans on the next domino (~ 68 degrees, final one ~ 80 deg)
+        const maxAngle = index === DOMINO_COUNT - 1 ? 1.35 : 1.15;
+        // Ease with slight bounce at impact
+        angle = Math.sin(fallProgress * Math.PI * 0.5) * maxAngle;
+
+        if (fallProgress > 0.8 && fallProgress < 0.95 && Math.random() < 0.3) {
+          spawnSparks(dom.x + 20, dom.y - 10, 2, '#fff4cc');
+        }
+      }
+
+      ctx.save();
+      ctx.translate(dom.x, dom.y);
+      ctx.rotate(angle);
+
+      // Domino shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(-dominoW / 2 + 2, -dominoH + 2, dominoW, dominoH);
+
+      // Domino body
+      ctx.fillStyle = PALETTE.dominoFront;
+      ctx.fillRect(-dominoW / 2, -dominoH, dominoW, dominoH);
+
+      // Side depth
+      ctx.fillStyle = PALETTE.dominoSide;
+      ctx.fillRect(dominoW / 2 - 2, -dominoH, 2, dominoH);
+
+      // Domino divider & dots
+      ctx.strokeStyle = '#666';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-dominoW / 2 + 1, -dominoH / 2);
+      ctx.lineTo(dominoW / 2 - 1, -dominoH / 2);
+      ctx.stroke();
+
+      ctx.fillStyle = PALETTE.dot;
+      ctx.beginPath();
+      ctx.arc(0, -dominoH * 0.75, 1.8, 0, Math.PI * 2);
+      ctx.arc(0, -dominoH * 0.25, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    });
+
+    // ==========================================
+    // STAGE 3: SEESAW LEVER & PIN (5.2s - 6.8s)
+    // ==========================================
+    const s3Active = time >= 5.2 && time < 6.8;
+    const leverFulcrumX = 920;
+    const leverFulcrumY = 340;
+    const leverW = 150;
+    drawStageLabel("03 // LEVER TRIGGER", leverFulcrumX - 50, leverFulcrumY - 60, s3Active);
+
+    // Lever Fulcrum triangle
+    ctx.save();
+    ctx.fillStyle = PALETTE.copper2;
+    ctx.beginPath();
+    ctx.moveTo(leverFulcrumX, leverFulcrumY);
+    ctx.lineTo(leverFulcrumX - 16, leverFulcrumY + 28);
+    ctx.lineTo(leverFulcrumX + 16, leverFulcrumY + 28);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+
+    // Lever angle
+    let leverAngle = -0.15; // left arm raised slightly awaiting domino hit
+    if (time >= 4.7) {
+      if (time < 5.6) {
+        const p = (time - 4.7) / 0.9;
+        leverAngle = -0.15 + p * 0.42; // tilts clockwise down on left
+      } else {
+        leverAngle = 0.27; // tilted, right arm lifted
+      }
+    }
+
+    // Draw lever plank
+    ctx.save();
+    ctx.translate(leverFulcrumX, leverFulcrumY);
+    ctx.rotate(leverAngle);
+    drawWoodBeam(-leverW * 0.5, -6, leverW, 12, 0);
+
+    // Brass cup on left end to catch the last domino impact
+    ctx.fillStyle = PALETTE.brass2;
+    ctx.fillRect(-leverW * 0.5 - 2, -14, 14, 8);
+
+    // Counterweight on right end
+    ctx.fillStyle = PALETTE.steel2;
+    ctx.fillRect(leverW * 0.5 - 18, -16, 16, 12);
+    ctx.restore();
+
+    // Pull cord / latch linked to the right end of lever
+    const rightArmX = leverFulcrumX + Math.cos(leverAngle) * (leverW * 0.5 - 10);
+    const rightArmY = leverFulcrumY + Math.sin(leverAngle) * (leverW * 0.5 - 10);
+    const pinAnchorX = 1040;
+    const pinInitialY = 240;
+
+    // Pin movement when lever tilts
+    let pinY = pinInitialY;
+    if (time >= 5.0 && time < 6.0) {
+      const p = (time - 5.0) / 1.0;
+      pinY = pinInitialY - p * 35; // pin pulled up!
+    } else if (time >= 6.0) {
+      pinY = pinInitialY - 35;
+    }
+
+    // Cord
+    ctx.save();
+    ctx.strokeStyle = '#d4c79b';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 2]);
+    ctx.beginPath();
+    ctx.moveTo(rightArmX, rightArmY);
+    ctx.lineTo(pinAnchorX + 5, pinY + 25);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    // Steel Lock-Pin Gate holding Ball 2
+    ctx.save();
+    ctx.fillStyle = PALETTE.brass2;
+    ctx.fillRect(pinAnchorX, pinY, 10, 45);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(pinAnchorX + 2, pinY + 35, 6, 8);
+    ctx.restore();
+
+    // Gate Chamber & Chute for Ball 2
+    drawWoodBeam(990, 255, 60, 10, 0); // Ball 2 starting shelf
+
+    // ==========================================
+    // STAGE 4: BALL 2 & WATERWHEEL (6.6s - 10.5s)
+    // ==========================================
+    const s4Active = time >= 6.6 && time < 10.5;
+    drawStageLabel("04 // ROTARY CONVERTER", 1000, 390, s4Active);
+
+    // Curved guide chute leading into paddle wheel
+    ctx.save();
+    ctx.strokeStyle = PALETTE.copper1;
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.moveTo(1040, 260);
+    ctx.bezierCurveTo(1110, 270, 1140, 360, 1090, 430);
+    ctx.stroke();
+    ctx.strokeStyle = PALETTE.brass3;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.restore();
+
+    // Wheel details
+    const wheelX = 1040;
+    const wheelY = 530;
+    const wheelR = 65;
+    const paddleCount = 8;
+
+    // Wheel spin angle
+    let wheelAngle = 0;
+    if (time >= 7.6 && time < 11.2) {
+      const wt = (time - 7.6);
+      // Accelerated spin down then slow coast
+      wheelAngle = wt * 4.5 + Math.sin(wt * 2) * 0.5;
+    } else if (time >= 11.2) {
+      wheelAngle = (11.2 - 7.6) * 4.5;
+    }
+
+    // Ball 2 position logic
+    let b2x = 1015;
+    let b2y = 238;
+    const b2Radius = 17;
+
+    if (time < 6.4) {
+      // Held behind pin
+      b2x = 1015;
+      b2y = 238;
+    } else if (time >= 6.4 && time < 7.6) {
+      // Rolling down curved chute
+      const p = (time - 6.4) / 1.2;
+      const tE = p * p;
+      // Bezier curve evaluation
+      const p0 = {x: 1015, y: 238};
+      const p1 = {x: 1080, y: 260};
+      const p2 = {x: 1120, y: 370};
+      const p3 = {x: 1070, y: 460};
+      const omt = 1 - tE;
+      b2x = omt*omt*omt*p0.x + 3*omt*omt*tE*p1.x + 3*omt*tE*tE*p2.x + tE*tE*tE*p3.x;
+      b2y = omt*omt*omt*p0.y + 3*omt*omt*tE*p1.y + 3*omt*tE*tE*p2.y + tE*tE*tE*p3.y;
+    } else if (time >= 7.6 && time < 8.6) {
+      // Caught in wheel paddle, riding down half rotation
+      const p = (time - 7.6) / 1.0;
+      const rideAngle = -Math.PI * 0.4 + p * Math.PI * 0.8;
+      b2x = wheelX + Math.cos(rideAngle) * (wheelR - 10);
+      b2y = wheelY + Math.sin(rideAngle) * (wheelR - 10);
+      if (Math.random() < 0.25) {
+        spawnSparks(b2x, b2y + 10, 2, '#7ec8ff');
+      }
+    } else if (time >= 8.6 && time < 9.5) {
+      // Drops out of wheel into collector drain
+      const p = (time - 8.6) / 0.9;
+      b2x = 1060 + p * 20;
+      b2y = 570 + p * p * 90;
+    } else {
+      // Inside bucket/trap
+      b2x = 1080;
+      b2y = 660;
+    }
+
+    // Draw Wheel paddles & rim
+    ctx.save();
+    ctx.translate(wheelX, wheelY);
+    ctx.rotate(wheelAngle);
+
+    // Rim
+    ctx.beginPath();
+    ctx.arc(0, 0, wheelR, 0, Math.PI * 2);
+    ctx.strokeStyle = PALETTE.copper1;
+    ctx.lineWidth = 5;
+    ctx.stroke();
+
+    // Spokes and Paddles
+    for (let i = 0; i < paddleCount; i++) {
+      const pa = (i / paddleCount) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(pa) * (wheelR + 18), Math.sin(pa) * (wheelR + 18));
+      ctx.strokeStyle = PALETTE.brass2;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Curved wooden scoop paddle at tip
+      ctx.save();
+      ctx.translate(Math.cos(pa) * wheelR, Math.sin(pa) * wheelR);
+      ctx.rotate(pa + Math.PI / 2);
+      ctx.fillStyle = PALETTE.woodLight;
+      ctx.fillRect(-12, -3, 24, 7);
+      ctx.restore();
+    }
+
+    // Center hub
+    ctx.beginPath();
+    ctx.arc(0, 0, 15, 0, Math.PI * 2);
+    ctx.fillStyle = PALETTE.steel1;
+    ctx.fill();
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+
+    // Wheel support stand
+    ctx.strokeStyle = PALETTE.steel3;
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(wheelX, wheelY);
+    ctx.lineTo(wheelX - 35, wheelY + 110);
+    ctx.moveTo(wheelX, wheelY);
+    ctx.lineTo(wheelX + 35, wheelY + 110);
+    ctx.stroke();
+
+    // Draw Ball 2
+    drawMetallicBall(b2x, b2y, b2Radius, 'copper');
+
+    // Connected Interlocking Brass Gears
+    const gear1X = wheelX - 70;
+    const gear1Y = wheelY + 40;
+    const gear2X = gear1X - 55;
+    const gear2Y = gear1Y + 30;
+
+    drawGear(gear1X, gear1Y, 32, 12, 12, -wheelAngle * 1.5);
+    drawGear(gear2X, gear2Y, 26, 8, 10, wheelAngle * 2.1);
+
+    // ==========================================
+    // STAGE 5: CATAPULT & LAUNCH (11.0s - 13.5s)
+    // ==========================================
+    const s5Active = time >= 11.0 && time < 13.5;
+    const catBaseX = 840;
+    const catBaseY = 740;
+    const catArmLen = 110;
+    drawStageLabel("05 // BALLISTIC TRAJECTORY", catBaseX - 80, catBaseY - 110, s5Active);
+
+    // Catapult base mount
+    drawWoodBeam(catBaseX - 60, catBaseY, 120, 20, 0);
+    ctx.fillStyle = PALETTE.steel3;
+    ctx.beginPath();
+    ctx.moveTo(catBaseX - 20, catBaseY);
+    ctx.lineTo(catBaseX, catBaseY - 35);
+    ctx.lineTo(catBaseX + 20, catBaseY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Catapult trigger timing & arm rotation
+    // Arm resting wound down (angle ~ 0.5 rad), snaps to stop at -1.15 rad
+    let catAngle = 0.45; // cocked back waiting
+    if (time >= 9.0 && time < 11.2) {
+      // Ratchet cable tension visible vibration
+      catAngle = 0.45 + Math.sin(time * 30) * 0.015;
+    } else if (time >= 11.2 && time < 11.45) {
+      // SNAP RELEASE! Fast rotation
+      const p = (time - 11.2) / 0.25;
+      const snapEase = Math.sin(p * Math.PI * 0.5);
+      catAngle = 0.45 - snapEase * 1.62;
+      if (p < 0.2) {
+        spawnSparks(catBaseX, catBaseY - 35, 12, '#ffffff');
+      }
+    } else if (time >= 11.45) {
+      // Recoil bounce at stop block
+      const recoilTime = time - 11.45;
+      if (recoilTime < 0.8) {
+        catAngle = -1.17 + Math.exp(-recoilTime * 5) * Math.sin(recoilTime * 22) * 0.08;
+      } else {
+        catAngle = -1.17;
+      }
+    }
+
+    // Catapult arm
+    ctx.save();
+    ctx.translate(catBaseX, catBaseY - 35);
+    ctx.rotate(catAngle);
+
+    // Arm wood
+    drawWoodBeam(-12, -catArmLen, 16, catArmLen, 0);
+
+    // Counterweight at bottom of arm
+    ctx.fillStyle = PALETTE.steel1;
+    ctx.fillRect(-18, 5, 28, 22);
+
+    // Cup at tip
+    ctx.fillStyle = PALETTE.brass2;
+    ctx.beginPath();
+    ctx.arc(0, -catArmLen + 6, 15, 0, Math.PI);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.restore();
+
+    // Crossbar stop block
+    drawWoodBeam(catBaseX - 35, catBaseY - 95, 14, 60, -0.2);
+
+    // Projectile (Golden Orb) Flight Calculation
+    let projX = 0;
+    let projY = 0;
+    const projRadius = 12;
+
+    // Launch coordinates at release moment (approx time = 11.35s)
+    const launchOriginX = catBaseX + Math.sin(1.17) * catArmLen - 30;
+    const launchOriginY = (catBaseY - 35) - Math.cos(1.17) * catArmLen - 15;
+    const targetBellX = 1380;
+    const targetBellY = 280;
+
+    if (time < 11.32) {
+      // Sitting in the catapult cup
+      const armTipX = catBaseX + Math.sin(-catAngle) * (catArmLen - 6);
+      const armTipY = (catBaseY - 35) - Math.cos(-catAngle) * (catArmLen - 6);
+      projX = armTipX;
+      projY = armTipY;
+    } else if (time >= 11.32 && time < 13.0) {
+      // In flight along parabolic arc to Bell!
+      const p = (time - 11.32) / (13.0 - 11.32);
+      // High parabola
+      projX = launchOriginX + p * (targetBellX - launchOriginX);
+      const arcHeight = 340;
+      projY = launchOriginY + p * (targetBellY - launchOriginY) - Math.sin(p * Math.PI) * arcHeight;
+
+      // Trajectory particle sparkles
+      if (Math.random() < 0.6) {
+        particles.push({
+          x: projX + (Math.random() - 0.5) * 6,
+          y: projY + (Math.random() - 0.5) * 6,
+          vx: (Math.random() - 0.5) * 0.8,
+          vy: 0.8,
+          life: 0.7,
+          decay: 0.04,
+          color: '#ffe58f',
+          size: 2.5
+        });
+      }
+    } else if (time >= 13.0 && time < 14.5) {
+      // Bounced off bell and tumbling down into catch basket
+      const p = (time - 13.0) / 1.5;
+      projX = targetBellX - 15 - p * 30;
+      projY = targetBellY + 20 + p * p * 420;
+    } else {
+      // Resting in bottom catcher
+      projX = targetBellX - 45;
+      projY = 760;
+    }
+
+    drawMetallicBall(projX, projY, projRadius, 'gold');
+
+    // ==========================================
+    // STAGE 6: BELL & RESONANCE (13.0s - 17.0s)
+    // ==========================================
+    const s6Active = time >= 13.0 && time < 16.5;
+    drawStageLabel("06 // ACOUSTIC CHIME & FINALE", targetBellX - 90, targetBellY - 100, s6Active);
+
+    // Bell Gantry Support Frame
+    drawWoodBeam(targetBellX - 50, targetBellY - 120, 100, 18, 0);
+    ctx.strokeStyle = PALETTE.brass3;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(targetBellX, targetBellY - 105);
+    ctx.lineTo(targetBellX, targetBellY - 45);
+    ctx.stroke();
+
+    // Bell Swing & Vibration
+    let bellSwing = 0;
+    if (time >= 13.0 && time < 16.5) {
+      const strikeTime = time - 13.0;
+      // Damped harmonic oscillation
+      bellSwing = Math.sin(strikeTime * 18) * Math.exp(-strikeTime * 0.85) * 0.35;
+
+      // Spawn periodic sonic rings
+      if (strikeTime < 2.0 && Math.floor(strikeTime * 12) % 3 === 0 && Math.random() < 0.3) {
+        spawnWave(targetBellX, targetBellY);
+        spawnSparks(targetBellX - 15, targetBellY + 10, 3, '#fff4a3');
+      }
+    }
+
+    // Draw Bell
+    ctx.save();
+    ctx.translate(targetBellX, targetBellY - 45);
+    ctx.rotate(bellSwing);
+
+    // Bell body (ornate brass)
+    ctx.beginPath();
+    ctx.moveTo(-10, 0);
+    ctx.bezierCurveTo(-20, 15, -45, 50, -50, 75);
+    ctx.bezierCurveTo(-50, 85, 50, 85, 50, 75);
+    ctx.bezierCurveTo(45, 50, 20, 15, 10, 0);
+    ctx.closePath();
+
+    const bellGrad = ctx.createLinearGradient(-50, 0, 50, 80);
+    bellGrad.addColorStop(0, '#fff0a8');
+    bellGrad.addColorStop(0.3, PALETTE.brass1);
+    bellGrad.addColorStop(0.7, PALETTE.brass2);
+    bellGrad.addColorStop(1, PALETTE.brass3);
+    ctx.fillStyle = bellGrad;
+    ctx.fill();
+    ctx.strokeStyle = '#5a4610';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Bell lip rim
+    ctx.beginPath();
+    ctx.ellipse(0, 76, 52, 9, 0, 0, Math.PI * 2);
+    ctx.fillStyle = PALETTE.brass2;
+    ctx.fill();
+    ctx.stroke();
+
+    // Clapper inside bell
+    ctx.beginPath();
+    const clapperAngle = -bellSwing * 1.8;
+    ctx.moveTo(0, 20);
+    const clapEndX = Math.sin(clapperAngle) * 65;
+    const clapEndY = Math.cos(clapperAngle) * 65;
+    ctx.lineTo(clapEndX, clapEndY);
+    ctx.strokeStyle = PALETTE.steel2;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(clapEndX, clapEndY, 9, 0, Math.PI * 2);
+    ctx.fillStyle = PALETTE.brass3;
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.restore();
+
+    // Catch Basket at bottom right
+    ctx.save();
+    ctx.strokeStyle = PALETTE.brass2;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(targetBellX - 45, 765, 24, 0, Math.PI);
+    ctx.stroke();
+    drawWoodBeam(targetBellX - 70, 785, 50, 10, 0);
+    ctx.restore();
+
+    // ==========================================
+    // STAGE 7: CELEBRATION & RESET OVERLAY
+    // ==========================================
+    if (time >= 13.0 && time < 17.5) {
+      ctx.save();
+      const celebProgress = Math.min(1.0, (time - 13.0) / 0.5);
+      const alpha = time > 16.5 ? (17.5 - time) : celebProgress;
+
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = 'rgba(255, 215, 0, 0.12)';
+      ctx.fillRect(0, 0, CW, CH);
+
+      // Banner text
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffea88';
+      ctx.shadowColor = '#ffb700';
+      ctx.shadowBlur = 18;
+      ctx.font = '900 38px "Courier New", monospace';
+      ctx.fillText("OBJECTIVE COMPLETE // BELL RUNG!", CW / 2, 120);
+
+      ctx.font = '600 16px "Courier New", monospace';
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowBlur = 8;
+      ctx.fillText("FULL SEQUENCE VERIFIED • CYCLIC AUTO-RESET IN PROGRESS", CW / 2, 150);
+      ctx.restore();
+    }
+
+    // Fade to black & clean reset transition (17.2s - 18.0s)
+    if (time >= 17.2) {
+      const fadeProgress = (time - 17.2) / 0.8;
+      ctx.save();
+      ctx.fillStyle = `rgba(18, 21, 28, ${fadeProgress})`;
+      ctx.fillRect(0, 0, CW, CH);
+      ctx.restore();
+    }
+
+    // Request Next Frame
+    requestAnimationFrame(render);
+  }
+
+  // Start Animation
+  requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>

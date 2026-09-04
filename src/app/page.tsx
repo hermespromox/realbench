@@ -149,14 +149,14 @@ export default function Home() {
           <p>Deterministic checks only. Visual quality is yours to judge.</p>
         </div>
         <div className={styles.metricsTable}>
-          <div className={styles.metricsHead}><span>Model</span><span>Valid HTML</span><span>Self-contained</span><span>Animation</span><span>Canvas / SVG</span><span>Output</span></div>
+          <div className={styles.metricsHead}><span>Model</span><span>Valid HTML</span><span>Self-contained</span><span>JS parses</span><span>Canvas / SVG</span><span>Output</span></div>
           {selectedResults.map((result, index) => {
             const model = data.models[modelOrder[index]];
             return <div className={styles.metricsRow} key={result.model}>
               <strong>{model.name}</strong>
               <Check value={result.metrics.valid_html} />
               <Check value={result.metrics.self_contained} />
-              <span>{result.metrics.animation_signals} signals</span>
+              <Check value={result.metrics.js_parses} />
               <span>{result.metrics.uses_canvas ? "Canvas" : "—"}{result.metrics.uses_svg ? `${result.metrics.uses_canvas ? " + " : ""}SVG` : ""}</span>
               <span>{result.metrics.bytes.toLocaleString()} bytes</span>
             </div>;

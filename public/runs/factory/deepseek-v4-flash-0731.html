@@ -1,602 +1,327 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Futuristic Automated Factory</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-        }
-        body {
-            overflow: hidden;
-            background: #080c14;
-        }
-        canvas {
-            display: block;
-        }
-    </style>
+<style>
+body{margin:0;overflow:hidden;background:#0a0e14}
+canvas{display:block}
+</style>
 </head>
 <body>
-    <canvas id="factory"></canvas>
-    <script>
-        const canvas = document.getElementById('factory');
-        const ctx = canvas.getContext('2d');
-        let W, H, ORIGIN_X, ORIGIN_Y, TILE_W, TILE_H, SCALE;
-
-        function resize() {
-            W = canvas.width = window.innerWidth;
-            H = canvas.height = window.innerHeight;
-            SCALE = Math.min(W / 1400, H / 900);
-            TILE_W = 80 * SCALE;
-            TILE_H = 40 * SCALE;
-            ORIGIN_X = W / 2 - 20 * SCALE;
-            ORIGIN_Y = H / 2 - 60 * SCALE;
+<canvas id="c"></canvas>
+<script>
+const canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
+const W=canvas.width=window.innerWidth,H=canvas.height=window.innerHeight;
+const UNIT=58,COS30=Math.cos(Math.PI/6),SIN30=0.5;
+const cx=W/2-40,cy=H/2+20;
+function w2s(x,y,z){return{x:cx+(x-y)*COS30*UNIT,y:cy+(x+y)*SIN30*UNIT-z*UNIT}}
+function isoPoly(pts,color,stroke){
+  let sp=pts.map(p=>w2s(p[0],p[1],p[2]));
+  ctx.beginPath();ctx.moveTo(sp[0].x,sp[0].y);
+  for(let i=1;i<sp.length;i++)ctx.lineTo(sp[i].x,sp[i].y);
+  ctx.closePath();ctx.fillStyle=color;ctx.fill();
+  if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke()}
+}
+function isoBox(x,y,z,w,h,ht,top,left,right){
+  isoPoly([[x,y,z+ht],[x+w,y,z+ht],[x+w,y+h,z+ht],[x,y+h,z+ht]],top);
+  isoPoly([[x,y,z],[x,y+h,z],[x,y+h,z+ht],[x,y,z+ht]],left);
+  isoPoly([[x,y,z],[x+w,y,z],[x+w,y,z+ht],[x,y,z+ht]],right);
+}
+function isoBoxOutline(x,y,z,w,h,ht,color){
+  let pts=[[x,y,z+ht],[x+w,y,z+ht],[x+w,y+h,z+ht],[x,y+h,z+ht]];
+  let sp=pts.map(p=>w2s(p[0],p[1],p[2]));
+  ctx.beginPath();ctx.moveTo(sp[0].x,sp[0].y);
+  for(let i=1;i<sp.length;i++)ctx.lineTo(sp[i].x,sp[i].y);
+  ctx.closePath();ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.stroke();
+}
+let time=0,lastT=performance.now();
+let products=[],nextSpawn=0,carts=[],storageProducts=[];
+let storageSlots=[];
+for(let i=0;i<3;i++)for(let j=0;j<3;j++)for(let k=0;k<3;k++)
+  storageSlots.push({x:11.2+i*0.65,y:4.2+j*0.65,z:0.3+k*0.65});
+let storageIdx=0;
+function initCarts(){
+  carts.push({pathT:0,speed:0.06,color:'#00bcd4',loaded:null});
+  carts.push({pathT:0.5,speed:0.06,color:'#00bcd4',loaded:null});
+}
+initCarts();
+const cartPath=[{x:9,y:2},{x:9,y:4},{x:2,y:4},{x:2,y:2}];
+function getCartPos(t){
+  let n=cartPath.length,seg=Math.floor(t*n)%n,st=(t*n)%1;
+  let p1=cartPath[seg],p2=cartPath[(seg+1)%n];
+  return{x:p1.x+(p2.x-p1.x)*st,y:p1.y+(p2.y-p1.y)*st};
+}
+let robotArm={baseX:9.5,baseY:2,baseZ:0.4,handX:9,handY:2,handZ:0.5,
+  targetX:9,targetY:2,targetZ:0.5,carrying:null,state:'pickup',t:0};
+function spawnProduct(){
+  products.push({state:'conv1',prog:0,x:0,y:2,z:0.3,size:0.55,
+    stamp:0,assem:0,color:'#e8a735',stamped:false,assembled:false});
+}
+function update(dt){
+  time+=dt;
+  if(time>nextSpawn){spawnProduct();nextSpawn=time+2.2;}
+  for(let p of products){
+    switch(p.state){
+      case 'conv1':
+        p.prog+=dt*0.22;p.x=0+p.prog*3;p.y=2;
+        if(p.prog>=1){p.state='stamping';p.prog=0;}
+        break;
+      case 'stamping':
+        p.stamp+=dt*0.35;
+        if(p.stamp>=1){p.state='conv2';p.prog=0;p.stamped=true;p.color='#4a9eff';}
+        break;
+      case 'conv2':
+        p.prog+=dt*0.22;p.x=3+p.prog*3;p.y=2;
+        if(p.prog>=1){p.state='assembly';p.prog=0;}
+        break;
+      case 'assembly':
+        p.assem+=dt*0.35;
+        if(p.assem>=1){p.state='conv3';p.prog=0;p.assembled=true;p.color='#00e676';}
+        break;
+      case 'conv3':
+        p.prog+=dt*0.22;p.x=6+p.prog*3;p.y=2;
+        if(p.prog>=1){p.state='waiting';}
+        break;
+      case 'waiting':
+        break;
+      case 'stored':
+        break;
+    }
+  }
+  for(let c of carts){
+    c.pathT+=dt*c.speed;
+    if(c.pathT>=1)c.pathT-=1;
+    let pos=getCartPos(c.pathT);
+    c.x=pos.x;c.y=pos.y;
+  }
+  let arm=robotArm;
+  let dx=arm.targetX-arm.handX,dy=arm.targetY-arm.handY,dz=arm.targetZ-arm.handZ;
+  let dist=Math.sqrt(dx*dx+dy*dy+dz*dz);
+  if(dist>0.05){
+    let spd=dt*1.5;
+    arm.handX+=dx*spd;arm.handY+=dy*spd;arm.handZ+=dz*spd;
+  }else{
+    arm.handX=arm.targetX;arm.handY=arm.targetY;arm.handZ=arm.targetZ;
+    if(arm.state==='pickup'){
+      let waiting=products.find(p=>p.state==='waiting');
+      if(waiting&&!arm.carrying){
+        arm.carrying=waiting;waiting.state='carried';
+        arm.state='dropoff';arm.targetX=11.2;arm.targetY=4.2;arm.targetZ=0.5;
+      }
+    }else if(arm.state==='dropoff'){
+      if(arm.carrying){
+        if(storageIdx<storageSlots.length){
+          let slot=storageSlots[storageIdx++];
+          arm.carrying.state='stored';arm.carrying.sx=slot.x;arm.carrying.sy=slot.y;arm.carrying.sz=slot.z;
+          storageProducts.push(arm.carrying);
+        }else{
+          arm.carrying.state='stored';arm.carrying.sx=11.2+Math.random()*1.5;
+          arm.carrying.sy=4.2+Math.random()*1.5;arm.carrying.sz=0.3;
+          storageProducts.push(arm.carrying);
         }
-        window.addEventListener('resize', resize);
-        resize();
-
-        function toScreen(gx, gy, gz = 0) {
-            return {
-                x: ORIGIN_X + (gx - gy) * TILE_W / 2,
-                y: ORIGIN_Y + (gx + gy) * TILE_H / 2 - gz * TILE_H
-            };
-        }
-
-        function drawBox(gx, gy, gz, w, h, gh, topColor, rightColor, leftColor, outline = true) {
-            const p0 = toScreen(gx, gy, gz + gh);
-            const p1 = toScreen(gx + w, gy, gz + gh);
-            const p2 = toScreen(gx + w, gy + h, gz + gh);
-            const p3 = toScreen(gx, gy + h, gz + gh);
-            const b0 = toScreen(gx, gy, gz);
-            const b1 = toScreen(gx + w, gy, gz);
-            const b2 = toScreen(gx + w, gy + h, gz);
-            const b3 = toScreen(gx, gy + h, gz);
-
-            ctx.fillStyle = topColor;
-            ctx.beginPath();
-            ctx.moveTo(p0.x, p0.y);
-            ctx.lineTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.lineTo(p3.x, p3.y);
-            ctx.closePath();
-            ctx.fill();
-            if (outline) { ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-                ctx.stroke(); }
-
-            ctx.fillStyle = rightColor;
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.lineTo(b2.x, b2.y);
-            ctx.lineTo(b1.x, b1.y);
-            ctx.closePath();
-            ctx.fill();
-            if (outline) { ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-                ctx.stroke(); }
-
-            ctx.fillStyle = leftColor;
-            ctx.beginPath();
-            ctx.moveTo(p2.x, p2.y);
-            ctx.lineTo(p3.x, p3.y);
-            ctx.lineTo(b3.x, b3.y);
-            ctx.lineTo(b2.x, b2.y);
-            ctx.closePath();
-            ctx.fill();
-            if (outline) { ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-                ctx.stroke(); }
-        }
-
-        function drawFloor() {
-            const gw = 17,
-                gh = 12;
-            const top = toScreen(0, 0, 0);
-            const right = toScreen(gw, 0, 0);
-            const bottom = toScreen(gw, gh, 0);
-            const left = toScreen(0, gh, 0);
-
-            ctx.fillStyle = '#141824';
-            ctx.beginPath();
-            ctx.moveTo(top.x, top.y);
-            ctx.lineTo(right.x, right.y);
-            ctx.lineTo(bottom.x, bottom.y);
-            ctx.lineTo(left.x, left.y);
-            ctx.closePath();
-            ctx.fill();
-
-            ctx.strokeStyle = 'rgba(100,160,255,0.08)';
-            ctx.lineWidth = 1;
-            for (let i = 0; i <= gw; i++) {
-                const p1 = toScreen(i, 0, 0);
-                const p2 = toScreen(i, gh, 0);
-                ctx.beginPath();
-                ctx.moveTo(p1.x, p1.y);
-                ctx.lineTo(p2.x, p2.y);
-                ctx.stroke();
-            }
-            for (let j = 0; j <= gh; j++) {
-                const p1 = toScreen(0, j, 0);
-                const p2 = toScreen(gw, j, 0);
-                ctx.beginPath();
-                ctx.moveTo(p1.x, p1.y);
-                ctx.lineTo(p2.x, p2.y);
-                ctx.stroke();
-            }
-
-            for (let i = 0; i < gw; i++) {
-                for (let j = 0; j < gh; j++) {
-                    if ((i + j) % 2 === 0) {
-                        const p = toScreen(i + 0.5, j + 0.5, 0);
-                        ctx.fillStyle = 'rgba(100,160,255,0.03)';
-                        ctx.beginPath();
-                        ctx.moveTo(toScreen(i, j, 0).x, toScreen(i, j, 0).y);
-                        ctx.lineTo(toScreen(i + 1, j, 0).x, toScreen(i + 1, j, 0).y);
-                        ctx.lineTo(toScreen(i + 1, j + 1, 0).x, toScreen(i + 1, j + 1, 0).y);
-                        ctx.lineTo(toScreen(i, j + 1, 0).x, toScreen(i, j + 1, 0).y);
-                        ctx.lineTo(toScreen(i, j, 0).x, toScreen(i, j, 0).y);
-                        ctx.closePath();
-                        ctx.fill();
-                    }
-                }
-            }
-        }
-
-        function drawConveyor(gx, gy, length, dir, time) {
-            const w = dir === 'east' ? length : 1;
-            const h = dir === 'east' ? 1 : length;
-            drawBox(gx, gy, 0, w, h, 0.25, '#2a2e3a', '#1a1e2a', '#202430', false);
-
-            const p0 = toScreen(gx, gy, 0.25);
-            const p1 = toScreen(gx + w, gy, 0.25);
-            const p2 = toScreen(gx + w, gy + h, 0.25);
-            const p3 = toScreen(gx, gy + h, 0.25);
-            ctx.fillStyle = '#333850';
-            ctx.beginPath();
-            ctx.moveTo(p0.x, p0.y);
-            ctx.lineTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.lineTo(p3.x, p3.y);
-            ctx.closePath();
-            ctx.fill();
-
-            const stripeCount = Math.floor(length * 6);
-            const spacing = length / stripeCount;
-            const offset = (time * 0.6) % spacing;
-            for (let i = 0; i < stripeCount; i++) {
-                const pos = i * spacing + offset;
-                if (pos > length) continue;
-                let sp, ep;
-                if (dir === 'east') {
-                    sp = toScreen(gx + pos, gy, 0.3);
-                    ep = toScreen(gx + pos, gy + 1, 0.3);
-                } else {
-                    sp = toScreen(gx, gy + pos, 0.3);
-                    ep = toScreen(gx + 1, gy + pos, 0.3);
-                }
-                ctx.strokeStyle = 'rgba(255,200,100,0.3)';
-                ctx.lineWidth = 2 * SCALE;
-                ctx.beginPath();
-                ctx.moveTo(sp.x, sp.y);
-                ctx.lineTo(ep.x, ep.y);
-                ctx.stroke();
-            }
-
-            ctx.strokeStyle = 'rgba(255,180,80,0.15)';
-            ctx.lineWidth = 1;
-            if (dir === 'east') {
-                for (let i = 0; i < length * 4; i++) {
-                    const pos = i * 0.25 + offset;
-                    if (pos > length) continue;
-                    const sp = toScreen(gx + pos, gy, 0.3);
-                    const ep = toScreen(gx + pos, gy + 1, 0.3);
-                    ctx.beginPath();
-                    ctx.moveTo(sp.x, sp.y);
-                    ctx.lineTo(ep.x, ep.y);
-                    ctx.stroke();
-                }
-            } else {
-                for (let i = 0; i < length * 4; i++) {
-                    const pos = i * 0.25 + offset;
-                    if (pos > length) continue;
-                    const sp = toScreen(gx, gy + pos, 0.3);
-                    const ep = toScreen(gx + 1, gy + pos, 0.3);
-                    ctx.beginPath();
-                    ctx.moveTo(sp.x, sp.y);
-                    ctx.lineTo(ep.x, ep.y);
-                    ctx.stroke();
-                }
-            }
-        }
-
-        function drawHopper(gx, gy, time) {
-            drawBox(gx - 0.6, gy - 0.6, 0, 1.2, 1.2, 1.2, '#3a3a4a', '#2a2a3a', '#303040');
-            drawBox(gx - 0.4, gy - 0.4, 0.8, 0.8, 0.8, 0.4, '#4a4a5a', '#3a3a4a', '#404050');
-            ctx.fillStyle = 'rgba(255,100,50,0.3)';
-            const p = toScreen(gx, gy, 1.2);
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, 3 * SCALE, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        const PRODUCT_COLORS = {
-            raw: { top: '#a0a0b0', right: '#707080', left: '#808090' },
-            stamped: { top: '#4090e0', right: '#2060b0', left: '#3070c0' },
-            assembled: { top: '#40c070', right: '#209050', left: '#30a060' }
-        };
-
-        let time = 0;
-        let products = [];
-        let spawnTimer = 0;
-        let particles = [];
-        let outputCount = 0;
-        const SPAWN_INTERVAL = 2.8;
-
-        const PHASES = {
-            conveyor_a: { duration: 3, next: 'pick1' },
-            pick1: { duration: 1, next: 'press' },
-            press: { duration: 1.5, next: 'pick2' },
-            pick2: { duration: 1, next: 'conveyor_b' },
-            conveyor_b: { duration: 3, next: 'pick3' },
-            pick3: { duration: 1, next: 'assembly' },
-            assembly: { duration: 1.5, next: 'pick4' },
-            pick4: { duration: 1, next: 'conveyor_c' },
-            conveyor_c: { duration: 3, next: 'output' },
-            output: { duration: Infinity, next: null }
-        };
-
-        const PHASE_POS = {
-            conveyor_a: { start: { x: 2, y: 2, z: 0.3 }, end: { x: 5, y: 2, z: 0.3 } },
-            pick1: { start: { x: 5, y: 2, z: 0.3 }, end: { x: 5, y: 4, z: 0 } },
-            press: { start: { x: 5, y: 4, z: 0 }, end: { x: 5, y: 4, z: 0 } },
-            pick2: { start: { x: 5, y: 4, z: 0 }, end: { x: 5, y: 6, z: 0.3 } },
-            conveyor_b: { start: { x: 5, y: 6, z: 0.3 }, end: { x: 5, y: 9, z: 0.3 } },
-            pick3: { start: { x: 5, y: 9, z: 0.3 }, end: { x: 8, y: 9, z: 0 } },
-            assembly: { start: { x: 8, y: 9, z: 0 }, end: { x: 8, y: 9, z: 0 } },
-            pick4: { start: { x: 8, y: 9, z: 0 }, end: { x: 10, y: 9, z: 0.3 } },
-            conveyor_c: { start: { x: 10, y: 9, z: 0.3 }, end: { x: 13, y: 9, z: 0.3 } },
-            output: { start: { x: 13, y: 9, z: 0.3 }, end: { x: 13, y: 9, z: 0.3 } }
-        };
-
-        function createProduct() {
-            return {
-                phase: 'conveyor_a',
-                phaseTime: 0,
-                state: 'raw',
-                position: { x: 2, y: 2, z: 0.3 },
-                alive: true
-            };
-        }
-
-        function spawnParticles(x, y, z, color, count) {
-            for (let i = 0; i < count; i++) {
-                particles.push({
-                    x,
-                    y,
-                    z,
-                    vx: (Math.random() - 0.5) * 3,
-                    vy: (Math.random() - 0.5) * 3,
-                    vz: Math.random() * 2,
-                    life: 0.4 + Math.random() * 0.4,
-                    maxLife: 0.4 + Math.random() * 0.4,
-                    color,
-                    size: 2 + Math.random() * 3
-                });
-            }
-        }
-
-        function updateProduct(product, dt) {
-            product.phaseTime += dt;
-            const phaseName = product.phase;
-            const dur = PHASES[phaseName].duration;
-            const t = Math.min(product.phaseTime / dur, 1);
-            const pos = PHASE_POS[phaseName];
-            const start = pos.start;
-            const end = pos.end;
-
-            if (phaseName === 'pick1' || phaseName === 'pick2' || phaseName === 'pick3' || phaseName === 'pick4') {
-                const arc = Math.sin(t * Math.PI) * 2;
-                product.position = {
-                    x: start.x + (end.x - start.x) * t,
-                    y: start.y + (end.y - start.y) * t,
-                    z: start.z + (end.z - start.z) * t + arc
-                };
-            } else {
-                product.position = {
-                    x: start.x + (end.x - start.x) * t,
-                    y: start.y + (end.y - start.y) * t,
-                    z: start.z + (end.z - start.z) * t
-                };
-            }
-
-            if (product.phaseTime >= dur && PHASES[phaseName].next) {
-                product.phase = PHASES[phaseName].next;
-                product.phaseTime = 0;
-                if (product.phase === 'press') {
-                    product.state = 'stamped';
-                    spawnParticles(5, 4, 0.5, '#ffaa00', 6);
-                }
-                if (product.phase === 'assembly') {
-                    product.state = 'assembled';
-                    spawnParticles(8, 9, 0.5, '#00ff88', 8);
-                }
-                if (product.phase === 'output') {
-                    const idx = outputCount++;
-                    product.position = { x: 13 + (idx % 3) * 0.4, y: 9 + Math.floor(idx / 3) * 0.4, z: 0.3 };
-                }
-            }
-        }
-
-        function updateParticles(dt) {
-            for (const p of particles) {
-                p.x += p.vx * dt;
-                p.y += p.vy * dt;
-                p.z += p.vz * dt;
-                p.vz -= 2 * dt;
-                p.life -= dt;
-            }
-            particles = particles.filter(p => p.life > 0);
-        }
-
-        function drawParticles() {
-            for (const p of particles) {
-                const sp = toScreen(p.x, p.y, p.z);
-                const alpha = Math.max(0, p.life / p.maxLife);
-                ctx.fillStyle = `rgba(255,200,100,${alpha})`;
-                ctx.beginPath();
-                ctx.arc(sp.x, sp.y, p.size * SCALE * (p.life / p.maxLife), 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
-
-        function drawPress(gx, gy, time) {
-            const baseH = 0.6;
-            drawBox(gx - 0.6, gy - 0.6, 0, 1.8, 1.8, baseH, '#3a3e4e', '#2a2e3e', '#303040');
-            drawBox(gx - 0.5, gy - 0.5, 0, 1.6, 1.6, 0.2, '#4a4e5e', '#3a3e4e', '#404050');
-
-            const stampMove = Math.sin(time * 2) * 0.15;
-            drawBox(gx - 0.3, gy - 0.3, baseH + 0.1, 0.6, 0.6, 0.3, '#555a6a', '#44485a', '#4a4e5e');
-
-            for (let i = 0; i < 4; i++) {
-                const px = (i === 0 || i === 3) ? gx - 0.7 : gx + 0.4;
-                const py = (i < 2) ? gy - 0.7 : gy + 0.4;
-                drawBox(px, py, 0, 0.2, 0.2, 0.8, '#666a7a', '#555a6a', '#5a5e6e');
-            }
-        }
-
-        function drawAssembly(gx, gy, time) {
-            drawBox(gx - 0.6, gy - 0.6, 0, 1.8, 1.8, 0.5, '#2e3a4e', '#1e2a3e', '#243040');
-            drawBox(gx - 0.4, gy - 0.4, 0.5, 1.4, 1.4, 0.3, '#3e4a5e', '#2e3a4e', '#344050');
-
-            const rot = Math.sin(time * 1.5) * 0.2;
-            drawBox(gx - 0.2, gy - 0.2, 0.8, 0.4, 0.4, 0.4, '#4a5a6a', '#3a4a5a', '#405060');
-        }
-
-        function drawRobotArm(arm) {
-            const baseX = arm.base.x,
-                baseY = arm.base.y;
-            const target = arm.target;
-            const shoulder = toScreen(baseX, baseY, 2.2);
-            const wrist = toScreen(target.x, target.y, target.z);
-
-            drawBox(baseX - 0.4, baseY - 0.4, 0, 0.8, 0.8, 0.4, '#555a6a', '#44485a', '#4a4e5e');
-
-            ctx.fillStyle = '#666a7a';
-            ctx.beginPath();
-            ctx.arc(shoulder.x, shoulder.y, 5 * SCALE, 0, Math.PI * 2);
-            ctx.fill();
-
-            const dx = wrist.x - shoulder.x;
-            const dy = wrist.y - shoulder.y;
-            const len = Math.sqrt(dx * dx + dy * dy);
-            const nx = -dy / (len || 1);
-            const ny = dx / (len || 1);
-            const bend = Math.min(len * 0.3, 30 * SCALE);
-            const elbowX = (shoulder.x + wrist.x) / 2 + nx * bend;
-            const elbowY = (shoulder.y + wrist.y) / 2 + ny * bend;
-
-            ctx.strokeStyle = '#ff6a00';
-            ctx.lineWidth = 6 * SCALE;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.moveTo(shoulder.x, shoulder.y);
-            ctx.lineTo(elbowX, elbowY);
-            ctx.stroke();
-
-            ctx.strokeStyle = '#ff8a20';
-            ctx.lineWidth = 4 * SCALE;
-            ctx.beginPath();
-            ctx.moveTo(elbowX, elbowY);
-            ctx.lineTo(wrist.x, wrist.y);
-            ctx.stroke();
-
-            ctx.fillStyle = '#ffaa40';
-            ctx.beginPath();
-            ctx.arc(shoulder.x, shoulder.y, 4 * SCALE, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#ffcc66';
-            ctx.beginPath();
-            ctx.arc(elbowX, elbowY, 3 * SCALE, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.fillStyle = '#888';
-            ctx.beginPath();
-            ctx.arc(wrist.x, wrist.y, 5 * SCALE, 0, Math.PI * 2);
-            ctx.fill();
-
-            const grip = arm.gripperOpen;
-            const gx1 = wrist.x + nx * 6 * SCALE * grip;
-            const gy1 = wrist.y + ny * 6 * SCALE * grip;
-            ctx.strokeStyle = '#ccc';
-            ctx.lineWidth = 2 * SCALE;
-            ctx.beginPath();
-            ctx.moveTo(wrist.x, wrist.y);
-            ctx.lineTo(gx1, gy1);
-            ctx.stroke();
-        }
-
-        function drawCart(cart, time) {
-            const pos = toScreen(cart.x, cart.y, 0);
-            drawBox(cart.x - 0.3, cart.y - 0.3, 0, 0.6, 0.6, 0.3, '#ff8800', '#cc6600', '#dd7700');
-
-            ctx.fillStyle = 'rgba(0,0,0,0.3)';
-            ctx.beginPath();
-            ctx.ellipse(pos.x, pos.y, 12 * SCALE, 8 * SCALE, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            drawBox(cart.x - 0.2, cart.y - 0.2, 0.3, 0.4, 0.4, 0.2, '#ffaa22', '#cc8800', '#dd9922');
-            const wheelOffset = Math.sin(time * 10) * 0.1;
-            drawBox(cart.x - 0.35, cart.y - 0.35, 0, 0.1, 0.1, 0.1, '#333', '#222', '#2a2a2a');
-        }
-
-        function drawProduct(product) {
-            const p = toScreen(product.position.x, product.position.y, 0);
-            const shadow = toScreen(product.position.x, product.position.y, 0);
-            ctx.fillStyle = 'rgba(0,0,0,0.25)';
-            ctx.beginPath();
-            ctx.ellipse(shadow.x, shadow.y, 10 * SCALE, 5 * SCALE, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            const colors = PRODUCT_COLORS[product.state];
-            const size = 0.35;
-            drawBox(product.position.x - size / 2, product.position.y - size / 2, product.position.z, size, size, size, colors.top,
-                colors.right, colors.left);
-        }
-
-        function drawLights(time) {
-            const lightPositions = [
-                { x: 2, y: 2, z: 1.5, color: '#ff4444', phase: 0 },
-                { x: 5, y: 4, z: 1.5, color: '#44ff44', phase: 0.5 },
-                { x: 8, y: 9, z: 1.5, color: '#4488ff', phase: 0.3 },
-                { x: 13, y: 9, z: 1.5, color: '#ffff44', phase: 0.7 }
-            ];
-            for (const l of lightPositions) {
-                const p = toScreen(l.x, l.y, l.z);
-                const on = Math.sin(time * 3 + l.phase * Math.PI) > 0;
-                ctx.fillStyle = on ? l.color : '#333';
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, 4 * SCALE, 0, Math.PI * 2);
-                ctx.fill();
-                if (on) {
-                    ctx.fillStyle = l.color + '88';
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, 8 * SCALE, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
-        }
-
-        const carts = [{
-            path: [{ x: 14, y: 2 }, { x: 14, y: 8 }, { x: 2, y: 8 }, { x: 2, y: 2 }],
-            pathIndex: 0,
-            progress: 0,
-            speed: 0.15
-        }, {
-            path: [{ x: 5, y: 4 }, { x: 8, y: 4 }, { x: 8, y: 9 }, { x: 5, y: 9 }],
-            pathIndex: 0,
-            progress: 0,
-            speed: 0.12
-        }];
-
-        function updateCart(cart, dt) {
-            cart.progress += cart.speed * dt;
-            if (cart.progress >= 1) {
-                cart.progress -= 1;
-                cart.pathIndex = (cart.pathIndex + 1) % cart.path.length;
-            }
-            const start = cart.path[cart.pathIndex];
-            const end = cart.path[(cart.pathIndex + 1) % cart.path.length];
-            const t = cart.progress;
-            cart.x = start.x + (end.x - start.x) * t;
-            cart.y = start.y + (end.y - start.y) * t;
-        }
-
-        function mainLoop(ts) {
-            const dt = Math.min((ts - (lastTs || ts)) / 1000, 0.05);
-            lastTs = ts;
-            time += dt;
-
-            spawnTimer += dt;
-            if (spawnTimer >= SPAWN_INTERVAL) {
-                spawnTimer -= SPAWN_INTERVAL;
-                products.push(createProduct());
-            }
-
-            for (const product of products) {
-                updateProduct(product, dt);
-            }
-
-            for (const cart of carts) {
-                updateCart(cart, dt);
-            }
-
-            ctx.clearRect(0, 0, W, H);
-
-            // Background
-            const grad = ctx.createRadialGradient(W / 2, H / 2, 0, W, H);
-            grad.addColorStop(0, '#0a0e1a');
-            grad.addColorStop(1, '#050810');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, W, H);
-
-            drawFloor();
-
-            // Draw conveyors
-            drawConveyor(2, 2, 3, 'east', time);
-            drawConveyor(5, 6, 3, 'south', time);
-            drawConveyor(10, 9, 3, 'east', time);
-
-            // Draw hopper
-            drawHopper(2, 2, time);
-
-            // Draw machines
-            drawPress(5, 4, time);
-            drawAssembly(8, 9, time);
-
-            // Draw products
-            for (const product of products) {
-                drawProduct(product);
-            }
-
-            // Draw arms
-            const armDefs = [
-                { base: { x: 5, y: 2 }, target: { x: 5, y: 2, z: 0.3 } },
-                { base: { x: 5, y: 4 }, target: { x: 5, y: 4, z: 0 } },
-                { base: { x: 5, y: 9 }, target: { x: 5, y: 9, z: 0.3 } },
-                { base: { x: 8, y: 9 }, target: { x: 8, y: 9, z: 0 } }
-            ];
-
-            for (const arm of armDefs) {
-                const armObj = {
-                    base: arm.base,
-                    target: { x: arm.base.x, y: arm.base.y, z: 0.3 },
-                    gripperOpen: 1
-                };
-                drawRobotArm(armObj);
-            }
-
-            // Draw carts
-            for (const cart of carts) {
-                drawCart(cart, time);
-            }
-
-            // Draw lights
-            drawLights(time);
-
-            // Particles
-            for (const p of particles) {
-                p.x += p.vx * dt;
-                p.y += p.vy * dt;
-                p.z += p.vz * dt;
-                p.vz -= 1 * dt;
-                p.life -= dt;
-            }
-            particles = particles.filter(p => p.life > 0);
-
-            requestAnimationFrame(mainLoop);
-        }
-
-        let lastTs = 0;
-        requestAnimationFrame(mainLoop);
-    </script>
+        arm.carrying=null;
+        arm.state='pickup';arm.targetX=9;arm.targetY=2;arm.targetZ=0.5;
+      }
+    }
+  }
+}
+function drawFloor(){
+  for(let x=0;x<=12;x++){
+    for(let y=0;y<=6;y++){
+      let col=(x+y)%2===0?'#1a1e28':'#1e2230';
+      isoPoly([[x,y,0],[x+1,y,0],[x+1,y+1,0],[x,y+1,0]],col);
+    }
+  }
+  for(let x=0;x<=12;x++){
+    let p1=w2s(x,0),p2=w2s(x,6);
+    ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);
+    ctx.strokeStyle='#2a2e3a';ctx.lineWidth=0.5;ctx.stroke();
+  }
+  for(let y=0;y<=6;y++){
+    let p1=w2s(0,y),p2=w2s(12,y);
+    ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);
+    ctx.strokeStyle='#2a2e3a';ctx.lineWidth=0.5;ctx.stroke();
+  }
+  isoPoly([[0,6,0],[12,6,0],[12,0,0],[0,0,0]],'#141824');
+}
+function drawConveyor(x1,y1,x2,y2,wid,col){
+  let dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);
+  let nx=-dy/len,ny=dx/len;
+  isoPoly([[x1+nx*wid/2,y1+ny*wid/2,0],[x1-nx*wid/2,y1-ny*wid/2,0],
+    [x2-nx*wid/2,y2-ny*wid/2,0],[x2+nx*wid/2,y2+ny*wid/2,0]],col);
+  let segs=12;
+  for(let i=0;i<segs;i++){
+    let t=((i+time*0.3)%segs)/segs;
+    let px=x1+dx*t,py=y1+dy*t;
+    let pa=w2s(px+nx*wid/2,py+ny*wid/2,0.02);
+    let pb=w2s(px-nx*wid/2,py-ny*wid/2,0.02);
+    ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);
+    ctx.strokeStyle='#3a3a4a';ctx.lineWidth=1;ctx.stroke();
+  }
+  let p1=w2s(x1+nx*wid/2,y1+ny*wid/2,0.03),p2=w2s(x1-nx*wid/2,y1-ny*wid/2,0.03);
+  let p3=w2s(x2-nx*wid/2,y2-ny*wid/2,0.03),p4=w2s(x2+nx*wid/2,y2+ny*wid/2,0.03);
+  ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);
+  ctx.lineTo(p3.x,p3.y);ctx.lineTo(p4.x,p4.y);
+  ctx.strokeStyle='#4a4a5a';ctx.lineWidth=1;ctx.stroke();
+}
+function drawMachine1(){
+  let x=3,y=2,z=0;
+  isoBox(x+0.1,y+0.1,z,0.8,0.8,1.2,'#3a4a5a','#2a3a4a','#4a5a6a');
+  let pistonH=0.3+Math.abs(Math.sin(time*1.5))*0.4;
+  isoBox(x+0.3,y+0.3,z+1.2,0.4,0.4,pistonH,'#ff6b35','#d44a2a','#ff8a55');
+  let lp=w2s(x+0.5,y+0.5,z+1.2+pistonH);
+  ctx.beginPath();ctx.arc(lp.x,lp.y,6,0,Math.PI*2);ctx.fillStyle='#ffd700';ctx.fill();
+  let lightOn=Math.sin(time*3)>0;
+  let lp2=w2s(x+0.2,y+0.8,z+1.2);
+  ctx.beginPath();ctx.arc(lp2.x,lp2.y,3,0,Math.PI*2);
+  ctx.fillStyle=lightOn?'#00ff00':'#003300';ctx.fill();
+}
+function drawMachine2(){
+  let x=6,y=2,z=0;
+  isoBox(x+0.1,y+0.1,z,0.8,0.8,1.0,'#2a4a6a','#1a3a5a','#3a5a7a');
+  let rot=time*1.2;
+  let cx1=x+0.5+Math.cos(rot)*0.3,cy1=y+0.5+Math.sin(rot)*0.3;
+  let cx2=x+0.5+Math.cos(rot+Math.PI)*0.3,cy2=y+0.5+Math.sin(rot+Math.PI)*0.3;
+  let p1=w2s(cx1,cy1,z+1.0),p2=w2s(cx2,cy2,z+1.0);
+  ctx.beginPath();ctx.arc(p1.x,p1.y,4,0,Math.PI*2);ctx.fillStyle='#00bcd4';ctx.fill();
+  ctx.beginPath();ctx.arc(p2.x,p2.y,4,0,Math.PI*2);ctx.fillStyle='#00bcd4';ctx.fill();
+  let p3=w2s(x+0.5,y+0.5,z+1.0);
+  ctx.beginPath();ctx.arc(p3.x,p3.y,8,0,Math.PI*2);ctx.fillStyle='#4a9eff';ctx.fill();
+  let lightOn=Math.sin(time*2.5)>0;
+  let lp=w2s(x+0.8,y+0.2,z+1.0);
+  ctx.beginPath();ctx.arc(lp.x,lp.y,3,0,Math.PI*2);
+  ctx.fillStyle=lightOn?'#ff0000':'#330000';ctx.fill();
+}
+function drawRoboticArm(){
+  let arm=robotArm;
+  let base=w2s(arm.baseX,arm.baseY,arm.baseZ);
+  let hand=w2s(arm.handX,arm.handY,arm.handZ);
+  let ex=(arm.baseX+arm.handX)/2,ey=(arm.baseY+arm.handY)/2,ez=(arm.baseZ+arm.handZ)/2+0.6;
+  let elbow=w2s(ex,ey,ez);
+  isoBox(arm.baseX-0.2,arm.baseY-0.2,0,0.4,0.4,0.4,'#555','#444','#666');
+  ctx.beginPath();ctx.arc(base.x,base.y,8,0,Math.PI*2);ctx.fillStyle='#333';ctx.fill();
+  ctx.strokeStyle='#ff6b35';ctx.lineWidth=4;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(base.x,base.y);ctx.lineTo(elbow.x,elbow.y);ctx.stroke();
+  ctx.strokeStyle='#ffd700';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(elbow.x,elbow.y);ctx.lineTo(hand.x,hand.y);ctx.stroke();
+  ctx.beginPath();ctx.arc(hand.x,hand.y,5,0,Math.PI*2);ctx.fillStyle='#ff6b35';ctx.fill();
+  ctx.beginPath();ctx.arc(hand.x,hand.y,2,0,Math.PI*2);ctx.fillStyle='#ffd700';ctx.fill();
+  if(arm.carrying){
+    let cp=w2s(arm.handX,arm.handY,arm.handZ+0.2);
+    ctx.beginPath();ctx.arc(cp.x,cp.y,8,0,Math.PI*2);ctx.fillStyle='#00e676';ctx.fill();
+  }
+}
+function drawCart(c){
+  let pos=getCartPos(c.pathT);
+  let p=w2s(pos.x,pos.y,0);
+  isoBox(pos.x-0.25,pos.y-0.25,0,0.5,0.5,0.35,'#0a2a3a','#081a2a','#0c3a4a');
+  let lp=w2s(pos.x,pos.y,0.35);
+  ctx.beginPath();ctx.arc(lp.x,lp.y,3,0,Math.PI*2);ctx.fillStyle='#00bcd4';ctx.fill();
+  if(c.loaded){
+    let cp=w2s(pos.x,pos.y,0.4);
+    ctx.fillStyle='#00e676';
+    ctx.fillRect(cp.x-5,cp.y-5,10,10);
+  }
+}
+function drawProduct(p){
+  if(p.state==='stored'){
+    isoBox(p.sx-0.2,p.sy-0.2,0,0.4,0.4,p.sz,p.color,'#333','#222');
+    return;
+  }
+  if(p.state==='carried')return;
+  let px=p.x,py=p.y,pz=p.z;
+  if(p.state==='stamping'){
+    let press=Math.sin(p.stamp*Math.PI);
+    pz=0.3+press*0.2;
+  }
+  if(p.state==='assembly'){
+    let a=Math.sin(p.assem*Math.PI);
+    pz=0.3+a*0.15;
+  }
+  let sz=p.size;
+  isoBox(px-sz/2,py-sz/2,0,sz,sz,pz,p.color,'#2a2a3a','#1a1a2a');
+  if(p.stamped){
+    let tp=w2s(px,py,pz+0.02);
+    ctx.beginPath();ctx.arc(tp.x,tp.y,3,0,Math.PI*2);ctx.fillStyle='#4a9eff';ctx.fill();
+  }
+  if(p.assembled){
+    let tp=w2s(px+0.1,py+0.1,pz+0.05);
+    ctx.beginPath();ctx.arc(tp.x,tp.y,2,0,Math.PI*2);ctx.fillStyle='#00e676';ctx.fill();
+  }
+}
+function drawLights(){
+  let positions=[[1,1],[1,5],[5,1],[5,5],[8,1],[8,5],[11,1],[11,5]];
+  for(let i=0;i<positions.length;i++){
+    let [x,y]=positions[i];
+    let p=w2s(x,y,0.6);
+    let on=Math.sin(time*2+i*1.3)>0;
+    ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);
+    ctx.fillStyle=on?'#00ff88':'#004422';ctx.fill();
+    ctx.beginPath();ctx.arc(p.x,p.y,8,0,Math.PI*2);
+    ctx.fillStyle=on?'rgba(0,255,136,0.2)':'rgba(0,68,34,0.1)';ctx.fill();
+  }
+  let p=w2s(9.5,2,1.5);
+  ctx.beginPath();ctx.arc(p.x,p.y,5,0,Math.PI*2);
+  ctx.fillStyle=Math.sin(time*4)>0?'#ff4444':'#441111';ctx.fill();
+}
+function drawStorage(){
+  for(let p of storageProducts){
+    if(p.state==='stored'){
+      isoBox(p.sx-0.18,p.sy-0.18,0,0.36,0.36,p.sz,p.color,'#2a2a3a','#1a1a2a');
+    }
+  }
+  isoPoly([[10.5,3.5,0],[12.5,3.5,0],[12.5,5,0],[10.5,5,0]],'#0e1220');
+  isoPoly([[10.5,3.5,0],[12.5,3.5,0],[12.5,5,0],[10.5,5,0]],'#0e1220');
+}
+function drawFactoryStructure(){
+  for(let i=0;i<4;i++){
+    let x=0.5+i*3.5;
+    let p1=w2s(x,0,0),p2=w2s(x,0,2.5);
+    ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);
+    ctx.strokeStyle='#3a4a5a';ctx.lineWidth=3;ctx.stroke();
+    let p3=w2s(x,6,0),p4=w2s(x,6,2.5);
+    ctx.beginPath();ctx.moveTo(p3.x,p3.y);ctx.lineTo(p4.x,p4.y);
+    ctx.strokeStyle='#3a4a5a';ctx.lineWidth=3;ctx.stroke();
+  }
+  let p1=w2s(0,0,2.5),p2=w2s(12,0,2.5);
+  ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);
+  ctx.strokeStyle='#3a4a5a';ctx.lineWidth=2;ctx.stroke();
+  let p3=w2s(0,6,2.5),p4=w2s(12,6,2.5);
+  ctx.beginPath();ctx.moveTo(p3.x,p3.y);ctx.lineTo(p4.x,p4.y);
+  ctx.strokeStyle='#3a4a5a';ctx.lineWidth=2;ctx.stroke();
+}
+function render(){
+  ctx.fillStyle='#0a0e14';ctx.fillRect(0,0,W,H);
+  let grad=ctx.createRadialGradient(W/2,H/3,50,W/2,H/2,W/1.5);
+  grad.addColorStop(0,'#0d1117');grad.addColorStop(1,'#060a0f');
+  ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+  drawFloor();
+  drawFactoryStructure();
+  drawConveyor(0,2,3,2,0.6,'#1a1a2a');
+  drawConveyor(3,2,6,2,0.6,'#1a1a2a');
+  drawConveyor(6,2,9,2,0.6,'#1a1a2a');
+  drawMachine1();
+  drawMachine2();
+  drawStorage();
+  for(let p of products)drawProduct(p);
+  drawRoboticArm();
+  for(let c of carts)drawCart(c);
+  drawLights();
+  let rawPos=w2s(0,2,0.2);
+  isoBox(-0.3,1.7,0,0.6,0.6,0.8,'#8a7a5a','#6a5a3a','#7a6a4a');
+  isoBox(-0.1,1.9,0.4,0.5,0.5,0.5,'#8a7a5a','#6a5a3a','#7a6a4a');
+  let txt=w2s(6,0.5,0.1);
+  ctx.fillStyle='#4a9eff';ctx.font='bold 14px monospace';
+  ctx.textAlign='center';
+  ctx.fillText('AUTO-FACTORY v2.0',txt.x,txt.y);
+}
+function loop(t){
+  let dt=Math.min((t-lastT)/1000,0.05);
+  lastT=t;
+  update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
 </body>
 </html>

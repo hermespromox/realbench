@@ -50,6 +50,12 @@
       "name": "GPT-5.6 Sol",
       "vendor": "OpenAI",
       "color": "#0f9d7a"
+    },
+    "muse-spark-1.3": {
+      "id": "meta/muse-spark-1.3",
+      "name": "Muse Spark 1.3",
+      "vendor": "Meta",
+      "color": "#0668e1"
     }
   },
   "scenarios": {
@@ -124,7 +130,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 9
+        "dom_nodes_approx": 9,
+        "js_parses": true
       },
       "path": "/runs/solar-system/grok-4.6.html",
       "generated_at": "2026-09-04T11:58:46.868933+00:00"
@@ -168,7 +175,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 9
+        "dom_nodes_approx": 9,
+        "js_parses": true
       },
       "path": "/runs/solar-system/gpt-5.6-luna.html",
       "generated_at": "2026-09-04T11:55:51.120886+00:00"
@@ -212,7 +220,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 3,
-        "dom_nodes_approx": 21
+        "dom_nodes_approx": 21,
+        "js_parses": true
       },
       "path": "/runs/solar-system/gemini-3.8-flash.html",
       "generated_at": "2026-09-04T11:56:24.495416+00:00"
@@ -256,7 +265,8 @@
         "uses_css_animation": true,
         "uses_raf": true,
         "animation_signals": 4,
-        "dom_nodes_approx": 20
+        "dom_nodes_approx": 20,
+        "js_parses": true
       },
       "path": "/runs/solar-system/glm-5.3-flash.html",
       "generated_at": "2026-09-04T12:55:50.229209+00:00"
@@ -300,7 +310,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 3,
-        "dom_nodes_approx": 9
+        "dom_nodes_approx": 9,
+        "js_parses": true
       },
       "path": "/runs/solar-system/hy4-preview.html",
       "generated_at": "2026-09-04T12:53:00.178631+00:00"
@@ -344,7 +355,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 3,
-        "dom_nodes_approx": 9
+        "dom_nodes_approx": 9,
+        "js_parses": true
       },
       "path": "/runs/solar-system/deepseek-v4-flash-0731.html",
       "generated_at": "2026-09-04T12:55:36.896317+00:00"
@@ -388,7 +400,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 11
+        "dom_nodes_approx": 11,
+        "js_parses": true
       },
       "path": "/runs/solar-system/kimi-k3.html",
       "generated_at": "2026-09-04T12:56:02.494355+00:00"
@@ -432,10 +445,57 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 10
+        "dom_nodes_approx": 10,
+        "js_parses": true
       },
       "path": "/runs/solar-system/gpt-5.6-sol.html",
       "generated_at": "2026-09-04T12:47:52.387090+00:00"
+    },
+    {
+      "scenario": "solar-system",
+      "model": "muse-spark-1.3",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 170.05,
+      "provider": "Meta",
+      "usage": {
+        "prompt_tokens": 215,
+        "completion_tokens": 12448,
+        "total_tokens": 12663,
+        "cost": 0.05317275,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.05317275,
+          "upstream_inference_prompt_cost": 0.00026875,
+          "upstream_inference_completions_cost": 0.052904
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 3021,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 23236,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": true,
+        "uses_raf": true,
+        "animation_signals": 3,
+        "dom_nodes_approx": 23,
+        "js_parses": true
+      },
+      "path": "/runs/solar-system/muse-spark-1.3.html",
+      "generated_at": "2026-09-04T14:16:25.073061+00:00",
+      "attempt": 1
     },
     {
       "scenario": "city-traffic",
@@ -476,7 +536,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 9
+        "dom_nodes_approx": 9,
+        "js_parses": true
       },
       "path": "/runs/city-traffic/grok-4.6.html",
       "generated_at": "2026-09-04T12:00:59.317455+00:00"
@@ -520,7 +581,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 13
+        "dom_nodes_approx": 13,
+        "js_parses": true
       },
       "path": "/runs/city-traffic/gpt-5.6-luna.html",
       "generated_at": "2026-09-04T11:56:55.188893+00:00"
@@ -564,7 +626,8 @@
         "uses_css_animation": true,
         "uses_raf": true,
         "animation_signals": 4,
-        "dom_nodes_approx": 20
+        "dom_nodes_approx": 20,
+        "js_parses": true
       },
       "path": "/runs/city-traffic/gemini-3.8-flash.html",
       "generated_at": "2026-09-04T12:40:15.929859+00:00",
@@ -612,7 +675,8 @@
         "uses_css_animation": true,
         "uses_raf": true,
         "animation_signals": 3,
-        "dom_nodes_approx": 18
+        "dom_nodes_approx": 18,
+        "js_parses": true
       },
       "path": "/runs/city-traffic/glm-5.3-flash.html",
       "generated_at": "2026-09-04T13:30:10.941943+00:00"
@@ -656,7 +720,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 9
+        "dom_nodes_approx": 9,
+        "js_parses": true
       },
       "path": "/runs/city-traffic/hy4-preview.html",
       "generated_at": "2026-09-04T13:00:31.440228+00:00"
@@ -700,7 +765,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 3,
-        "dom_nodes_approx": 8
+        "dom_nodes_approx": 8,
+        "js_parses": true
       },
       "path": "/runs/city-traffic/deepseek-v4-flash-0731.html",
       "generated_at": "2026-09-04T13:10:12.750603+00:00"
@@ -708,29 +774,29 @@
     {
       "scenario": "city-traffic",
       "model": "kimi-k3",
-      "status": "error",
-      "error": "Model returned empty content",
-      "duration_seconds": 1804.72,
-      "provider": "DeepInfra",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 821.86,
+      "provider": "Sail Research",
       "usage": {
-        "prompt_tokens": 278,
-        "completion_tokens": 16384,
-        "total_tokens": 16662,
-        "cost": 0.2342643,
+        "prompt_tokens": 313,
+        "completion_tokens": 59508,
+        "total_tokens": 59821,
+        "cost": 0.77377793,
         "is_byok": false,
         "prompt_tokens_details": {
-          "cached_tokens": 0,
+          "cached_tokens": 277,
           "cache_write_tokens": 0,
           "audio_tokens": 0,
           "video_tokens": 0
         },
         "cost_details": {
-          "upstream_inference_cost": 0.2342643,
-          "upstream_inference_prompt_cost": 0.0007923,
-          "upstream_inference_completions_cost": 0.233472
+          "upstream_inference_cost": 0.77377793,
+          "upstream_inference_prompt_cost": 0.00017393,
+          "upstream_inference_completions_cost": 0.773604
         },
         "completion_tokens_details": {
-          "reasoning_tokens": 0,
+          "reasoning_tokens": 47628,
           "image_tokens": 0,
           "audio_tokens": 0
         }
@@ -738,16 +804,18 @@
       "metrics": {
         "valid_html": true,
         "self_contained": true,
-        "bytes": 178,
-        "uses_canvas": false,
+        "bytes": 29534,
+        "uses_canvas": true,
         "uses_svg": false,
         "uses_css_animation": false,
-        "uses_raf": false,
-        "animation_signals": 0,
-        "dom_nodes_approx": 4
+        "uses_raf": true,
+        "animation_signals": 3,
+        "dom_nodes_approx": 9,
+        "js_parses": false
       },
       "path": "/runs/city-traffic/kimi-k3.html",
-      "generated_at": "2026-09-04T13:25:54.952054+00:00"
+      "generated_at": "2026-09-04T14:28:59.609330+00:00",
+      "attempt": 1
     },
     {
       "scenario": "city-traffic",
@@ -788,10 +856,57 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 9
+        "dom_nodes_approx": 9,
+        "js_parses": true
       },
       "path": "/runs/city-traffic/gpt-5.6-sol.html",
       "generated_at": "2026-09-04T12:57:15.023315+00:00"
+    },
+    {
+      "scenario": "city-traffic",
+      "model": "muse-spark-1.3",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 213.14,
+      "provider": "Meta",
+      "usage": {
+        "prompt_tokens": 191,
+        "completion_tokens": 14582,
+        "total_tokens": 14773,
+        "cost": 0.06221225,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.06221225,
+          "upstream_inference_prompt_cost": 0.00023875,
+          "upstream_inference_completions_cost": 0.0619735
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 4642,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 24876,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": true,
+        "uses_raf": true,
+        "animation_signals": 3,
+        "dom_nodes_approx": 56,
+        "js_parses": true
+      },
+      "path": "/runs/city-traffic/muse-spark-1.3.html",
+      "generated_at": "2026-09-04T14:17:08.172171+00:00",
+      "attempt": 1
     },
     {
       "scenario": "aquarium",
@@ -832,7 +947,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 9
+        "dom_nodes_approx": 9,
+        "js_parses": true
       },
       "path": "/runs/aquarium/grok-4.6.html",
       "generated_at": "2026-09-04T12:01:35.939053+00:00"
@@ -876,7 +992,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 9
+        "dom_nodes_approx": 9,
+        "js_parses": true
       },
       "path": "/runs/aquarium/gpt-5.6-luna.html",
       "generated_at": "2026-09-04T11:59:15.070990+00:00"
@@ -920,7 +1037,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 3,
-        "dom_nodes_approx": 9
+        "dom_nodes_approx": 9,
+        "js_parses": true
       },
       "path": "/runs/aquarium/gemini-3.8-flash.html",
       "generated_at": "2026-09-04T12:00:26.145808+00:00"
@@ -964,7 +1082,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 9
+        "dom_nodes_approx": 9,
+        "js_parses": true
       },
       "path": "/runs/aquarium/glm-5.3-flash.html",
       "generated_at": "2026-09-04T13:02:29.808756+00:00"
@@ -1008,7 +1127,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 3,
-        "dom_nodes_approx": 9
+        "dom_nodes_approx": 9,
+        "js_parses": true
       },
       "path": "/runs/aquarium/hy4-preview.html",
       "generated_at": "2026-09-04T13:06:40.265157+00:00"
@@ -1052,7 +1172,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 7
+        "dom_nodes_approx": 7,
+        "js_parses": true
       },
       "path": "/runs/aquarium/deepseek-v4-flash-0731.html",
       "generated_at": "2026-09-04T13:04:15.612246+00:00"
@@ -1096,7 +1217,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 9
+        "dom_nodes_approx": 9,
+        "js_parses": true
       },
       "path": "/runs/aquarium/kimi-k3.html",
       "generated_at": "2026-09-04T13:09:54.920747+00:00"
@@ -1140,10 +1262,57 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 9
+        "dom_nodes_approx": 9,
+        "js_parses": true
       },
       "path": "/runs/aquarium/gpt-5.6-sol.html",
       "generated_at": "2026-09-04T13:08:08.176380+00:00"
+    },
+    {
+      "scenario": "aquarium",
+      "model": "muse-spark-1.3",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 83.94,
+      "provider": "Meta",
+      "usage": {
+        "prompt_tokens": 201,
+        "completion_tokens": 9680,
+        "total_tokens": 9881,
+        "cost": 0.04139125,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.04139125,
+          "upstream_inference_prompt_cost": 0.00025125,
+          "upstream_inference_completions_cost": 0.04114
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 2527,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 16756,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9,
+        "js_parses": true
+      },
+      "path": "/runs/aquarium/muse-spark-1.3.html",
+      "generated_at": "2026-09-04T14:14:58.963410+00:00",
+      "attempt": 1
     },
     {
       "scenario": "rube-goldberg",
@@ -1184,7 +1353,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 9
+        "dom_nodes_approx": 9,
+        "js_parses": true
       },
       "path": "/runs/rube-goldberg/grok-4.6.html",
       "generated_at": "2026-09-04T12:04:13.104725+00:00"
@@ -1228,7 +1398,8 @@
         "uses_css_animation": true,
         "uses_raf": false,
         "animation_signals": 10,
-        "dom_nodes_approx": 154
+        "dom_nodes_approx": 154,
+        "js_parses": true
       },
       "path": "/runs/rube-goldberg/gpt-5.6-luna.html",
       "generated_at": "2026-09-04T12:02:00.007452+00:00"
@@ -1272,7 +1443,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 10
+        "dom_nodes_approx": 10,
+        "js_parses": true
       },
       "path": "/runs/rube-goldberg/gemini-3.8-flash.html",
       "generated_at": "2026-09-04T12:02:40.302478+00:00"
@@ -1316,7 +1488,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 9
+        "dom_nodes_approx": 9,
+        "js_parses": true
       },
       "path": "/runs/rube-goldberg/glm-5.3-flash.html",
       "generated_at": "2026-09-04T13:32:54.035380+00:00"
@@ -1360,7 +1533,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 3,
-        "dom_nodes_approx": 9
+        "dom_nodes_approx": 9,
+        "js_parses": true
       },
       "path": "/runs/rube-goldberg/hy4-preview.html",
       "generated_at": "2026-09-04T13:17:32.161683+00:00"
@@ -1404,7 +1578,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 8
+        "dom_nodes_approx": 8,
+        "js_parses": true
       },
       "path": "/runs/rube-goldberg/deepseek-v4-flash-0731.html",
       "generated_at": "2026-09-04T13:25:27.346578+00:00"
@@ -1448,7 +1623,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 9
+        "dom_nodes_approx": 9,
+        "js_parses": true
       },
       "path": "/runs/rube-goldberg/kimi-k3.html",
       "generated_at": "2026-09-04T13:42:41.680890+00:00"
@@ -1492,10 +1668,57 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 226
+        "dom_nodes_approx": 226,
+        "js_parses": true
       },
       "path": "/runs/rube-goldberg/gpt-5.6-sol.html",
       "generated_at": "2026-09-04T13:27:05.929783+00:00"
+    },
+    {
+      "scenario": "rube-goldberg",
+      "model": "muse-spark-1.3",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 102.72,
+      "provider": "Meta",
+      "usage": {
+        "prompt_tokens": 199,
+        "completion_tokens": 12118,
+        "total_tokens": 12317,
+        "cost": 0.05175025,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.05175025,
+          "upstream_inference_prompt_cost": 0.00024875,
+          "upstream_inference_completions_cost": 0.0515015
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 2746,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 23575,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9,
+        "js_parses": true
+      },
+      "path": "/runs/rube-goldberg/muse-spark-1.3.html",
+      "generated_at": "2026-09-04T14:15:17.743775+00:00",
+      "attempt": 1
     },
     {
       "scenario": "factory",
@@ -1536,7 +1759,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 9
+        "dom_nodes_approx": 9,
+        "js_parses": true
       },
       "path": "/runs/factory/grok-4.6.html",
       "generated_at": "2026-09-04T12:45:35.862418+00:00",
@@ -1584,7 +1808,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 9
+        "dom_nodes_approx": 9,
+        "js_parses": true
       },
       "path": "/runs/factory/gpt-5.6-luna.html",
       "generated_at": "2026-09-04T12:03:20.859469+00:00"
@@ -1628,7 +1853,8 @@
         "uses_css_animation": true,
         "uses_raf": true,
         "animation_signals": 4,
-        "dom_nodes_approx": 18
+        "dom_nodes_approx": 18,
+        "js_parses": true
       },
       "path": "/runs/factory/gemini-3.8-flash.html",
       "generated_at": "2026-09-04T12:40:18.475371+00:00",
@@ -1676,7 +1902,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 9
+        "dom_nodes_approx": 9,
+        "js_parses": true
       },
       "path": "/runs/factory/glm-5.3-flash.html",
       "generated_at": "2026-09-04T13:47:16.424861+00:00"
@@ -1720,7 +1947,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 8
+        "dom_nodes_approx": 8,
+        "js_parses": true
       },
       "path": "/runs/factory/hy4-preview.html",
       "generated_at": "2026-09-04T13:35:49.521011+00:00"
@@ -1730,13 +1958,13 @@
       "model": "deepseek-v4-flash-0731",
       "status": "ok",
       "error": null,
-      "duration_seconds": 1090.37,
-      "provider": "Sail Research",
+      "duration_seconds": 124.35,
+      "provider": "Relace",
       "usage": {
-        "prompt_tokens": 283,
-        "completion_tokens": 28190,
-        "total_tokens": 28473,
-        "cost": 0.005092595,
+        "prompt_tokens": 204,
+        "completion_tokens": 19763,
+        "total_tokens": 19967,
+        "cost": 0.0035706,
         "is_byok": false,
         "prompt_tokens_details": {
           "cached_tokens": 0,
@@ -1745,12 +1973,12 @@
           "video_tokens": 0
         },
         "cost_details": {
-          "upstream_inference_cost": 0.005092595,
-          "upstream_inference_prompt_cost": 1.8395e-05,
-          "upstream_inference_completions_cost": 0.0050742
+          "upstream_inference_cost": 0.0035706,
+          "upstream_inference_prompt_cost": 1.326e-05,
+          "upstream_inference_completions_cost": 0.00355734
         },
         "completion_tokens_details": {
-          "reasoning_tokens": 21266,
+          "reasoning_tokens": 12167,
           "image_tokens": 0,
           "audio_tokens": 0
         }
@@ -1758,16 +1986,18 @@
       "metrics": {
         "valid_html": true,
         "self_contained": true,
-        "bytes": 22506,
+        "bytes": 12401,
         "uses_canvas": true,
         "uses_svg": false,
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 8
+        "dom_nodes_approx": 6,
+        "js_parses": true
       },
       "path": "/runs/factory/deepseek-v4-flash-0731.html",
-      "generated_at": "2026-09-04T13:48:21.310780+00:00"
+      "generated_at": "2026-09-04T14:18:29.423251+00:00",
+      "attempt": 1
     },
     {
       "scenario": "factory",
@@ -1808,7 +2038,8 @@
         "uses_css_animation": false,
         "uses_raf": true,
         "animation_signals": 2,
-        "dom_nodes_approx": 9
+        "dom_nodes_approx": 9,
+        "js_parses": true
       },
       "path": "/runs/factory/kimi-k3.html",
       "generated_at": "2026-09-04T13:46:19.498674+00:00"
@@ -1852,10 +2083,57 @@
         "uses_css_animation": true,
         "uses_raf": false,
         "animation_signals": 18,
-        "dom_nodes_approx": 285
+        "dom_nodes_approx": 285,
+        "js_parses": true
       },
       "path": "/runs/factory/gpt-5.6-sol.html",
       "generated_at": "2026-09-04T13:37:12.916858+00:00"
+    },
+    {
+      "scenario": "factory",
+      "model": "muse-spark-1.3",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 135.29,
+      "provider": "Meta",
+      "usage": {
+        "prompt_tokens": 204,
+        "completion_tokens": 15376,
+        "total_tokens": 15580,
+        "cost": 0.065603,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.065603,
+          "upstream_inference_prompt_cost": 0.000255,
+          "upstream_inference_completions_cost": 0.065348
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 3937,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 25651,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": true,
+        "uses_raf": true,
+        "animation_signals": 3,
+        "dom_nodes_approx": 41,
+        "js_parses": true
+      },
+      "path": "/runs/factory/muse-spark-1.3.html",
+      "generated_at": "2026-09-04T14:17:14.253644+00:00",
+      "attempt": 1
     }
   ],
   "repaired_at": "2026-09-04T12:45:35.863073+00:00"

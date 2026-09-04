@@ -145,7 +145,8 @@ def call_one(item: tuple[str, dict, str, dict], api_key: str) -> dict:
     provider = None
     raw_text = ""
     try:
-        with urllib.request.urlopen(req, timeout=600) as response:
+        # Hard deadline so a stalled route cannot hang the run for 30 minutes.
+        with urllib.request.urlopen(req, timeout=900) as response:
             payload = json.loads(response.read())
         raw_text = payload["choices"][0]["message"].get("content") or ""
         usage = payload.get("usage") or {}

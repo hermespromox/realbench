@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Retry the remaining failed RealBench cells and update the manifest in place."""
+"""Retry failed RealBench cells with a hard wall-clock deadline per attempt."""
 from __future__ import annotations
 
+import concurrent.futures
 import json
 import os
 
@@ -10,6 +11,35 @@ from generate_benchmark import MANIFEST, MODELS, SCENARIOS, call_one, load_env
 TARGETS = [
     ("city-traffic", "kimi-k3"),
 ]
+ATTEMPTS = 3
+DEADLINE_SECONDS = 1500
+
+
+def run_one(scenario_slug: str, model_slug: str, key: str) -> dict:
+    job = (scenario_slug, SCENARIOS[scenario_slug], model_slug, MODELS[model_slug])
+    last: dict | None = None
+    for attempt in range(1, ATTEMPTS + 1):
+        watchdog = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        future = watchdog.submit(call_one, job, key)
+        try:
+            result = future.result(timeout=DEADLINE_SECONDS)
+            watchdog.shutdown(wait=False)
+        except concurrent.futures.TimeoutError:
+            # Do not block on the stalled socket; the 900s read timeout ends it.
+            watchdog.shutdown(wait=False, cancel_futures=True)
+            print(f"attempt {attempt} for {model_slug}/{scenario_slug} exceeded {DEADLINE_SECONDS}s", flush=True)
+            continue
+        last = result
+        if result["status"] == "ok":
+            result["attempt"] = attempt
+            if attempt > 1:
+                result["repaired"] = True
+                result["repair_reason"] = f"Regenerated after {attempt - 1} failed/empty attempt(s)"
+            return result
+        print(f"attempt {attempt} failed: {result['error']}", flush=True)
+    assert last is not None
+    last["attempt"] = ATTEMPTS
+    return last
 
 
 def main() -> None:
@@ -19,16 +49,12 @@ def main() -> None:
         raise SystemExit("OPENROUTER_API_KEY is missing")
 
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    existing = {(r["scenario"], r["model"]): i for i, r in enumerate(manifest["results"])}
+    all_ok = True
     for scenario_slug, model_slug in TARGETS:
-        result = call_one((scenario_slug, SCENARIOS[scenario_slug], model_slug, MODELS[model_slug]), key)
+        result = run_one(scenario_slug, model_slug, key)
         if result["status"] != "ok":
-            raise SystemExit(f"Retry still failed: {result['error']}")
-        result["attempt"] = 2
-        result["repaired"] = True
-        result["repair_reason"] = "First request returned empty content; regenerated once"
-        existing = {
-            (r["scenario"], r["model"]): i for i, r in enumerate(manifest["results"])
-        }
+            all_ok = False
         position = existing.get((scenario_slug, model_slug))
         if position is None:
             manifest["results"].append(result)
@@ -38,6 +64,8 @@ def main() -> None:
         key=lambda r: (list(SCENARIOS).index(r["scenario"]), list(MODELS).index(r["model"]))
     )
     MANIFEST.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+    if not all_ok:
+        raise SystemExit("Some targets still failed")
     print("Retry merged into manifest")
 
 

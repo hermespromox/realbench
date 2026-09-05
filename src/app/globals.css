@@ -1,1 +1,34 @@
-:root{--background:#fff;--foreground:#111}*{box-sizing:border-box;padding:0;margin:0}html,body{max-width:100vw;overflow-x:hidden}body{min-height:100vh;color:var(--foreground);background:var(--background);font-family:var(--font-geist-sans),Arial,sans-serif;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}button{font-family:inherit}::selection{background:#111;color:#fff}
+:root {
+  --ibm-blue-60: #0f62fe;
+  --ibm-blue-70: #0043ce;
+  --ibm-blue-10: #edf5ff;
+  --ibm-gray-10: #f4f4f4;
+  --ibm-gray-20: #e0e0e0;
+  --ibm-gray-30: #c6c6c6;
+  --ibm-gray-50: #8d8d8d;
+  --ibm-gray-70: #525252;
+  --ibm-gray-80: #393939;
+  --ibm-gray-90: #262626;
+  --ibm-gray-100: #161616;
+  --ibm-green-50: #24a148;
+  --ibm-red-60: #da1e28;
+  --background: #f4f4f4;
+  --foreground: #161616;
+  --surface: #ffffff;
+  --border: #e0e0e0;
+}
+
+* { box-sizing: border-box; padding: 0; margin: 0; }
+html, body { max-width: 100vw; overflow-x: hidden; }
+html { color-scheme: light; }
+body {
+  min-height: 100vh;
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-ibm-sans), "IBM Plex Sans", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; }
+button, input { font-family: inherit; }
+::selection { background: var(--ibm-blue-60); color: #fff; }
+code, pre, .mono { font-family: var(--font-ibm-mono), "IBM Plex Mono", ui-monospace, monospace; }

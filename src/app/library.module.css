@@ -1,0 +1,13 @@
+.page { padding: 48px 16px 80px; max-width: 1584px; margin: 0 auto; }
+.kicker { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: #525252; }
+.page h1 { font-size: clamp(32px, 5vw, 52px); font-weight: 400; margin: 12px 0 16px; }
+.lead { max-width: 70ch; color: #393939; margin-bottom: 40px; }
+.page h2 { font-size: 20px; margin: 32px 0 16px; }
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.card { background: #fff; border: 1px solid #e0e0e0; padding: 20px; min-height: 140px; }
+.card:hover { border-color: #0f62fe; }
+.card small { color: #525252; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+.card h3 { margin: 12px 0 8px; font-size: 22px; font-weight: 400; }
+.card p { color: #525252; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }

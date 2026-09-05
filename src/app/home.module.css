@@ -1,0 +1,37 @@
+.hero, .method { padding: 64px 16px; max-width: 1584px; margin: 0 auto; }
+.kicker { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: #525252; margin-bottom: 12px; }
+.hero h1, .method h2 { font-size: clamp(36px, 6vw, 72px); font-weight: 400; letter-spacing: -0.02em; max-width: 16ch; }
+.lead { margin: 20px 0 28px; max-width: 62ch; font-size: 18px; color: #393939; }
+.actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.primary, .secondary {
+  min-height: 48px;
+  padding: 0 20px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 14px;
+}
+.primary { background: #0f62fe; color: #fff; }
+.primary:hover { background: #0043ce; }
+.secondary { background: #fff; border: 1px solid #e0e0e0; }
+.stats {
+  margin-top: 48px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  background: #fff;
+  border: 1px solid #e0e0e0;
+}
+.stats div { padding: 20px; border-right: 1px solid #e0e0e0; }
+.stats div:last-child { border-right: 0; }
+.stats dt { font-size: 12px; color: #525252; }
+.stats dd { font-size: 32px; margin-top: 8px; }
+.methodGrid { margin-top: 32px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.methodGrid article { background: #fff; border: 1px solid #e0e0e0; padding: 20px; }
+.methodGrid h3 { font-size: 16px; margin-bottom: 8px; }
+.methodGrid p { color: #525252; }
+@media (max-width: 900px) {
+  .stats, .methodGrid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 640px) {
+  .stats, .methodGrid { grid-template-columns: 1fr; }
+  .stats div { border-right: 0; border-bottom: 1px solid #e0e0e0; }
+}

@@ -18,6 +18,12 @@ Models:
 - `x-ai/grok-4.6`
 - `openai/gpt-5.6-luna`
 - `google/gemini-3.8-flash`
+- `z-ai/glm-5.3-flash`
+- `tencent/hy4-preview`
+- `deepseek/deepseek-v4-flash-0731`
+- `moonshotai/kimi-k3`
+- `openai/gpt-5.6-sol`
+- `meta/muse-spark-1.3`
 
 Challenges:
 1. Solar System — geometry and depth

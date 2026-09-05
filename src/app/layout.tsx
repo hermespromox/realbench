@@ -1,24 +1,76 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import SiteShell from "@/components/SiteShell";
+import { SITE_NAME, SITE_URL } from "@/lib/catalog";
 import "./globals.css";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+const ibmSans = IBM_Plex_Sans({
+  variable: "--font-ibm-sans",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+const ibmMono = IBM_Plex_Mono({
+  variable: "--font-ibm-mono",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+});
+
+const title = "RealBench — One-shot frontend capability benchmark";
+const description = "Compare identical one-shot HTML animations from frontier AI models. Browse by challenge or by model, then upvote the strongest builds.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://realbench-delta.vercel.app"),
-  title: "RealBench — Frontend Capability Benchmark",
-  description: "Compare one-shot animated frontend builds from frontier AI models. Same prompt, no repair, rendered side by side.",
+  metadataBase: new URL(SITE_URL),
+  title: { default: title, template: `%s · ${SITE_NAME}` },
+  description,
+  applicationName: SITE_NAME,
+  keywords: [
+    "AI benchmark",
+    "frontend generation",
+    "HTML animation",
+    "OpenRouter",
+    "Grok",
+    "Kimi",
+    "GPT",
+    "Gemini",
+    "one-shot coding",
+  ],
+  authors: [{ name: "RealBench" }],
   alternates: { canonical: "/" },
   openGraph: {
-    title: "RealBench — See what models can actually build",
-    description: "A visual one-shot frontend benchmark for frontier AI models.",
+    title,
+    description,
     type: "website",
     url: "/",
+    siteName: SITE_NAME,
+    locale: "en_US",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "RealBench arena" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    images: ["/opengraph-image"],
   },
   robots: { index: true, follow: true },
+  manifest: "/manifest.json",
+  category: "technology",
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: SITE_NAME,
+  url: SITE_URL,
+  description,
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}><body>{children}</body></html>;
+  return (
+    <html lang="en" className={`${ibmSans.variable} ${ibmMono.variable}`}>
+      <body>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        <SiteShell>{children}</SiteShell>
+      </body>
+    </html>
+  );
 }

@@ -8,3 +8,4 @@ npm-debug.log*
 
 __pycache__/
 *.pyc
+benchmark/raw/**/*.prev.txt

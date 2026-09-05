@@ -27,6 +27,7 @@ MODELS = {
     "kimi-k3": {"id": "moonshotai/kimi-k3", "name": "Kimi K3", "vendor": "Moonshot AI", "color": "#111827"},
     "gpt-5.6-sol": {"id": "openai/gpt-5.6-sol", "name": "GPT-5.6 Sol", "vendor": "OpenAI", "color": "#0f9d7a"},
     "muse-spark-1.3": {"id": "meta/muse-spark-1.3", "name": "Muse Spark 1.3", "vendor": "Meta", "color": "#0668e1"},
+    "gemma-4-31b-it": {"id": "google/gemma-4-31b-it", "name": "Gemma 4 31B IT", "vendor": "Google", "color": "#ea4335"},
 }
 
 SCENARIOS = {

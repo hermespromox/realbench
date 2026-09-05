@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Platformer Animation</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #5C94FC;
+        }
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let width, height, scale;
+        const VIRTUAL_WIDTH = 256;
+        const VIRTUAL_HEIGHT = 224;
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            const ratio = width / height;
+            const vRatio = VIRTUAL_WIDTH / VIRTUAL_HEIGHT;
+            if (ratio > vRatio) {
+                scale = height / VIRTUAL_HEIGHT;
+            } else {
+                scale = width / VIRTUAL_WIDTH;
+            }
+            canvas.width = width;
+            canvas.height = height;
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        const GRAVITY = 0.25;
+        const JUMP_FORCE = -4.5;
+        const SPEED = 2;
+
+        class Entity {
+            constructor(x, y, w, h, color) {
+                this.x = x;
+                this.y = y;
+                this.w = w;
+                this.h = h;
+                this.color = color;
+                this.vx = 0;
+                this.vy = 0;
+            }
+        }
+
+        class Mario extends Entity {
+            constructor() {
+                super(32, 180, 12, 16, '#E74C3C');
+                this.frame = 0;
+                this.state = 'run'; // run, jump, fall
+            }
+
+            update(world) {
+                this.vx = SPEED;
+                this.vy += GRAVITY;
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Collision with ground/platforms
+                let onGround = false;
+                world.platforms.forEach(p => {
+                    if (this.x + this.w > p.x && this.x < p.x + p.w &&
+                        this.y + this.h > p.y && this.y + this.h < p.y + p.h + 5 && this.vy >= 0) {
+                        this.y = p.y - this.h;
+                        this.vy = 0;
+                        onGround = true;
+                    }
+                });
+
+                if (onGround) {
+                    this.state = 'run';
+                    this.frame += 0.15;
+                } else {
+                    this.state = 'jump';
+                }
+
+                // Simple AI logic for the demo
+                world.triggers.forEach(t => {
+                    if (Math.abs(this.x - t.x) < 5 && this.state === 'run') {
+                        if (t.type === 'jump') {
+                            this.vy = JUMP_FORCE;
+                            this.state = 'jump';
+                        }
+                    }
+                });
+            }
+
+            draw(offsetX) {
+                ctx.fillStyle = this.color;
+                let drawX = this.x - offsetX;
+                let drawY = this.y;
+                
+                // Simple 8-bit style character
+                const walkOffset = Math.sin(this.frame) * 2;
+                ctx.fillRect(drawX, drawY, this.w, this.h);
+                ctx.fillStyle = '#FAD7A0'; // Skin
+                ctx.fillRect(drawX + 4, drawY + 2, 6, 6);
+                ctx.fillStyle = '#000'; // Eyes/Moustache
+                ctx.fillRect(drawX + 8, drawY + 3, 2, 2);
+                ctx.fillRect(drawX + 7, drawY + 6, 4, 1);
+                ctx.fillStyle = '#0000AA'; // Overalls
+                ctx.fillRect(drawX + 2, drawY + 8, 8, 6);
+            }
+        }
+
+        class Enemy extends Entity {
+            constructor(x, y) {
+                super(x, y, 14, 14, '#A0522D');
+                this.vx = -0.5;
+            }
+            update() {
+                this.x += this.vx;
+                // Bounce off platforms or boundaries
+                if (this.x < 0) this.vx *= -1;
+            }
+            draw(offsetX) {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x - offsetX, this.y, this.w, this.h);
+                ctx.fillStyle = '#FFF';
+                ctx.fillRect(this.x - offsetX + 2, this.y + 2, 3, 3);
+                ctx.fillRect(this.x - offsetX + 9, this.y + 2, 3, 3);
+            }
+        }
+
+        class World {
+            constructor() {
+                this.platforms = [];
+                this.coins = [];
+                this.enemies = [];
+                this.triggers = [];
+                this.clouds = [];
+                this.hills = [];
+                this.init();
+            }
+
+            init() {
+                // Ground
+                for (let i = 0; i < 5000; i += 40) {
+                    if (i > 400 && i < 500) continue; // Gap
+                    if (i > 1200 && i < 1300) continue; // Gap
+                    this.platforms.push({x: i, y: 200, w: 40, h: 24, type: 'ground'});
+                }
+
+                // Platforms and Blocks
+                const layout = [
+                    {x: 200, y: 140, w: 32, h: 32, type: 'block'},
+                    {x: 232, y: 140, w: 32, h: 32, type: 'qblock'},
+                    {x: 264, y: 140, w: 32, h: 32, type: 'block'},
+                    {x: 450, y: 160, w: 64, h: 16, type: 'platform'},
+                    {x: 600, y: 120, w: 32, h: 80, type: 'pipe'},
+                    {x: 800, y: 140, w: 128, h: 16, type: 'platform'},
+                    {x: 1000, y: 160, w: 32, h: 32, type: 'qblock'},
+                    {x: 1100, y: 120, w: 32, h: 80, type: 'pipe'},
+                    {x: 1400, y: 140, w: 64, h: 16, type: 'platform'},
+                ];
+
+                layout.forEach(p => this.platforms.push(p));
+
+                // Coins
+                this.coins = [
+                    {x: 235, y: 120, collected: false},
+                    {x: 460, y: 150, collected: false},
+                    {x: 490, y: 150, collected: false},
+                    {x: 1005, y: 120, collected: false},
+                ];
+
+                // Enemies
+                this.enemies.push(new Enemy(500, 186));
+                this.enemies.push(new Enemy(900, 186));
+                this.enemies.push(new Enemy(1500, 186));
+
+                // Jump triggers for Mario AI
+                this.triggers.push({x: 380, type: 'jump'});
+                this.triggers.push({x: 430, type: 'jump'});
+                this.triggers.push({x: 580, type: 'jump'});
+                this.triggers.push({x: 780, type: 'jump'});
+                this.triggers.push({x: 1180, type: 'jump'});
+                this.triggers.push({x: 1380, type: 'jump'});
+
+                // Background
+                for(let i=0; i<20; i++) {
+                    this.clouds.push({x: Math.random()*2000, y: 20+Math.random()*60, s: 0.5 + Math.random()});
+                    this.hills.push({x: Math.random()*2000, y: 180, s: 0.8 + Math.random()*0.5});
+                }
+            }
+
+            draw(offsetX) {
+                // Clouds
+                ctx.fillStyle = '#FFF';
+                this.clouds.forEach(c => {
+                    ctx.fillRect(c.x - offsetX * 0.3, c.y, 30 * c.s, 15 * c.s);
+                });
+
+                // Hills
+                ctx.fillStyle = '#74BF2E';
+                this.hills.forEach(h => {
+                    ctx.beginPath();
+                    ctx.arc(h.x - offsetX * 0.5, h.y, 20 * h.s, Math.PI, 0);
+                    ctx.fill();
+                });
+
+                // Platforms
+                this.platforms.forEach(p => {
+                    if (p.type === 'ground') ctx.fillStyle = '#C9702C';
+                    else if (p.type === 'qblock') ctx.fillStyle = '#F3B05A';
+                    else if (p.type === 'block') ctx.fillStyle = '#B06030';
+                    else if (p.type === 'pipe') ctx.fillStyle = '#2ECC71';
+                    else ctx.fillStyle = '#B06030';
+                    ctx.fillRect(p.x - offsetX, p.y, p.w, p.h);
+                    
+                    // Detailing
+                    ctx.strokeStyle = '#00000033';
+                    ctx.strokeRect(p.x - offsetX, p.y, p.w, p.h);
+                });
+
+                // Coins
+                ctx.fillStyle = '#F1C40F';
+                this.coins.forEach(c => {
+                    if (!c.collected) {
+                        ctx.beginPath();
+                        ctx.ellipse(c.x - offsetX, c.y, 4, 6, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                });
+            }
+        }
+
+        const world = new World();
+        const mario = new Mario();
+
+        function loop() {
+            ctx.clearRect(0, 0, width, height);
+            ctx.save();
+            ctx.scale(scale, scale);
+
+            const offsetX = mario.x - 64;
+
+            // Background color
+            ctx.fillStyle = '#5C94FC';
+            ctx.fillRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
+
+            world.draw(offsetX);
+
+            mario.update(world);
+            
+            // Enemy interaction
+            world.enemies.forEach(e => {
+                e.update();
+                e.draw(offsetX);
+                if (mario.x < e.x + e.w && mario.x + mario.w > e.x &&
+                    mario.y < e.y + e.h && mario.y + mario.h > e.y) {
+                    if (mario.vy > 0 && mario.y < e.y) {
+                        e.x = -1000; // "Kill" enemy
+                        mario.vy = JUMP_FORCE * 0.8;
+                    } else {
+                        // Reset if hit from side
+                        mario.x = 32;
+                        mario.y = 180;
+                    }
+                }
+            });
+
+            // Coin collection
+            world.coins.forEach(c => {
+                if (!c.collected && Math.abs(mario.x - c.x) < 10 && Math.abs(mario.y - c.y) < 10) {
+                    c.collected = true;
+                }
+            });
+
+            mario.draw(offsetX);
+
+            // Loop the world
+            if (mario.x > 2000) {
+                mario.x = 32;
+                mario.y = 180;
+                mario.vy = 0;
+                world.coins.forEach(c => c.collected = false);
+                world.enemies.forEach((e, i) => {
+                    e.x = (i + 1) * 500;
+                });
+            }
+
+            ctx.restore();
+            requestAnimationFrame(loop);
+        }
+
+        loop();
+    </script>
+</body>
+</html>

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Futuristic Automated Factory</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a2e;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        canvas {
+            display: block;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="factoryCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById('factoryCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let width, height;
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Isometric projection helpers
+        function iso(x, y, z = 0) {
+            return {
+                x: (x - y) * Math.cos(Math.PI / 6) + width / 2,
+                y: (x + y) * Math.sin(Math.PI / 6) - z + height / 2
+            };
+        }
+
+        const COLORS = {
+            floor: '#2d3436',
+            belt: '#4b4b4b',
+            beltDetail: '#333',
+            machine: '#7f8c8d',
+            machineDark: '#2c3e50',
+            robot: '#e67e22',
+            robotDark: '#d35400',
+            product: '#00d2ff',
+            lightGreen: '#2ecc71',
+            lightRed: '#e74c3c',
+            lightYellow: '#f1c40f'
+        };
+
+        class Product {
+            constructor(startPos, path) {
+                this.x = startPos.x;
+                this.y = startPos.y;
+                this.z = 5;
+                this.path = path; // Array of {x, y, duration}
+                this.progress = 0;
+                this.currentLeg = 0;
+                this.state = 'moving'; // moving, being_processed, waiting
+                this.timer = 0;
+                this.id = Math.random();
+            }
+
+            update(dt) {
+                if (this.state === 'moving') {
+                    const leg = this.path[this.currentLeg];
+                    this.progress += dt / leg.duration;
+                    
+                    const prev = this.currentLeg === 0 ? {x: this.x, y: this.y} : this.path[this.currentLeg - 1];
+                    this.x = prev.x + (leg.x - prev.x) * this.progress;
+                    this.y = prev.y + (leg.y - prev.y) * this.progress;
+
+                    if (this.progress >= 1) {
+                        this.progress = 0;
+                        this.currentLeg++;
+                        if (this.currentLeg >= this.path.length) {
+                            return false; // Finished
+                        }
+                        // Check if this stop is a processing station
+                        if (this.path[this.currentLeg - 1].process) {
+                            this.state = 'being_processed';
+                            this.timer = 0;
+                        }
+                    }
+                } else if (this.state === 'being_processed') {
+                    this.timer += dt;
+                    if (this.timer >= 1000) {
+                        this.state = 'moving';
+                    }
+                }
+                return true;
+            }
+
+            draw() {
+                const p = iso(this.x, this.y, this.z);
+                ctx.fillStyle = COLORS.product;
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y - 10);
+                ctx.lineTo(p.x + 10, p.y - 5);
+                ctx.lineTo(p.x, p.y);
+                ctx.lineTo(p.x - 10, p.y - 5);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Highlight
+                ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+                ctx.stroke();
+            }
+        }
+
+        class RoboticArm {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.type = type; // 'pick', 'stamp'
+                this.angle = 0;
+                this.ext = 0;
+                this.targetExt = 0;
+                this.timer = Math.random() * 1000;
+            }
+
+            update(dt, products) {
+                this.timer += dt;
+                
+                // Find if a product is within reach
+                const target = products.find(p => 
+                    p.state === 'being_processed' && 
+                    Math.abs(p.x - this.x) < 20 && Math.abs(p.y - this.y) < 20
+                );
+
+                if (target) {
+                    this.targetExt = 40;
+                    this.angle = Math.PI / 4;
+                } else {
+                    this.targetExt = 0;
+                    this.angle = 0;
+                }
+
+                this.ext += (this.targetExt - this.ext) * 0.1;
+                this.angle += (this.targetExt === 40 ? 0.1 : -0.1) * 0.1;
+            }
+
+            draw() {
+                const base = iso(this.x, this.y, 0);
+                const joint = iso(this.x, this.y, 30);
+                const end = iso(this.x + Math.cos(this.angle) * this.ext, this.y + Math.sin(this.angle) * this.ext, 30 + this.ext);
+
+                ctx.strokeStyle = COLORS.robot;
+                ctx.lineWidth = 8;
+                ctx.lineJoin = 'round';
+                
+                ctx.beginPath();
+                ctx.moveTo(base.x, base.y);
+                ctx.lineTo(joint.x, joint.y);
+                ctx.lineTo(end.x, end.y);
+                ctx.stroke();
+                
+                ctx.fillStyle = COLORS.robotDark;
+                ctx.beginPath();
+                ctx.arc(base.x, base.y, 10, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        class AGVCart {
+            constructor(path) {
+                this.path = path;
+                this.progress = Math.random();
+                this.speed = 0.0005;
+            }
+
+            update(dt) {
+                this.progress += this.speed;
+                if (this.progress > 1) this.progress = 0;
+            }
+
+            draw() {
+                const p1 = this.path[0];
+                const p2 = this.path[1];
+                const x = p1.x + (p2.x - p1.x) * this.progress;
+                const y = p1.y + (p2.y - p1.y) * this.progress;
+                const pos = iso(x, y, 10);
+
+                ctx.fillStyle = '#f1c40f';
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+                ctx.lineTo(pos.x + 20, pos.y - 10);
+                ctx.lineTo(pos.x + 40, pos.y);
+                ctx.lineTo(pos.x + 20, pos.y + 10);
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+
+        const products = [];
+        const arms = [];
+        const carts = [];
+        let spawnTimer = 0;
+
+        // Factory Layout
+        const beltPaths = [
+            {
+                start: {x: -200, y: 0},
+                segments: [
+                    {x: 0, y: 0, duration: 2000, process: true},
+                    {x: 100, y: 0, duration: 1000, process: false},
+                    {x: 100, y: 100, duration: 2000, process: true},
+                    {x: 200, y: 100, duration: 1000, process: false},
+                    {x: 200, y: 0, duration: 2000, process: true},
+                    {x: 300, y: 0, duration: 2000, process: false},
+                ]
+            }
+        ];
+
+        // Initialize Robots
+        arms.push(new RoboticArm(0, 0, 'pick'));
+        arms.push(new RoboticArm(100, 100, 'stamp'));
+        arms.push(new RoboticArm(200, 0, 'pick'));
+
+        // Initialize AGVs
+        carts.push(new AGVCart([{x: -200, y: -100}, {x: 300, y: -100}]));
+        carts.push(new AGVCart([{x: 300, y: 200}, {x: -200, y: 200}]));
+
+        function drawFloor() {
+            ctx.fillStyle = COLORS.floor;
+            ctx.beginPath();
+            const p1 = iso(-300, -300, 0);
+            const p2 = iso(300, -300, 0);
+            const p3 = iso(300, 300, 0);
+            const p4 = iso(-300, 300, 0);
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.lineTo(p3.x, p3.y);
+            ctx.lineTo(p4.x, p4.y);
+            ctx.closePath();
+            ctx.fill();
+
+            // Grid lines
+            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+            ctx.lineWidth = 1;
+            for(let i = -300; i <= 300; i += 50) {
+                const start1 = iso(i, -300, 0);
+                const end1 = iso(i, 300, 0);
+                ctx.beginPath(); ctx.moveTo(start1.x, start1.y); ctx.lineTo(end1.x, end1.y); ctx.stroke();
+                const start2 = iso(-300, i, 0);
+                const end2 = iso(300, i, 0);
+                ctx.beginPath(); ctx.moveTo(start2.x, start2.y); ctx.lineTo(end2.x, end2.y); ctx.stroke();
+            }
+        }
+
+        function drawBelts() {
+            ctx.strokeStyle = COLORS.belt;
+            ctx.lineWidth = 30;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+
+            const path = beltPaths[0];
+            ctx.beginPath();
+            const start = iso(path.start.x, path.start.y, 0);
+            ctx.moveTo(start.x, start.y);
+            
+            let prev = path.start;
+            path.segments.forEach(seg => {
+                const p = iso(seg.x, seg.y, 0);
+                ctx.lineTo(p.x, p.y);
+                prev = seg;
+            });
+            ctx.stroke();
+
+            // Belt texture/animation
+            const time = Date.now() * 0.005;
+            ctx.strokeStyle = COLORS.beltDetail;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([10, 10]);
+            ctx.lineDashOffset = -time;
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        function drawMachines() {
+            // Simple boxes at processing points
+            const path = beltPaths[0];
+            path.segments.forEach(seg => {
+                if (seg.process) {
+                    const p = iso(seg.x, seg.y, 0);
+                    ctx.fillStyle = COLORS.machineDark;
+                    ctx.beginPath();
+                    ctx.moveTo(p.x - 20, p.y);
+                    ctx.lineTo(p.x, p.y - 10);
+                    ctx.lineTo(p.x + 20, p.y);
+                    ctx.lineTo(p.x, p.y + 10);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    ctx.fillStyle = COLORS.machine;
+                    ctx.beginPath();
+                    ctx.moveTo(p.x - 20, p.y);
+                    ctx.lineTo(p.x - 20, p.y - 40);
+                    ctx.lineTo(p.x, p.y - 50);
+                    ctx.lineTo(p.x + 20, p.y - 40);
+                    ctx.lineTo(p.x + 20, p.y);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Blink light
+                    const blink = Math.sin(Date.now() * 0.005 + seg.x) > 0;
+                    ctx.fillStyle = blink ? COLORS.lightGreen : COLORS.lightRed;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y - 45, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+        }
+
+        let lastTime = 0;
+        function animate(time) {
+            const dt = time - lastTime;
+            lastTime = time;
+
+            ctx.clearRect(0, 0, width, height);
+
+            drawFloor();
+            drawBelts();
+            drawMachines();
+
+            // Spawn products
+            spawnTimer += dt;
+            if (spawnTimer > 2000) {
+                const pathCfg = beltPaths[0];
+                products.push(new Product(pathCfg.start, pathCfg.segments));
+                spawnTimer = 0;
+            }
+
+            // Update and draw AGVs
+            carts.forEach(cart => {
+                cart.update(dt);
+                cart.draw();
+            });
+
+            // Update and draw robots
+            arms.forEach(arm => {
+                arm.update(dt, products);
+                arm.draw();
+            });
+
+            // Update and draw products
+            for (let i = products.length - 1; i >= 0; i--) {
+                if (!products[i].update(dt)) {
+                    products.splice(i, 1);
+                } else {
+                    products[i].draw();
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>

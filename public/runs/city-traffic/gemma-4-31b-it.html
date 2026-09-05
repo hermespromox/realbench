@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Grid City</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0a0a12;
+            font-family: sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="cityCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById('cityCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let width, height;
+        const gridSize = 200;
+        const roadWidth = 60;
+        const carSize = 8;
+        const buildingPadding = 20;
+
+        const colors = {
+            road: '#1a1a2e',
+            sidewalk: '#252545',
+            building: '#121225',
+            windowOn: '#ffd27d',
+            windowOff: '#1a1a30',
+            carColors: ['#ff3e3e', '#3effe0', '#ffff3e', '#ffffff', '#ff3eff', '#3effff'],
+            trafficGreen: '#00ff00',
+            trafficRed: '#ff0000',
+            trafficYellow: '#ffff00'
+        };
+
+        let cars = [];
+        let pedestrians = [];
+        let trafficLights = [];
+        let buildings = [];
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            initCity();
+        }
+
+        class TrafficLight {
+            constructor(x, y, orientation) {
+                this.x = x;
+                this.y = y;
+                this.orientation = orientation; // 'H' or 'V'
+                this.state = Math.random() > 0.5 ? 'green' : 'red';
+                this.timer = Math.random() * 5000;
+            }
+
+            update(dt) {
+                this.timer -= dt;
+                if (this.timer <= 0) {
+                    this.state = this.state === 'green' ? 'red' : 'green';
+                    this.timer = 4000 + Math.random() * 4000;
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = this.state === 'green' ? colors.trafficGreen : colors.trafficRed;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+                // Glow
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = ctx.fillStyle;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        class Car {
+            constructor(laneX, laneY, dir) {
+                this.x = laneX;
+                this.y = laneY;
+                this.dir = dir; // 0: Right, 1: Down, 2: Left, 3: Up
+                this.speed = 1.5 + Math.random() * 1.5;
+                this.color = colors.carColors[Math.floor(Math.random() * colors.carColors.length)];
+                this.wait = 0;
+            }
+
+            update(dt) {
+                if (this.wait > 0) {
+                    this.wait -= dt;
+                    return;
+                }
+
+                // Simple collision/traffic light check
+                let canMove = true;
+                
+                // Check traffic lights at intersections
+                trafficLights.forEach(light => {
+                    const dist = Math.hypot(this.x - light.x, this.y - light.y);
+                    if (dist < 40) {
+                        if (light.state === 'red') {
+                            // If light is red and car is approaching it
+                            if (this.dir === 0 && this.x < light.x && this.y === light.y) canMove = false;
+                            if (this.dir === 2 && this.x > light.x && this.y === light.y) canMove = false;
+                            if (this.dir === 1 && this.y < light.y && this.x === light.x) canMove = false;
+                            if (this.dir === 3 && this.y > light.y && this.x === light.x) canMove = false;
+                        }
+                    }
+                });
+
+                if (!canMove) {
+                    this.wait = 500; 
+                    return;
+                }
+
+                if (this.dir === 0) this.x += this.speed;
+                else if (this.dir === 1) this.y += this.speed;
+                else if (this.dir === 2) this.x -= this.speed;
+                else if (this.dir === 3) this.y -= this.speed;
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate((this.dir * Math.PI) / 2);
+                ctx.fillRect(-carSize, -carSize/2, carSize * 1.5, carSize);
+                ctx.restore();
+            }
+        }
+
+        class Pedestrian {
+            constructor(x, y, targetX, targetY) {
+                this.x = x;
+                this.y = y;
+                this.targetX = targetX;
+                this.targetY = targetY;
+                this.speed = 0.5 + Math.random() * 0.5;
+                this.done = false;
+            }
+
+            update() {
+                const dx = this.targetX - this.x;
+                const dy = this.targetY - this.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist < 2) {
+                    this.done = true;
+                } else {
+                    this.x += (dx / dist) * this.speed;
+                    this.y += (dy / dist) * this.speed;
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = '#ddd';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        class Building {
+            constructor(x, y, w, h) {
+                this.x = x;
+                this.y = y;
+                this.w = w;
+                this.h = h;
+                this.windows = [];
+                const rows = Math.floor(h / 10);
+                const cols = Math.floor(w / 10);
+                for (let i = 0; i < rows; i++) {
+                    for (let j = 0; j < cols; j++) {
+                        this.windows.push({
+                            x: j * 10 + 3,
+                            y: i * 10 + 3,
+                            on: Math.random() > 0.7,
+                            timer: Math.random() * 1000
+                        });
+                    }
+                }
+            }
+
+            update(dt) {
+                this.windows.forEach(w => {
+                    w.timer -= dt;
+                    if (w.timer <= 0) {
+                        w.on = !w.on;
+                        w.timer = 2000 + Math.random() * 8000;
+                    }
+                });
+            }
+
+            draw() {
+                ctx.fillStyle = colors.building;
+                ctx.fillRect(this.x, this.y, this.w, this.h);
+                
+                this.windows.forEach(w => {
+                    ctx.fillStyle = w.on ? colors.windowOn : colors.windowOff;
+                    ctx.fillRect(this.x + w.x, this.y + w.y, 4, 4);
+                });
+            }
+        }
+
+        function initCity() {
+            cars = [];
+            pedestrians = [];
+            trafficLights = [];
+            buildings = [];
+
+            // Create Roads and Lights
+            for (let x = 0; x < width + gridSize; x += gridSize) {
+                for (let y = 0; y < height + gridSize; y += gridSize) {
+                    // Intersection light
+                    trafficLights.push(new TrafficLight(x, y, 'H'));
+                    trafficLights.push(new TrafficLight(x, y, 'V'));
+                }
+            }
+
+            // Create Buildings in the gaps
+            for (let x = 0; x < width; x += gridSize) {
+                for (let y = 0; y < height; y += gridSize) {
+                    const bW = gridSize - roadWidth - buildingPadding * 2;
+                    const bH = gridSize - roadWidth - buildingPadding * 2;
+                    buildings.push(new Building(x + roadWidth/2 + buildingPadding, y + roadWidth/2 + buildingPadding, bW, bH));
+                }
+            }
+        }
+
+        function spawnCar() {
+            const lanes = [
+                { x: 0, y: 0, dir: 0 }, // Horizontal Right
+                { x: 0, y: gridSize, dir: 0 },
+                { x: width, y: 0, dir: 2 }, // Horizontal Left
+                { x: width, y: gridSize, dir: 2 },
+                { x: 0, y: 0, dir: 1 }, // Vertical Down
+                { x: gridSize, y: 0, dir: 1 },
+                { x: 0, y: height, dir: 3 }, // Vertical Up
+                { x: gridSize, y: height, dir: 3 },
+            ];
+
+            // Random road selection
+            const roadX = Math.floor(Math.random() * (width / gridSize + 1)) * gridSize;
+            const roadY = Math.floor(Math.random() * (height / gridSize + 1)) * gridSize;
+            const dir = Math.floor(Math.random() * 4);
+            
+            let lx = roadX, ly = roadY;
+            if (dir === 0) { lx = -20; ly = roadY + 10; }
+            else if (dir === 2) { lx = width + 20; ly = roadY + 10; }
+            else if (dir === 1) { lx = roadX + 10; ly = -20; }
+            else if (dir === 3) { lx = roadX + 10; ly = height + 20; }
+
+            cars.push(new Car(lx, ly, dir));
+        }
+
+        function spawnPedestrian() {
+            const roadX = Math.floor(Math.random() * (width / gridSize + 1)) * gridSize;
+            const roadY = Math.floor(Math.random() * (height / gridSize + 1)) * gridSize;
+            
+            if (Math.random() > 0.5) {
+                // Cross horizontally
+                pedestrians.push(new Pedestrian(roadX - 10, roadY - 10, roadX + roadWidth + 10, roadY + roadWidth + 10));
+            } else {
+                // Cross vertically
+                pedestrians.push(new Pedestrian(roadX + roadWidth + 10, roadY - 10, roadX - 10, roadY + roadWidth + 10));
+            }
+        }
+
+        let lastTime = 0;
+        function animate(time) {
+            const dt = time - lastTime;
+            lastTime = time;
+
+            ctx.fillStyle = '#050510';
+            ctx.fillRect(0, 0, width, height);
+
+            // Draw Roads
+            ctx.fillStyle = colors.road;
+            for (let x = 0; x < width + gridSize; x += gridSize) {
+                ctx.fillRect(x - roadWidth/2, 0, roadWidth, height);
+            }
+            for (let y = 0; y < height + gridSize; y += gridSize) {
+                ctx.fillRect(0, y - roadWidth/2, width, roadWidth);
+            }
+
+            // Draw Sidewalks (simplified)
+            ctx.strokeStyle = colors.sidewalk;
+            ctx.lineWidth = 4;
+            for (let x = 0; x < width + gridSize; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x - roadWidth/2 - 2, 0); ctx.lineTo(x - roadWidth/2 - 2, height);
+                ctx.moveTo(x + roadWidth/2 + 2, 0); ctx.lineTo(x + roadWidth/2 + 2, height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < height + gridSize; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y - roadWidth/2 - 2); ctx.lineTo(width, y - roadWidth/2 - 2);
+                ctx.moveTo(0, y + roadWidth/2 + 2); ctx.lineTo(width, y + roadWidth/2 + 2);
+                ctx.stroke();
+            }
+
+            buildings.forEach(b => {
+                b.update(dt);
+                b.draw();
+            });
+
+            trafficLights.forEach(l => {
+                l.update(dt);
+                l.draw();
+            });
+
+            if (Math.random() < 0.05) spawnCar();
+            if (Math.random() < 0.02) spawnPedestrian();
+
+            cars = cars.filter(c => c.x > -100 && c.x < width + 100 && c.y > -100 && c.y < height + 100);
+            cars.forEach(c => {
+                c.update(dt);
+                c.draw();
+            });
+
+            pedestrians = pedestrians.filter(p => !p.done);
+            pedestrians.forEach(p => {
+                p.update();
+                p.draw();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>

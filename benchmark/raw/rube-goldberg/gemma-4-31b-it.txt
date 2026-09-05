@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rube Goldberg Machine</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #2c3e50;
+            font-family: sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            pointer-events: none;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">Rube Goldberg Sequence</div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let width, height;
+        let frame = 0;
+        let state = 'START'; // START, RAMP, DOMINOES, LEVER, RELEASE, WHEEL, LAUNCH, BELL, RESET
+        let timer = 0;
+
+        // Entities
+        const ball1 = { x: 0, y: 0, r: 10, vx: 0, vy: 0 };
+        const ball2 = { x: 0, y: 0, r: 10, vx: 0, vy: 0 };
+        const dominoes = [];
+        const wheel = { angle: 0, speed: 0 };
+        const projectile = { x: 0, y: 0, vx: 0, vy: 0, active: false };
+        const bell = { ringing: 0 };
+
+        function init() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+
+            // Setup dominoes
+            dominoes.length = 0;
+            const startDomX = width * 0.35;
+            const startDomY = height * 0.4;
+            for (let i = 0; i < 8; i++) {
+                dominoes.push({
+                    x: startDomX + i * 30,
+                    y: startDomY,
+                    angle: 0,
+                    fallen: false
+                });
+            }
+
+            // Initial positions
+            ball1.x = width * 0.1;
+            ball1.y = height * 0.2;
+            ball2.x = width * 0.55;
+            ball2.y = height * 0.3;
+            
+            wheel.angle = 0;
+            wheel.speed = 0;
+            projectile.active = false;
+            bell.ringing = 0;
+        }
+
+        function drawBeam(x1, y1, x2, y2) {
+            ctx.strokeStyle = '#bdc3c7';
+            ctx.lineWidth = 8;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+
+        function drawCircle(x, y, r, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+            // Highlight
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.beginPath();
+            ctx.arc(x - r*0.3, y - r*0.3, r*0.3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function update() {
+            frame++;
+            timer++;
+
+            if (state === 'START') {
+                if (timer > 60) state = 'RAMP';
+            } else if (state === 'RAMP') {
+                // Ball 1 slides down ramp
+                const targetX = width * 0.33;
+                const targetY = height * 0.4;
+                ball1.x += (targetX - ball1.x) * 0.02;
+                ball1.y += (targetY - ball1.y) * 0.02;
+                if (Math.abs(ball1.x - targetX) < 1) state = 'DOMINOES';
+            } else if (state === 'DOMINOES') {
+                // Knock over dominoes sequentially
+                for (let i = 0; i < dominoes.length; i++) {
+                    if (i === 0 || dominoes[i-1].fallen) {
+                        dominoes[i].angle += 0.1;
+                        if (dominoes[i].angle >= Math.PI/3) dominoes[i].fallen = true;
+                    }
+                }
+                if (dominoes[dominoes.length-1].fallen) {
+                    state = 'LEVER';
+                }
+            } else if (state === 'LEVER') {
+                // The last domino hits a lever
+                timer++;
+                if (timer > 120) state = 'RELEASE';
+            } else if (state === 'RELEASE') {
+                // Ball 2 is released
+                const targetX = width * 0.7;
+                const targetY = height * 0.5;
+                ball2.x += (targetX - ball2.x) * 0.05;
+                ball2.y += (targetY - ball2.y) * 0.05;
+                if (Math.abs(ball2.x - targetX) < 1) state = 'WHEEL';
+            } else if (state === 'WHEEL') {
+                // Ball 2 spins a wheel
+                wheel.speed += 0.01;
+                wheel.angle += wheel.speed;
+                if (wheel.angle > Math.PI * 2) {
+                    state = 'LAUNCH';
+                }
+            } else if (state === 'LAUNCH') {
+                // Projectile launches
+                projectile.active = true;
+                projectile.x = width * 0.7;
+                projectile.y = height * 0.5;
+                projectile.vx = 8;
+                projectile.vy = -10;
+                state = 'FLYING';
+            } else if (state === 'FLYING') {
+                projectile.x += projectile.vx;
+                projectile.y += projectile.vy;
+                projectile.vy += 0.2; // Gravity
+                if (projectile.x > width * 0.85 && projectile.y > height * 0.4) {
+                    state = 'BELL';
+                }
+            } else if (state === 'BELL') {
+                bell.ringing = 10;
+                timer++;
+                if (timer > 300) {
+                    state = 'RESET';
+                }
+            } else if (state === 'RESET') {
+                timer = 0;
+                frame = 0;
+                init();
+                state = 'START';
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw Machine Structure
+            // Ramp 1
+            drawBeam(width * 0.1, height * 0.2, width * 0.33, height * 0.4);
+            
+            // Dominoes
+            dominoes.forEach(d => {
+                ctx.save();
+                ctx.translate(d.x, d.y);
+                ctx.rotate(d.angle);
+                ctx.fillStyle = '#e74c3c';
+                ctx.fillRect(-2, -20, 4, 20);
+                ctx.restore();
+            });
+
+            // Lever
+            ctx.strokeStyle = '#95a5a6';
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.moveTo(width * 0.45, height * 0.4);
+            ctx.lineTo(width * 0.55, height * 0.3);
+            ctx.stroke();
+
+            // Ball 2 Path
+            drawBeam(width * 0.55, height * 0.3, width * 0.7, height * 0.5);
+
+            // Wheel
+            ctx.save();
+            ctx.translate(width * 0.7, height * 0.5);
+            ctx.rotate(wheel.angle);
+            ctx.strokeStyle = '#f1c40f';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.arc(0, 0, 30, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(-30, 0); ctx.lineTo(30, 0);
+            ctx.moveTo(0, -30); ctx.lineTo(0, 30);
+            ctx.stroke();
+            ctx.restore();
+
+            // Bell
+            ctx.fillStyle = '#f1c40f';
+            ctx.beginPath();
+            ctx.arc(width * 0.88, height * 0.4, 20, Math.PI, 0);
+            ctx.fill();
+            ctx.strokeStyle = '#f1c40f';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(width * 0.88, height * 0.4);
+            ctx.lineTo(width * 0.88, height * 0.35);
+            ctx.stroke();
+
+            if (bell.ringing > 0) {
+                ctx.strokeStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(width * 0.88, height * 0.4, 30 + Math.sin(frame*0.5)*5, 0, Math.PI*2);
+                ctx.stroke();
+                bell.ringing--;
+            }
+
+            // Ball 1
+            drawCircle(ball1.x, ball1.y, ball1.r, '#3498db');
+            
+            // Ball 2
+            drawCircle(ball2.x, ball2.y, ball2.r, '#3498db');
+
+            // Projectile
+            if (projectile.active) {
+                drawCircle(projectile.x, projectile.y, 8, '#e67e22');
+            }
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        window.addEventListener('resize', init);
+        init();
+        loop();
+    </script>
+</body>
+</html>

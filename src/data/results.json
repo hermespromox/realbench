@@ -1,7 +1,7 @@
 {
   "name": "RealBench",
   "methodology": "Same prompt; original one-shot responses archived. Truncated outputs regenerated once with a larger output budget and explicitly labeled repaired.",
-  "generated_at": "2026-09-05T11:41:59.009397+00:00",
+  "generated_at": "2026-09-05T12:16:54.818251+00:00",
   "models": {
     "grok-4.6": {
       "id": "x-ai/grok-4.6",
@@ -56,6 +56,12 @@
       "name": "Muse Spark 1.3",
       "vendor": "Meta",
       "color": "#0668e1"
+    },
+    "gemma-4-31b-it": {
+      "id": "google/gemma-4-31b-it",
+      "name": "Gemma 4 31B IT",
+      "vendor": "Google",
+      "color": "#ea4335"
     }
   },
   "scenarios": {
@@ -504,6 +510,52 @@
       "attempt": 1
     },
     {
+      "scenario": "solar-system",
+      "model": "gemma-4-31b-it",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 71.28,
+      "provider": "DeepInfra",
+      "usage": {
+        "prompt_tokens": 231,
+        "completion_tokens": 1923,
+        "total_tokens": 2154,
+        "cost": 0.00066949,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 128,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00066949,
+          "upstream_inference_prompt_cost": 1.567e-05,
+          "upstream_inference_completions_cost": 0.00065382
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 6058,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 3,
+        "dom_nodes_approx": 9,
+        "js_parses": true
+      },
+      "path": "/runs/solar-system/gemma-4-31b-it.html",
+      "generated_at": "2026-09-05T12:15:01.403364+00:00",
+      "attempt": 1
+    },
+    {
       "scenario": "city-traffic",
       "model": "grok-4.6",
       "status": "ok",
@@ -916,6 +968,52 @@
       "attempt": 1
     },
     {
+      "scenario": "city-traffic",
+      "model": "gemma-4-31b-it",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 25.64,
+      "provider": "CoreWeave",
+      "usage": {
+        "prompt_tokens": 207,
+        "completion_tokens": 3447,
+        "total_tokens": 3654,
+        "cost": 0.00119268,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00119268,
+          "upstream_inference_prompt_cost": 2.07e-05,
+          "upstream_inference_completions_cost": 0.00117198
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 12176,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 3,
+        "dom_nodes_approx": 9,
+        "js_parses": true
+      },
+      "path": "/runs/city-traffic/gemma-4-31b-it.html",
+      "generated_at": "2026-09-05T12:14:15.761341+00:00",
+      "attempt": 1
+    },
+    {
       "scenario": "aquarium",
       "model": "grok-4.6",
       "status": "ok",
@@ -1322,6 +1420,52 @@
       "attempt": 1
     },
     {
+      "scenario": "aquarium",
+      "model": "gemma-4-31b-it",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 122.16,
+      "provider": "DeepInfra",
+      "usage": {
+        "prompt_tokens": 216,
+        "completion_tokens": 3212,
+        "total_tokens": 3428,
+        "cost": 0.00111152,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00111152,
+          "upstream_inference_prompt_cost": 1.944e-05,
+          "upstream_inference_completions_cost": 0.00109208
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 10995,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 3,
+        "dom_nodes_approx": 9,
+        "js_parses": true
+      },
+      "path": "/runs/aquarium/gemma-4-31b-it.html",
+      "generated_at": "2026-09-05T12:15:52.284916+00:00",
+      "attempt": 1
+    },
+    {
       "scenario": "rube-goldberg",
       "model": "grok-4.6",
       "status": "ok",
@@ -1725,6 +1869,52 @@
       },
       "path": "/runs/rube-goldberg/muse-spark-1.3.html",
       "generated_at": "2026-09-04T14:15:17.743775+00:00",
+      "attempt": 1
+    },
+    {
+      "scenario": "rube-goldberg",
+      "model": "gemma-4-31b-it",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 93.13,
+      "provider": "DeepInfra",
+      "usage": {
+        "prompt_tokens": 216,
+        "completion_tokens": 2553,
+        "total_tokens": 2769,
+        "cost": 0.00088234,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 128,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00088234,
+          "upstream_inference_prompt_cost": 1.432e-05,
+          "upstream_inference_completions_cost": 0.00086802
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 8460,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 1,
+        "dom_nodes_approx": 10,
+        "js_parses": true
+      },
+      "path": "/runs/rube-goldberg/gemma-4-31b-it.html",
+      "generated_at": "2026-09-05T12:15:23.250209+00:00",
       "attempt": 1
     },
     {
@@ -2143,6 +2333,52 @@
       "attempt": 1
     },
     {
+      "scenario": "factory",
+      "model": "gemma-4-31b-it",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 101.02,
+      "provider": "CoreWeave",
+      "usage": {
+        "prompt_tokens": 219,
+        "completion_tokens": 3709,
+        "total_tokens": 3928,
+        "cost": 0.00128296,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00128296,
+          "upstream_inference_prompt_cost": 2.19e-05,
+          "upstream_inference_completions_cost": 0.00126106
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 12617,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 3,
+        "dom_nodes_approx": 9,
+        "js_parses": true
+      },
+      "path": "/runs/factory/gemma-4-31b-it.html",
+      "generated_at": "2026-09-05T12:15:56.783220+00:00",
+      "attempt": 1
+    },
+    {
       "scenario": "super-mario-bros",
       "model": "grok-4.6",
       "status": "ok",
@@ -2554,6 +2790,52 @@
       },
       "path": "/runs/super-mario-bros/muse-spark-1.3.html",
       "generated_at": "2026-09-05T11:16:11.233642+00:00",
+      "attempt": 1
+    },
+    {
+      "scenario": "super-mario-bros",
+      "model": "gemma-4-31b-it",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 113.41,
+      "provider": "DeepInfra",
+      "usage": {
+        "prompt_tokens": 480,
+        "completion_tokens": 3237,
+        "total_tokens": 3717,
+        "cost": 0.00113866,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 128,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00113866,
+          "upstream_inference_prompt_cost": 3.808e-05,
+          "upstream_inference_completions_cost": 0.00110058
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 10720,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 1,
+        "dom_nodes_approx": 9,
+        "js_parses": true
+      },
+      "path": "/runs/super-mario-bros/gemma-4-31b-it.html",
+      "generated_at": "2026-09-05T12:16:54.816290+00:00",
       "attempt": 1
     }
   ],

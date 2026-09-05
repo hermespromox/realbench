@@ -16,6 +16,7 @@ EXPECTED_MODELS = {
     "kimi-k3": "moonshotai/kimi-k3",
     "gpt-5.6-sol": "openai/gpt-5.6-sol",
     "muse-spark-1.3": "meta/muse-spark-1.3",
+    "gemma-4-31b-it": "google/gemma-4-31b-it",
 }
 
 

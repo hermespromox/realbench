@@ -42,8 +42,9 @@ export default function VoteControl({ scenario, model, compact }: Props) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scenario, model, direction: next }),
     });
-    const payload = await response.json();
-    if (payload?.counts) setCounts(payload.counts);
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.counts) return;
+    setCounts(payload.counts);
     setChoice(next);
     if (next === "clear") window.localStorage.removeItem(`realbench-vote:${key}`);
     else window.localStorage.setItem(`realbench-vote:${key}`, next);

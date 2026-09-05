@@ -24,3 +24,17 @@ class ProductSurfaceTests(unittest.TestCase):
         css = (ROOT / "src/app/globals.css").read_text(encoding="utf-8")
         self.assertIn("#0f62fe", css)
         self.assertIn("#f4f4f4", css)
+
+    def test_published_prompt_is_not_rendered(self) -> None:
+        arena = (ROOT / "src/components/Arena.tsx").read_text(encoding="utf-8")
+        challenge = (ROOT / "src/app/challenges/[slug]/page.tsx").read_text(encoding="utf-8")
+        self.assertNotIn("selected.prompt", arena)
+        self.assertNotIn("scenario.prompt", challenge)
+        self.assertNotIn("showPrompt", arena)
+
+    def test_votes_use_authenticated_blob_get(self) -> None:
+        votes = (ROOT / "src/lib/votes.ts").read_text(encoding="utf-8")
+        self.assertIn('from "@vercel/blob"', votes)
+        self.assertIn("get(BLOB_PATH", votes)
+        self.assertIn('access: "private"', votes)
+        self.assertNotIn("blob.vercel-storage.com", votes)

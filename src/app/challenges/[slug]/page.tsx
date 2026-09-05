@@ -34,7 +34,7 @@ export default async function ChallengePage({ params }: Props) {
     <main className={styles.page}>
       <p className={styles.kicker}>Use case</p>
       <h1>{scenario.name}</h1>
-      <p className={styles.lead}>{scenario.capability}. {scenario.prompt}</p>
+      <p className={styles.lead}>{scenario.capability}.</p>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -42,7 +42,7 @@ export default async function ChallengePage({ params }: Props) {
             "@context": "https://schema.org",
             "@type": "CollectionPage",
             name: `${scenario.name} · RealBench`,
-            description: scenario.prompt,
+            description: `Compare ${modelOrder.length} one-shot HTML builds for the RealBench ${scenario.name} challenge: ${scenario.capability}.`,
           }),
         }}
       />

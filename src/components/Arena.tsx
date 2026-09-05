@@ -9,7 +9,6 @@ import styles from "./arena.module.css";
 export default function Arena() {
   const [scenario, setScenario] = useState<ScenarioKey>(scenarioOrder[0]);
   const [runKey, setRunKey] = useState(0);
-  const [showPrompt, setShowPrompt] = useState(false);
   const selected = data.scenarios[scenario];
   const results = useMemo(() => resultsForScenario(scenario), [scenario]);
 
@@ -44,19 +43,13 @@ export default function Arena() {
         })}
       </div>
 
-      <div className={styles.prompt}>
+      <div className={styles.meta}>
         <div>
-          <span>Prompt</span>
-          <p>{selected.prompt}</p>
+          <span>Challenge</span>
+          <p>{selected.name} · {selected.capability}</p>
         </div>
-        <div className={styles.promptActions}>
-          <button type="button" onClick={() => setShowPrompt((v) => !v)}>
-            {showPrompt ? "Hide full prompt" : "Read full prompt"}
-          </button>
-          <Link href={`/challenges/${scenario}`}>Open challenge page</Link>
-        </div>
+        <Link href={`/challenges/${scenario}`}>Open challenge page</Link>
       </div>
-      {showPrompt && <pre className={styles.full}>{selected.prompt}</pre>}
 
       <div className={styles.grid}>
         {results.map((result, index) => {

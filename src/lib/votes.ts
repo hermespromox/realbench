@@ -1,4 +1,4 @@
-import { put } from "@vercel/blob";
+import { get, put } from "@vercel/blob";
 import { createHash } from "crypto";
 import { modelOrder, resultKey, scenarioOrder } from "./catalog";
 
@@ -45,10 +45,18 @@ function emptyStore(): VoteStore {
   return { updatedAt: new Date().toISOString(), votes, fingerprints: {} };
 }
 
-function blobUrl() {
-  const base = process.env.BLOB_BASE_URL || process.env.realbench_BASE_URL;
-  if (base) return `${base.replace(/\/$/, "")}/${BLOB_PATH}`;
-  return `https://blob.vercel-storage.com/${BLOB_PATH}`;
+function blobToken() {
+  return process.env.BLOB_READ_WRITE_TOKEN || process.env.realbench_READ_WRITE_TOKEN;
+}
+
+function memorySlot() {
+  return globalThis as typeof globalThis & { __realbenchVotes?: VoteStore };
+}
+
+function memoryStore(): VoteStore {
+  const slot = memorySlot();
+  if (!slot.__realbenchVotes) slot.__realbenchVotes = emptyStore();
+  return slot.__realbenchVotes;
 }
 
 export function voterFingerprint(ip: string | null, userAgent: string | null) {
@@ -59,14 +67,20 @@ export function voterFingerprint(ip: string | null, userAgent: string | null) {
 }
 
 async function readFromBlob(): Promise<VoteStore | null> {
-  if (!process.env.BLOB_READ_WRITE_TOKEN && !process.env.realbench_READ_WRITE_TOKEN) return null;
-  const response = await fetch(blobUrl(), { cache: "no-store" });
-  if (!response.ok) return null;
-  return (await response.json()) as VoteStore;
+  const token = blobToken();
+  if (!token) return null;
+  const result = await get(BLOB_PATH, {
+    access: "private",
+    token,
+    useCache: false,
+  });
+  if (!result || result.statusCode !== 200 || !result.stream) return null;
+  const text = await new Response(result.stream).text();
+  return JSON.parse(text) as VoteStore;
 }
 
 async function writeToBlob(store: VoteStore) {
-  const token = process.env.BLOB_READ_WRITE_TOKEN || process.env.realbench_READ_WRITE_TOKEN;
+  const token = blobToken();
   if (!token) return false;
   await put(BLOB_PATH, JSON.stringify(store), {
     access: "private",
@@ -78,35 +92,37 @@ async function writeToBlob(store: VoteStore) {
   return true;
 }
 
-function memoryStore(): VoteStore {
-  const globalStore = globalThis as typeof globalThis & { __realbenchVotes?: VoteStore };
-  if (!globalStore.__realbenchVotes) globalStore.__realbenchVotes = emptyStore();
-  return globalStore.__realbenchVotes;
+function mergeStore(fromBlob: VoteStore): VoteStore {
+  const base = emptyStore();
+  return {
+    updatedAt: fromBlob.updatedAt,
+    votes: { ...base.votes, ...fromBlob.votes },
+    fingerprints: fromBlob.fingerprints || {},
+  };
 }
 
 export async function loadVotes(): Promise<VoteStore> {
   try {
     const fromBlob = await readFromBlob();
     if (fromBlob) {
-      const base = emptyStore();
-      return {
-        updatedAt: fromBlob.updatedAt,
-        votes: { ...base.votes, ...fromBlob.votes },
-        fingerprints: fromBlob.fingerprints || {},
-      };
+      const merged = mergeStore(fromBlob);
+      memorySlot().__realbenchVotes = merged;
+      return merged;
     }
   } catch {
-    // Fall through.
+    // Fall through to process memory, then empty store.
   }
   return memoryStore();
 }
 
 export async function saveVotes(store: VoteStore) {
   store.updatedAt = new Date().toISOString();
-  const persisted = await writeToBlob(store).catch(() => false);
+  memorySlot().__realbenchVotes = store;
+  const token = blobToken();
+  if (!token) return;
+  const persisted = await writeToBlob(store);
   if (!persisted) {
-    const globalStore = globalThis as typeof globalThis & { __realbenchVotes?: VoteStore };
-    globalStore.__realbenchVotes = store;
+    throw new Error("Vote store was not written to Vercel Blob");
   }
 }
 

@@ -29,16 +29,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid vote" }, { status: 400 });
   }
 
-  const store = await loadVotes();
-  const key = resultKey(scenario, model);
-  const fingerprint = voterFingerprint(clientIp(request), request.headers.get("user-agent"));
-  const counts = applyVote(store, key, fingerprint, direction as VoteDirection);
-  await saveVotes(store);
-
-  return NextResponse.json({
-    key,
-    direction,
-    counts,
-    votes: publicVotes(store),
-  });
+  try {
+    const store = await loadVotes();
+    const key = resultKey(scenario, model);
+    const fingerprint = voterFingerprint(clientIp(request), request.headers.get("user-agent"));
+    const counts = applyVote(store, key, fingerprint, direction as VoteDirection);
+    await saveVotes(store);
+    return NextResponse.json({
+      key,
+      direction,
+      counts,
+      votes: publicVotes(store),
+    });
+  } catch {
+    return NextResponse.json({ error: "Vote store unavailable" }, { status: 503 });
+  }
 }

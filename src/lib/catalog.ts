@@ -1,6 +1,6 @@
 import raw from "@/data/results.json";
 
-export const SITE_URL = "https://realbench-delta.vercel.app";
+export const SITE_URL = "https://www.benchviz.com";
 export const SITE_NAME = "RealBench";
 
 type RawScenario = (typeof raw.scenarios)[keyof typeof raw.scenarios];

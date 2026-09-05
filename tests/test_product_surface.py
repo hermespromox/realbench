@@ -38,3 +38,10 @@ class ProductSurfaceTests(unittest.TestCase):
         self.assertIn("get(BLOB_PATH", votes)
         self.assertIn('access: "private"', votes)
         self.assertNotIn("blob.vercel-storage.com", votes)
+
+    def test_canonical_site_url_is_benchviz(self) -> None:
+        catalog = (ROOT / "src/lib/catalog.ts").read_text(encoding="utf-8")
+        robots = (ROOT / "src/app/robots.ts").read_text(encoding="utf-8")
+        self.assertIn('SITE_URL = "https://www.benchviz.com"', catalog)
+        self.assertNotIn("realbench-delta.vercel.app", catalog)
+        self.assertIn("SITE_URL", robots)

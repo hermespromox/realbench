@@ -60,6 +60,7 @@ const jsonLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",
   name: SITE_NAME,
+  alternateName: "BenchViz",
   url: SITE_URL,
   description,
 };

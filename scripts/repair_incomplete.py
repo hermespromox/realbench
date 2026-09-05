@@ -48,7 +48,7 @@ def regenerate(target: tuple[str, str], api_key: str) -> dict:
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
-            "HTTP-Referer": "https://realbench-delta.vercel.app",
+            "HTTP-Referer": "https://www.benchviz.com",
             "X-Title": "RealBench repair run",
         },
         method="POST",

@@ -25,6 +25,7 @@ Challenges:
 3. Living Aquarium — organic motion
 4. Rube Goldberg — visual causality
 5. Future Factory — systems coordination
+6. Super Mario Bros — autonomous 8-bit platforming
 
 ## Development
 

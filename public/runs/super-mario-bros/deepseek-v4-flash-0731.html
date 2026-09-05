@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title></title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="c"></canvas>
+    <script>
+        (() => {
+            'use strict';
+            const canvas = document.getElementById('c');
+            const ctx = canvas.getContext('2d');
+            const off = document.createElement('canvas');
+            off.width = 320;
+            off.height = 240;
+            const o = off.getContext('2d');
+            const TILE = 16,
+                VW = 320,
+                VH = 240,
+                COLS = 420;
+            const GRAV = 920,
+                JUMP = 310,
+                RUN = 125,
+                STOMP = 190;
+            const EMPTY = 0,
+                GROUND = 1,
+                BRICK = 2,
+                QUEST = 3,
+                USED = 4,
+                PTL = 5,
+                PTR = 6,
+                PL = 7,
+                PR = 8,
+                PLAT = 9;
+
+            function resize() { canvas.width = innerWidth;
+                canvas.height = innerHeight; }
+            addEventListener('resize', resize);
+            resize();
+
+            // Tile map
+            let tileMap = [];
+            let coins = [],
+                enemies = [],
+                particles = [],
+                blockAnims = [];
+            let mario = { x: 0, y: 0, vx: 0, vy: 0, w: 12, h: 16, grounded: false, frame: 0, anim: 0 };
+            let cameraX = 0,
+                resetTimer = 0,
+                resetting = false,
+                transAlpha = 0,
+                transState = 'none';
+            let time = 0;
+
+            function getTile(c, r) {
+                if (c < 0 || c >= COLS) return EMPTY;
+                if (r < 0) return GROUND;
+                if (r >= 15) return EMPTY;
+                return tileMap[r][c];
+            }
+
+            function isSolid(t) { return t === GROUND || t === BRICK || t === QUEST || t === USED || t === PTL || t ===
+                    PTR || t === PL || t === PR || t === PLAT; }
+
+            // Sprite cache
+            const tiles = {};
+
+            function makeTile(w, h, fn) {
+                const c = document.createElement('canvas');
+                c.width = w;
+                c.height = h;
+                fn(c.getContext('2d'));
+                return c;
+            }
+            // Ground top
+            tiles.groundTop = makeTile(16, 16, c => {
+                c.fillStyle = '#4aa52e';
+                c.fillRect(0, 0, 16, 8);
+                c.fillStyle = '#3a7d20';
+                c.fillRect(0, 8, 16, 4);
+                c.fillRect(0, 12, 16, 4);
+                c.fillStyle = '#6bc42f';
+                c.fillRect(0, 0, 16, 2);
+                c.fillRect(4, 3, 4, 2);
+                c.fillRect(10, 5, 3, 2);
+            });
+            // Ground body
+            tiles.groundBody = makeTile(16, 16, c => {
+                c.fillStyle = '#c84c0c';
+                c.fillRect(0, 0, 16, 16);
+                c.fillStyle = '#8a3408';
+                c.fillRect(0, 0, 5, 4);
+                c.fillRect(10, 6, 4, 4);
+                c.fillRect(4, 12, 5, 4);
+                c.fillRect(10, 0, 3, 3);
+            });
+            // Brick
+            tiles.brick = makeTile(16, 16, c => {
+                c.fillStyle = '#d08008';
+                c.fillRect(0, 0, 16, 16);
+                c.fillStyle = '#a0522d';
+                c.fillRect(0, 0, 16, 2);
+                c.fillRect(0, 8, 16, 2);
+                c.fillRect(0, 0, 2, 8);
+                c.fillRect(8, 8, 2, 8);
+                c.fillRect(4, 2, 2, 6);
+                c.fillRect(12, 8, 2, 6);
+                c.fillRect(0, 14, 4, 2);
+                c.fillRect(8, 14, 4, 2);
+            });
+            // Question block
+            tiles.quest = makeTile(16, 16, c => {
+                c.fillStyle = '#e8a010';
+                c.fillRect(0, 0, 16, 16);
+                c.fillStyle = '#b07008';
+                c.fillRect(0, 0, 16, 2);
+                c.fillRect(0, 14, 16, 2);
+                c.fillRect(0, 0, 2, 16);
+                c.fillRect(14, 0, 2, 16);
+                c.fillStyle = '#fff';
+                c.fillRect(2, 2, 2, 2);
+                c.fillRect(12, 2, 2, 2);
+                c.fillRect(2, 12, 2, 2);
+                c.fillRect(12, 12, 2, 2);
+                c.fillStyle = '#c07808';
+                c.fillRect(5, 5, 6, 6);
+                c.fillStyle = '#f8e8a0';
+                c.fillRect(6, 6, 4, 4);
+                c.fillRect(7, 5, 2, 6);
+                c.fillRect(5, 7, 6, 2);
+            });
+            // Used block
+            tiles.used = makeTile(16, 16, c => {
+                c.fillStyle = '#a07850';
+                c.fillRect(0, 0, 16, 16);
+                c.fillStyle = '#805030';
+                c.fillRect(0, 4, 16, 2);
+                c.fillRect(0, 12, 16, 2);
+                c.fillRect(0, 0, 2, 4);
+                c.fillRect(8, 4, 2, 8);
+                c.fillRect(4, 12, 2, 4);
+            });
+            // Pipe tiles
+            tiles.pipeTL = makeTile(16, 16, c => {
+                c.fillStyle = '#27a843';
+                c.fillRect(0, 0, 16, 16);
+                c.fillStyle = '#58d868';
+                c.fillRect(0, 0, 5, 16);
+                c.fillStyle = '#187830';
+                c.fillRect(11, 0, 5, 16);
+                c.fillStyle = '#27a843';
+                c.fillRect(2, 0, 2, 16);
+                c.fillRect(10, 0, 2, 16);
+                c.fillStyle = '#0f5a1c';
+                c.fillRect(0, 14, 16, 2);
+            });
+            tiles.pipeTR = makeTile(16, 16, c => {
+                c.fillStyle = '#27a843';
+                c.fillRect(0, 0, 16, 16);
+                c.fillStyle = '#58d868';
+                c.fillRect(0, 0, 4, 16);
+                c.fillStyle = '#187830';
+                c.fillRect(10, 0, 6, 16);
+                c.fillStyle = '#0f5a1c';
+                c.fillRect(0, 14, 16, 2);
+            });
+            tiles.pipeL = makeTile(16, 16, c => {
+                c.fillStyle = '#27a843';
+                c.fillRect(0, 0, 16, 16);
+                c.fillStyle = '#58d868';
+                c.fillRect(0, 0, 5, 16);
+                c.fillStyle = '#187830';
+                c.fillRect(11, 0, 5, 16);
+                c.fillStyle = '#0f5a1c';
+                c.fillRect(0, 0, 16, 2);
+            });
+            tiles.pipeR = makeTile(16, 16, c => {
+                c.fillStyle = '#27a843';
+                c.fillRect(0, 0, 16, 16);
+                c.fillStyle = '#58d868';
+                c.fillRect(0, 0, 4, 16);
+                c.fillStyle = '#187830';
+                c.fillRect(10, 0, 6, 16);
+                c.fillStyle = '#0f5a1c';
+                c.fillRect(0, 0, 16, 2);
+            });
+            // Platform
+            tiles.plat = makeTile(16, 16, c => {
+                c.fillStyle = '#d08008';
+                c.fillRect(0, 0, 16, 16);
+                c.fillStyle = '#a0522d';
+                c.fillRect(0, 0, 16, 2);
+                c.fillRect(0, 8, 16, 2);
+                c.fillRect(0, 0, 2, 16);
+                c.fillRect(8, 0, 2, 16);
+                c.fillRect(4, 2, 2, 6);
+                c.fillRect(12, 8, 2, 8);
+            });
+
+            // Level generation
+            function placePipe(col, h) {
+                const base = 13;
+                for (let i = 0; i < h; i++) {
+                    const r = base - 1 - i;
+                    if (i === 0) {
+                        tileMap[r][col] = PTL;
+                        tileMap[r][col + 1] = PTR;
+                    } else {
+                        tileMap[r][col] = PL;
+                        tileMap[r][col + 1] = PR;
+                    }
+                }
+            }
+
+            function addCoin(x, y) { coins.push({ x: x, y: y, collected: false, wob: Math.random() * 6.28 }); }
+
+            function addEnemy(x) {
+                enemies.push({
+                    x: x,
+                    y: 194,
+                    vx: -28,
+                    w: 14,
+                    h: 14,
+                    alive: true,
+                    stompTimer: 0,
+                    frame: 0,
+                    anim: 0,
+                    startX: x,
+                    startVx: -28
+                });
+            }
+
+            function buildLevel() {
+                tileMap = Array.from({ length: 15 }, () => Array(COLS).fill(0));
+                coins = [];
+                enemies = [];
+                particles = [];
+                blockAnims = [];
+                const segs = [];
+                let col = 0,
+                    id = 0;
+                while (col < COLS - 4) {
+                    const len = 14 + (id % 5) * 2;
+                    const end = Math.min(col + len, COLS - 1);
+                    segs.push({ s: col, e: end });
+                    for (let c = col; c <= end; c++) {
+                        tileMap[13][c] = GROUND;
+                        tileMap[14][c] = GROUND;
+                    }
+                    const p = id % 5;
+                    if (p === 0) {
+                        // Blocks + coin
+                        if (col + 4 < end) {
+                            tileMap[9][col + 4] = QUEST;
+                            tileMap[9][col + 5] = BRICK;
+                            tileMap[9][col + 6] = BRICK;
+                            addCoin((col + 4) * 16 + 8, 8 * 16 + 8);
+                        }
+                        if (col + 10 < end) addEnemy((col + 10) * 16 + 8);
+                    } else if (p === 1) {
+                        // Pipe
+                        if (col + 6 < end) {
+                            const h = 2 + (id % 2);
+                            placePipe(col + 6, h);
+                            addCoin((col + 6) * 16 + 8, (13 - h) * 16 - 8);
+                        }
+                        if (col + 12 < end) addEnemy((col + 12) * 16 + 8);
+                    } else if (p === 2) {
+                        // Platform + coins
+                        if (col + 5 < end) {
+                            const pc = col + 5,
+                                pr = 10;
+                            for (let i = 0; i < 4; i++) tileMap[pr][pc + i] = PLAT;
+                            for (let i = 0; i < 4; i++) addCoin((pc + i) * 16 + 8, (pr - 1) * 16 + 8);
+                        }
+                        if (col + 11 < end) addEnemy((col + 11) * 16 + 8);
+                    } else if (p === 3) {
+                        // Overhead bricks
+                        if (col + 3 < end) {
+                            tileMap[8][col + 3] = BRICK;
+                            tileMap[8][col + 4] = QUEST;
+                            tileMap[8][col + 5] = BRICK;
+                            addCoin((col + 4) * 16 + 8, 7 * 16 + 8);
+                        }
+                        if (col + 9 < end) addEnemy((col + 9) * 16 + 8);
+                    } else {
+                        // Stairs
+                        if (col + 4 < end) {
+                            for (let i = 0; i < 4; i++) {
+                                for (let j = 0; j <= i; j++) {
+                                    const r = 12 - j;
+                                    if (r >= 0) tileMap[r][col + 4 + i] = PLAT;
+                                }
+                            }
+                            addCoin((col + 5) * 16 + 8, 9 * 16 + 8);
+                            addCoin((col + 7) * 16 + 8, 8 * 16 + 8);
+                        }
+                        if (col + 12 < end) addEnemy((col + 12) * 16 + 8);
+                    }
+                    col = end + 1;
+                    const gap = 2 + (id % 3);
+                    col += gap;
+                    id++;
+                }
+            }
+
+            function resetLevel() {
+                buildLevel();
+                mario.x = 0;
+                mario.y = 192;
+                mario.vx = RUN;
+                mario.vy = 0;
+                mario.grounded = false;
+                mario.frame = 0;
+                mario.anim = 0;
+                cameraX = 0;
+                transState = 'none';
+                transAlpha = 0;
+            }
+
+            buildLevel();
+            resetLevel();
+
+            // Autopilot
+            function autopilot(dt) {
+                mario.vx = RUN;
+                if (!mario.grounded) return;
+                const frontX = mario.x + mario.w;
+                const feetY = mario.y + mario.h;
+                // Gap detection
+                for (let d = 2; d <= 52; d += 2) {
+                    const c = Math.floor((frontX + d) / 16);
+                    if (c >= COLS) continue;
+                    if (getTile(c, 13) === EMPTY && getTile(c, 14) === EMPTY) {
+                        let gw = 0;
+                        for (let k = c; k < COLS && getTile(k, 13) === EMPTY; k++) gw++;
+                        if (gw >= 1 && d >= 8) {
+                            mario.vy = -JUMP;
+                            mario.grounded = false;
+                            return;
+                        }
+                    }
+                }
+                // Obstacle detection
+                for (let d = 2; d <= 48; d += 2) {
+                    const c = Math.floor((frontX + d) / 16);
+                    if (c >= COLS) continue;
+                    const r1 = Math.floor((mario.y + 2) / 16);
+                    const r2 = Math.floor((feetY - 2) / 16);
+                    for (let r = r1; r <= r2 && r < 13; r++) {
+                        const t = getTile(c, r);
+                        if (isSolid(t) && t !== GROUND) {
+                            mario.vy = -JUMP;
+                            mario.grounded = false;
+                            return;
+                        }
+                    }
+                }
+                // Enemy detection
+                for (const e of enemies) {
+                    if (!e.alive) continue;
+                    const dist = e.x - (mario.x + mario.w);
+                    if (dist > -4 && dist < 28 && Math.abs(e.y - mario.y) < 24) {
+                        mario.vy = -JUMP;
+                        mario.grounded = false;
+                        return;
+                    }
+                }
+                // Coin above
+                const midX = mario.x + mario.w / 2;
+                for (const c of coins) {
+                    if (c.collected) continue;
+                    const dx = c.x - midX;
+                    if (dx > -6 && dx < 16 && c.y < mario.y - 4 && c.y > mario.y - 64) {
+                        mario.vy = -JUMP * 0.9;
+                        mario.grounded = false;
+                        return;
+                    }
+                }
+                // Block overhead
+                const mb = Math.floor((mario.x + mario.w / 2) / 16);
+                for (let r = Math.floor(mario.y / 16) - 3; r < Math.floor(mario.y / 16); r++) {
+                    if (r < 0) continue;
+                    const t = getTile(mb, r);
+                    if (t === QUEST || t === BRICK) {
+                        const blockBottom = (r + 1) * 16;
+                        const dist = mario.y - blockBottom;
+                        if (dist > -40 && dist < 32) {
+                            mario.vy = -JUMP;
+                            mario.grounded = false;
+                            return;
+                        }
+                    }
+                }
+            }
+
+            function hitBlock(col, row) {
+                const t = tileMap[row][col];
+                if (t === QUEST) {
+                    tileMap[row][col] = USED;
+                    blockAnims.push({ col, row, timer: 0, dur: 0.3, type: 1 });
+                    particles.push({
+                        x: col * 16 + 8,
+                        y: row * 16 - 4,
+                        vy: -220,
+                        vx: 0,
+                        life: 0.6,
+                        max: 0.6,
+                        type: 'coin'
+                    });
+                } else if (t === BRICK) {
+                    blockAnims.push({ col, row, timer: 0, dur: 0.3, type: 2 });
+                    tileMap[row][col] = USED;
+                }
+            }
+
+            // Collision
+            let lastDt = 1 / 60;
+
+            function collide(dt) {
+                // X
+                mario.x += mario.vx * dt;
+                let l = Math.floor(mario.x / 16);
+                let r = Math.floor((mario.x + mario.w - 1) / 16);
+                let t = Math.floor(mario.y / 16);
+                let b = Math.floor((mario.y + mario.h - 1) / 16);
+                if (mario.vx > 0) {
+                    for (let rw = t; rw <= b; rw++) {
+                        if (isSolid(getTile(r, rw))) {
+                            mario.x = r * 16 - mario.w;
+                            mario.vx = 0;
+                            break;
+                        }
+                    }
+                } else if (mario.vx < 0) {
+                    for (let rw = t; rw <= b; rw++) {
+                        if (isSolid(getTile(l, rw))) {
+                            mario.x = (l + 1) * 16;
+                            mario.vx = 0;
+                            break;
+                        }
+                    }
+                }
+                // Y
+                mario.y += mario.vy * dt;
+                l = Math.floor(mario.x / 16);
+                r = Math.floor((mario.x + mario.w - 1) / 16);
+                t = Math.floor(mario.y / 16);
+                b = Math.floor((mario.y + mario.h - 1) / 16);
+                if (mario.vy > 0) {
+                    for (let c = l; c <= r; c++) {
+                        if (isSolid(getTile(c, b))) {
+                            mario.y = b * 16 - mario.h;
+                            mario.vy = 0;
+                            mario.grounded = true;
+                            break;
+                        }
+                    }
+                } else if (mario.vy < 0) {
+                    for (let c = l; c <= r; c++) {
+                        const tt = getTile(c, t);
+                        if (isSolid(tt)) {
+                            mario.y = (t + 1) * 16;
+                            mario.vy = 0;
+                            hitBlock(c, t);
+                            break;
+                        }
+                    }
+                }
+                // Check if falling
+                if (mario.vy > 0) mario.grounded = false;
+            }
+
+            function updateEnemies(dt) {
+                for (const e of enemies) {
+                    if (!e.alive) {
+                        e.stompTimer -= dt;
+                        if (e.stompTimer <= 0 && e.stompTimer > -2) { e.stompTimer = -999; }
+                        continue;
+                    }
+                    e.x += e.vx * dt;
+                    e.anim += dt;
+                    if (e.anim > 0.25) { e.anim -= 0.25;
+                        e.frame = 1 - e.frame; }
+                    const fx = e.vx > 0 ? e.x + e.w + 1 : e.x - 1;
+                    const fc = Math.floor(fx / 16);
+                    const br = Math.floor((e.y + e.h + 2) / 16);
+                    if (isSolid(getTile(fc, Math.floor(e.y / 16))) || !isSolid(getTile(fc, br))) {
+                        e.vx = -e.vx;
+                    }
+                    // Gravity
+                    e.vy = (e.vy || 0) + GRAV * dt;
+                    e.y += e.vy * dt;
+                    const eb = Math.floor((e.y + e.h) / 16);
+                    if (isSolid(getTile(Math.floor(e.x / 16), eb)) || isSolid(getTile(Math.floor((e.x + e.w) / 16), eb))) {
+                        e.y = eb * 16 - e.h;
+                        e.vy = 0;
+                    }
+                }
+                // Check Mario-enemy collision
+                for (const e of enemies) {
+                    if (!e.alive) continue;
+                    if (mario.x < e.x + e.w && mario.x + mario.w > e.x && mario.y < e.y + e.h && mario.y + mario.h > e.y) {
+                        if (mario.vy > 0 && mario.y + mario.h - e.y < 12) {
+                            e.alive = false;
+                            e.stompTimer = 1;
+                            mario.vy = -STOMP;
+                            mario.grounded = false;
+                        } else {
+                            e.alive = false;
+                            e.stompTimer = 1;
+                            mario.vy = -STOMP * 0.7;
+                            mario.grounded = false;
+                        }
+                    }
+                }
+            }
+
+            function updateCoins(dt) {
+                for (const c of coins) {
+                    if (c.collected) continue;
+                    c.wob += dt * 5;
+                    const cx = c.x,
+                        cy = c.y;
+                    if (Math.abs(mario.x + mario.w / 2 - cx) < 14 && Math.abs(mario.y + mario.h / 2 - cy) < 16) {
+                        c.collected = true;
+                        particles.push({ x: cx, y: cy, vy: -100, vx: (Math.random() - 0.5) * 60, life: 0.5, max: 0.5,
+                            type: 'spark' });
+                    }
+                }
+            }
+
+            function updateParticles(dt) {
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
+                    p.life -= dt;
+                    if (p.life <= 0) { particles.splice(i, 1); continue; }
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                    if (p.type === 'coin') p.vy += 500 * dt;
+                    if (p.type === 'spark') p.vy += 200 * dt;
+                }
+            }
+
+            function updateBlockAnims(dt) {
+                for (let i = blockAnims.length - 1; i >= 0; i--) {
+                    const a = blockAnims[i];
+                    a.timer += dt;
+                    if (a.timer >= a.dur) { blockAnims.splice(i, 1); }
+                }
+            }
+
+            function update(dt) {
+                time += dt;
+                if (transState === 'fading out') {
+                    transAlpha += dt * 3;
+                    if (transAlpha >= 1) {
+                        resetLevel();
+                        transState = 'fading in';
+                    }
+                    return;
+                }
+                if (transState === 'fading in') {
+                    transAlpha -= dt * 3;
+                    if (transAlpha <= 0) { transAlpha = 0;
+                        transState = 'none'; }
+                }
+                autopilot(dt);
+                mario.vy += GRAV * dt;
+                mario.anim += dt;
+                if (mario.grounded && mario.anim > 0.12) {
+                    mario.anim -= 0.12;
+                    mario.frame = (mario.frame + 1) % 2;
+                } else if (!mario.grounded) {
+                    mario.frame = 2;
+                }
+                collide(dt);
+                // Prevent Mario from going below ground level if he falls off
+                if (mario.y > 260) {
+                    mario.vy = -JUMP;
+                    mario.y = 180;
+                }
+                updateEnemies(dt);
+                updateCoins(dt);
+                updateParticles(dt);
+                updateBlockAnims(dt);
+                cameraX = Math.max(cameraX, mario.x - 90);
+                if (mario.x > (COLS - 10) * 16 && !resetting) {
+                    resetting = true;
+                    resetTimer = 0;
+                }
+                if (resetting) {
+                    resetTimer += dt;
+                    transAlpha = Math.min(1, resetTimer * 2);
+                    if (resetTimer > 0.5) {
+                        resetting = false;
+                        resetLevel();
+                        transAlpha = 0;
+                    }
+                }
+            }
+
+            // Drawing
+            function drawSky() {
+                o.fillStyle = '#5c94fc';
+                o.fillRect(0, 0, VW, VH);
+            }
+
+            function drawClouds(camX) {
+                const par = 0.15;
+                const sp = camX * par;
+                for (let i = 0; i < 8; i++) {
+                    const bx = (i * 130 - sp) % 70;
+                    const x = ((bx % (VW + 80)) + (VW + 80)) % (VW + 80) - 40;
+                    const y = 15 + (i % 4) * 20;
+                    const sc = 1 + (i % 3) * 0.3;
+                    o.fillStyle = 'rgba(255,255,255,0.9)';
+                    o.fillRect(x, y, 28 * sc, 8 * sc);
+                    o.fillRect(x + 4 * sc, y - 6 * sc, 20 * sc, 6 * sc);
+                    o.fillRect(x + 8 * sc, y - 10 * sc, 12 * sc, 4 * sc);
+                    o.fillRect(x + 2 * sc, y + 8 * sc, 24 * sc, 4 * sc);
+                }
+            }
+
+            function drawHills(camX) {
+                const par = 0.3;
+                const sp = camX * par;
+                for (let i = 0; i < 5; i++) {
+                    const x = ((i * 160 - sp) % 400 + 400) % 400 - 60;
+                    const y = 175;
+                    const w = 70,
+                        h = 32;
+                    o.fillStyle = '#2e8b24';
+                    o.fillRect(x + 10, y, w - 20, h);
+                    o.fillRect(x + 2, y - 8, w - 4, 8);
+                    o.fillRect(x, y - 12, w, 12);
+                    o.fillRect(x + 8, y - 18, w - 16, 6);
+                    o.fillStyle = '#3ba52e';
+                    o.fillRect(x + 4, y - 14, w - 8, 6);
+                }
+            }
+
+            function drawBushes(camX) {
+                const par = 0.55;
+                const sp = camX * par;
+                for (let i = 0; i < 6; i++) {
+                    const x = ((i * 90 - sp) % 400 + 400) % 400 - 30;
+                    const y = 185;
+                    o.fillStyle = '#1e7a18';
+                    o.fillRect(x, y, 32, 10);
+                    o.fillRect(x + 4, y - 5, 24, 5);
+                    o.fillRect(x + 8, y - 8, 16, 3);
+                    o.fillRect(x + 2, y + 10, 28, 3);
+                }
+            }
+
+            function drawTileSprite(t, x, y) {
+                switch (t) {
+                    case GROUND:
+                        // Determine if top or body by row
+                        if (y < 13 * 16) o.drawImage(tiles.groundBody, x, y);
+                        else if (y < 14 * 16) o.drawImage(tiles.groundTop, x, y);
+                        else o.drawImage(tiles.groundBody, x, y);
+                        break;
+                    case BRICK:
+                        o.drawImage(tiles.brick, x, y);
+                        break;
+                    case QUEST:
+                        o.drawImage(tiles.quest, x, y);
+                        break;
+                    case USED:
+                        o.drawImage(tiles.used, x, y);
+                        break;
+                    case PTL:
+                        o.drawImage(tiles.pipeTL, x, y);
+                        break;
+                    case PTR:
+                        o.drawImage(tiles.pipeTR, x, y);
+                        break;
+                    case PL:
+                        o.drawImage(tiles.pipeL, x, y);
+                        break;
+                    case PR:
+                        o.drawImage(tiles.pipeR, x, y);
+                        break;
+                    case PLAT:
+                        o.drawImage(tiles.plat, x, y);
+                        break;
+                }
+            }
+
+            function drawTiles() {
+                const startC = Math.floor(cameraX / 16) - 1;
+                const endC = startC + 22;
+                for (let r = 0; r < 15; r++) {
+                    for (let c = startC; c <= endC; c++) {
+                        if (c < 0 || c >= COLS) continue;
+                        const t = tileMap[r][c];
+                        if (t === EMPTY) continue;
+                        let ox = 0,
+                            oy = 0;
+                        // Check block animations
+                        for (const a of blockAnims) {
+                            if (a.col === c && a.row === r) {
+                                const p = Math.sin(a.timer / a.dur * Math.PI);
+                                oy = -p * 4;
+                            }
+                        }
+                        drawTileSprite(t, c * 16 - cameraX, r * 16 + oy);
+                    }
+                }
+            }
+
+            function drawCoin(c, frame) {
+                if (c.collected) return;
+                const wob = Math.sin(c.wob);
+                const sx = c.x - cameraX;
+                const sy = c.y + Math.sin(c.wob * 2) * 2;
+                o.fillStyle = '#f8d800';
+                const w = Math.abs(wob) * 7 + 2;
+                o.fillRect(sx - w / 2, sy - 7, w, 14);
+                o.fillStyle = '#fff8a0';
+                o.fillRect(sx - w / 2 + 1, sy - 6, Math.max(1, w / 2), 12);
+                o.fillStyle = '#d08000';
+                o.fillRect(sx - w / 2 - 1, sy - 7, 1, 14);
+                o.fillRect(sx + w / 2, sy - 7, 1, 14);
+            }
+
+            function drawGoomba(e) {
+                if (!e.alive) {
+                    if (e.stompTimer > 0) {
+                        o.fillStyle = '#8a5a20';
+                        o.fillRect(e.x - cameraX, e.y + 6, 14, 4);
+                    }
+                    return;
+                }
+                const x = e.x - cameraX,
+                    y = e.y;
+                o.fillStyle = '#bf7028';
+                o.fillRect(x + 1, y + 2, 12, 8);
+                o.fillRect(x + 3, y, 8, 4);
+                o.fillRect(x + 4, y - 1, 6, 2);
+                // Feet
+                o.fillStyle = '#5a3a1a';
+                if (e.frame === 0) {
+                    o.fillRect(x, y + 10, 5, 4);
+                    o.fillRect(x + 8, y + 10, 6, 4);
+                } else {
+                    o.fillRect(x + 1, y + 10, 4, 4);
+                    o.fillRect(x + 9, y + 10, 4, 4);
+                }
+                // Eyes
+                o.fillStyle = '#fff';
+                o.fillRect(x + 2, y + 2, 4, 4);
+                o.fillRect(x + 8, y + 2, 4, 4);
+                o.fillStyle = '#202020';
+                o.fillRect(x + 3, y + 3, 2, 2);
+                o.fillRect(x + 9, y + 3, 2, 2);
+                // Eyebrows
+                o.fillStyle = '#5a3a1a';
+                o.fillRect(x + 2, y, 5, 2);
+                o.fillRect(x + 8, y, 5, 2);
+            }
+
+            function drawMario() {
+                const x = mario.x - cameraX,
+                    y = mario.y;
+                const f = mario.frame;
+                // Hat
+                o.fillStyle = '#e52521';
+                o.fillRect(x + 1, y, 9, 3);
+                o.fillRect(x - 1, y + 2, 12, 2);
+                // Hair
+                o.fillStyle = '#5a3a1a';
+                o.fillRect(x + 3, y + 3, 6, 2);
+                // Face
+                o.fillStyle = '#f8a060';
+                o.fillRect(x + 3, y + 4, 6, 4);
+                // Eye
+                o.fillStyle = '#202020';
+                o.fillRect(x + 7, y + 5, 2, 2);
+                // Mustache
+                o.fillStyle = '#5a3a1a';
+                o.fillRect(x + 2, y + 7, 6, 1);
+                // Body
+                o.fillStyle = '#e52521';
+                o.fillRect(x, y + 8, 10, 3);
+                // Overalls
+                o.fillStyle = '#049cd8';
+                o.fillRect(x, y + 10, 10, 3);
+                // Straps
+                o.fillStyle = '#049cd8';
+                o.fillRect(x + 1, y + 8, 2, 5);
+                o.fillRect(x + 7, y + 8, 2, 5);
+                // Buttons
+                o.fillStyle = '#fff';
+                o.fillRect(x + 2, y + 10, 1, 1);
+                o.fillRect(x + 7, y + 10, 1, 1);
+                // Shoes
+                o.fillStyle = '#8c4a2f';
+                if (f === 0) {
+                    o.fillRect(x - 1, y + 14, 6, 2);
+                    o.fillRect(x + 5, y + 14, 5, 2);
+                } else if (f === 1) {
+                    o.fillRect(x, y + 14, 5, 2);
+                    o.fillRect(x + 6, y + 14, 4, 2);
+                } else {
+                    o.fillRect(x + 1, y + 13, 4, 3);
+                    o.fillRect(x + 6, y + 14, 4, 2);
+                }
+                // Outline
+                o.strokeStyle = 'rgba(0,0,0,0.4)';
+                o.lineWidth = 0.5;
+                o.strokeRect(x, y, 12, 16);
+            }
+
+            function drawParticles() {
+                for (const p of particles) {
+                    const a = Math.max(0, p.life / p.max);
+                    if (p.type === 'coin') {
+                        o.fillStyle = '#f8d800';
+                        o.globalAlpha = a;
+                        o.fillRect(p.x - cameraX - 4, p.y - 7, 8, 14);
+                        o.fillStyle = '#fff8a0';
+                        o.fillRect(p.x - cameraX - 2, p.y - 5, 3, 10);
+                        o.globalAlpha = 1;
+                    } else {
+                        o.fillStyle = `rgba(255,255,255,${a})`;
+                        o.fillRect(p.x - cameraX - 2, p.y - 2, 4, 4);
+                        o.fillRect(p.x - cameraX - 5, p.y - 1, 10, 2);
+                    }
+                }
+            }
+
+            function render() {
+                o.clearRect(0, 0, VW, VH);
+                drawSky();
+                drawClouds(cameraX);
+                drawHills(cameraX);
+                drawBushes(cameraX);
+                drawTiles();
+                // Coins
+                for (const c of coins) drawCoin(c);
+                // Enemies
+                for (const e of enemies) drawGoomba(e);
+                // Mario
+                drawMario();
+                // Particles
+                drawParticles();
+                // Transition overlay
+                if (transAlpha > 0) {
+                    o.fillStyle = `rgba(255,255,255,${transAlpha})`;
+                    o.fillRect(0, 0, VW, VH);
+                }
+                // Blit to canvas
+                ctx.imageSmoothingEnabled = false;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const scale = Math.max(canvas.width / VW, canvas.height / VH);
+                const dw = VW * scale,
+                    dh = VH * scale;
+                const dx = (canvas.width - dw) / 2,
+                    dy = (canvas.height - dh) / 2;
+                ctx.fillStyle = '#5c94fc';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(off, dx, dy, dw, dh);
+            }
+
+            // Main loop
+            let last = performance.now();
+
+            function frame(now) {
+                let dt = (now - last) / 1000;
+                if (dt > 1 / 30) dt = 1 / 30;
+                last = now;
+                update(dt);
+                render();
+                requestAnimationFrame(frame);
+            }
+            requestAnimationFrame(frame);
+        })();
+    </script>
+</body>
+</html>

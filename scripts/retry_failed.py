@@ -9,10 +9,11 @@ import os
 from generate_benchmark import MANIFEST, MODELS, SCENARIOS, call_one, load_env
 
 TARGETS = [
+    ("city-traffic", "grok-4.6"),
     ("city-traffic", "kimi-k3"),
 ]
-ATTEMPTS = 3
-DEADLINE_SECONDS = 1500
+ATTEMPTS = 2
+DEADLINE_SECONDS = 2400
 
 
 def run_one(scenario_slug: str, model_slug: str, key: str) -> dict:
@@ -48,15 +49,28 @@ def main() -> None:
     if not key:
         raise SystemExit("OPENROUTER_API_KEY is missing")
 
+    results: list[dict] = []
+    all_ok = True
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(2, len(TARGETS))) as pool:
+        futures = {
+            pool.submit(run_one, scenario_slug, model_slug, key): (scenario_slug, model_slug)
+            for scenario_slug, model_slug in TARGETS
+        }
+        for future in concurrent.futures.as_completed(futures):
+            result = future.result()
+            results.append(result)
+            if result["status"] != "ok":
+                all_ok = False
+
+    # Re-read immediately before merge so a long generation cannot clobber
+    # concurrent manifest updates.
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     existing = {(r["scenario"], r["model"]): i for i, r in enumerate(manifest["results"])}
-    all_ok = True
-    for scenario_slug, model_slug in TARGETS:
-        result = run_one(scenario_slug, model_slug, key)
-        if result["status"] != "ok":
-            all_ok = False
-        position = existing.get((scenario_slug, model_slug))
+    for result in results:
+        key_pair = (result["scenario"], result["model"])
+        position = existing.get(key_pair)
         if position is None:
+            existing[key_pair] = len(manifest["results"])
             manifest["results"].append(result)
         else:
             manifest["results"][position] = result

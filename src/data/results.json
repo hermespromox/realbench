@@ -1,7 +1,7 @@
 {
   "name": "RealBench",
   "methodology": "Same prompt; original one-shot responses archived. Truncated outputs regenerated once with a larger output budget and explicitly labeled repaired.",
-  "generated_at": "2026-09-04T13:48:21.311816+00:00",
+  "generated_at": "2026-09-05T11:41:59.009397+00:00",
   "models": {
     "grok-4.6": {
       "id": "x-ai/grok-4.6",
@@ -88,6 +88,12 @@
       "icon": "⌬",
       "capability": "System coordination",
       "prompt": "Create a self-contained HTML animation showing a futuristic automated factory from an isometric perspective. Conveyor belts continuously move products through the factory. Robotic arms pick up and place objects, machines stamp and assemble components, autonomous carts move between stations, indicator lights blink and completed products accumulate before leaving the factory. The entire workflow should run continuously as a coherent production process. No interaction and no external libraries or assets."
+    },
+    "super-mario-bros": {
+      "name": "Super Mario Bros",
+      "icon": "▣",
+      "capability": "Autonomous platforming",
+      "prompt": "Create a single self-contained HTML animation inspired by the original 1980s Super Mario Bros. 8-bit platformer.\n\nShow Mario automatically running from left to right through a classic side-scrolling platform level. Mario should run, jump over gaps, jump onto and over platforms, avoid obstacles, hit blocks from below, bounce on enemies, collect floating coins, and occasionally change vertical levels using pipes and elevated platforms.\n\nThe camera should smoothly scroll horizontally as Mario progresses through the level. Include animated enemies walking back and forth, moving coins, question-style blocks, brick platforms, pipes, clouds, hills, bushes, and a layered scrolling background.\n\nMario's movement should feel physically coherent: acceleration, gravity, jumping arcs, falling, landing, enemy collisions, and platform collisions should all visually make sense.\n\nThe animation must be completely autonomous. Mario should continuously progress through the level without any keyboard, mouse, touch, or user interaction.\n\nAfter reaching the end of the scene, automatically transition or restart so the animation can run indefinitely.\n\nUse a crisp retro pixel-art aesthetic with intentionally low-resolution shapes and frame-based character animation.\n\nDo not display any text, letters, numbers, scores, timers, labels, logos, captions, UI elements, written characters, or readable symbols anywhere in the animation.\n\nDo not include any menus or interface overlays.\n\nUse only HTML, CSS, SVG, Canvas, and vanilla JavaScript.\nEverything must be contained in one HTML file.\nNo external libraries, images, fonts, audio files, assets, APIs, or network requests.\nThe animation should fill the browser viewport and run smoothly."
     }
   },
   "results": [
@@ -502,13 +508,13 @@
       "model": "grok-4.6",
       "status": "ok",
       "error": null,
-      "duration_seconds": 308.2,
+      "duration_seconds": 414.56,
       "provider": "xAI",
       "usage": {
         "prompt_tokens": 396,
-        "completion_tokens": 20510,
-        "total_tokens": 20906,
-        "cost": 0.12366,
+        "completion_tokens": 27367,
+        "total_tokens": 27763,
+        "cost": 0.164802,
         "is_byok": false,
         "prompt_tokens_details": {
           "cached_tokens": 128,
@@ -517,12 +523,12 @@
           "video_tokens": 0
         },
         "cost_details": {
-          "upstream_inference_cost": 0.12366,
+          "upstream_inference_cost": 0.164802,
           "upstream_inference_prompt_cost": 0.0006,
-          "upstream_inference_completions_cost": 0.12306
+          "upstream_inference_completions_cost": 0.164202
         },
         "completion_tokens_details": {
-          "reasoning_tokens": 8147,
+          "reasoning_tokens": 12682,
           "image_tokens": 0,
           "audio_tokens": 0
         }
@@ -530,7 +536,7 @@
       "metrics": {
         "valid_html": true,
         "self_contained": true,
-        "bytes": 30877,
+        "bytes": 37372,
         "uses_canvas": true,
         "uses_svg": false,
         "uses_css_animation": false,
@@ -540,7 +546,8 @@
         "js_parses": true
       },
       "path": "/runs/city-traffic/grok-4.6.html",
-      "generated_at": "2026-09-04T12:00:59.317455+00:00"
+      "generated_at": "2026-09-05T11:02:40.571613+00:00",
+      "attempt": 1
     },
     {
       "scenario": "city-traffic",
@@ -776,27 +783,27 @@
       "model": "kimi-k3",
       "status": "ok",
       "error": null,
-      "duration_seconds": 821.86,
-      "provider": "Sail Research",
+      "duration_seconds": 1777.42,
+      "provider": "Parasail",
       "usage": {
-        "prompt_tokens": 313,
-        "completion_tokens": 59508,
-        "total_tokens": 59821,
-        "cost": 0.77377793,
+        "prompt_tokens": 278,
+        "completion_tokens": 54001,
+        "total_tokens": 54279,
+        "cost": 0.810849,
         "is_byok": false,
         "prompt_tokens_details": {
-          "cached_tokens": 277,
+          "cached_tokens": 0,
           "cache_write_tokens": 0,
           "audio_tokens": 0,
           "video_tokens": 0
         },
         "cost_details": {
-          "upstream_inference_cost": 0.77377793,
-          "upstream_inference_prompt_cost": 0.00017393,
-          "upstream_inference_completions_cost": 0.773604
+          "upstream_inference_cost": 0.810849,
+          "upstream_inference_prompt_cost": 0.000834,
+          "upstream_inference_completions_cost": 0.810015
         },
         "completion_tokens_details": {
-          "reasoning_tokens": 47628,
+          "reasoning_tokens": 42554,
           "image_tokens": 0,
           "audio_tokens": 0
         }
@@ -804,17 +811,17 @@
       "metrics": {
         "valid_html": true,
         "self_contained": true,
-        "bytes": 29534,
+        "bytes": 28282,
         "uses_canvas": true,
         "uses_svg": false,
         "uses_css_animation": false,
         "uses_raf": true,
-        "animation_signals": 3,
-        "dom_nodes_approx": 9,
-        "js_parses": false
+        "animation_signals": 2,
+        "dom_nodes_approx": 10,
+        "js_parses": true
       },
       "path": "/runs/city-traffic/kimi-k3.html",
-      "generated_at": "2026-09-04T14:28:59.609330+00:00",
+      "generated_at": "2026-09-05T11:25:23.429701+00:00",
       "attempt": 1
     },
     {
@@ -2133,6 +2140,420 @@
       },
       "path": "/runs/factory/muse-spark-1.3.html",
       "generated_at": "2026-09-04T14:17:14.253644+00:00",
+      "attempt": 1
+    },
+    {
+      "scenario": "super-mario-bros",
+      "model": "grok-4.6",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 343.72,
+      "provider": "xAI",
+      "usage": {
+        "prompt_tokens": 653,
+        "completion_tokens": 21970,
+        "total_tokens": 22623,
+        "cost": 0.132934,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 128,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.132934,
+          "upstream_inference_prompt_cost": 0.001114,
+          "upstream_inference_completions_cost": 0.13182
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 11409,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 21818,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 8,
+        "js_parses": true
+      },
+      "path": "/runs/super-mario-bros/grok-4.6.html",
+      "generated_at": "2026-09-05T11:12:13.864563+00:00",
+      "attempt": 1
+    },
+    {
+      "scenario": "super-mario-bros",
+      "model": "gpt-5.6-luna",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 33.79,
+      "provider": "OpenAI",
+      "usage": {
+        "prompt_tokens": 441,
+        "completion_tokens": 3870,
+        "total_tokens": 4311,
+        "cost": 0.0047322,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.0047322,
+          "upstream_inference_prompt_cost": 8.82e-05,
+          "upstream_inference_completions_cost": 0.004644
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 450,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 7725,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 8,
+        "js_parses": true
+      },
+      "path": "/runs/super-mario-bros/gpt-5.6-luna.html",
+      "generated_at": "2026-09-05T11:07:03.932829+00:00",
+      "attempt": 1
+    },
+    {
+      "scenario": "super-mario-bros",
+      "model": "gemini-3.8-flash",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 75.24,
+      "provider": "Google",
+      "usage": {
+        "prompt_tokens": 461,
+        "completion_tokens": 15778,
+        "total_tokens": 16239,
+        "cost": 0.05951325,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.05951325,
+          "upstream_inference_prompt_cost": 0.00034575,
+          "upstream_inference_completions_cost": 0.0591675
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 960,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 38004,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 8,
+        "js_parses": true
+      },
+      "path": "/runs/super-mario-bros/gemini-3.8-flash.html",
+      "generated_at": "2026-09-05T11:07:45.386263+00:00",
+      "attempt": 1
+    },
+    {
+      "scenario": "super-mario-bros",
+      "model": "glm-5.3-flash",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 2128.86,
+      "provider": "Z.AI",
+      "usage": {
+        "prompt_tokens": 444,
+        "completion_tokens": 91196,
+        "total_tokens": 91640,
+        "cost": 0.0228323,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.0228323,
+          "upstream_inference_prompt_cost": 3.33e-05,
+          "upstream_inference_completions_cost": 0.022799
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 83612,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 18500,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9,
+        "js_parses": true
+      },
+      "path": "/runs/super-mario-bros/glm-5.3-flash.html",
+      "generated_at": "2026-09-05T11:41:59.007733+00:00",
+      "attempt": 1
+    },
+    {
+      "scenario": "super-mario-bros",
+      "model": "hy4-preview",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 535.93,
+      "provider": "Tencent",
+      "usage": {
+        "prompt_tokens": 455,
+        "completion_tokens": 42158,
+        "total_tokens": 42613,
+        "cost": 0.105816628,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.105816628,
+          "upstream_inference_prompt_cost": 0.00037947,
+          "upstream_inference_completions_cost": 0.105437158
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 34927,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 18351,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9,
+        "js_parses": true
+      },
+      "path": "/runs/super-mario-bros/hy4-preview.html",
+      "generated_at": "2026-09-05T11:15:59.863242+00:00",
+      "attempt": 1
+    },
+    {
+      "scenario": "super-mario-bros",
+      "model": "deepseek-v4-flash-0731",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 258.0,
+      "provider": "Baidu",
+      "usage": {
+        "prompt_tokens": 523,
+        "completion_tokens": 46492,
+        "total_tokens": 47015,
+        "cost": 0.00467347986,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00467347986,
+          "upstream_inference_prompt_cost": 2.613954e-05,
+          "upstream_inference_completions_cost": 0.00464734032
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 37277,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 35200,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9,
+        "js_parses": true
+      },
+      "path": "/runs/super-mario-bros/deepseek-v4-flash-0731.html",
+      "generated_at": "2026-09-05T11:12:03.386658+00:00",
+      "attempt": 1
+    },
+    {
+      "scenario": "super-mario-bros",
+      "model": "kimi-k3",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 983.46,
+      "provider": "Wafer",
+      "usage": {
+        "prompt_tokens": 566,
+        "completion_tokens": 62383,
+        "total_tokens": 62949,
+        "cost": 0.79708125,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.79708125,
+          "upstream_inference_prompt_cost": 0.001698,
+          "upstream_inference_completions_cost": 0.79538325
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 53373,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 21108,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9,
+        "js_parses": true
+      },
+      "path": "/runs/super-mario-bros/kimi-k3.html",
+      "generated_at": "2026-09-05T11:28:26.851484+00:00",
+      "attempt": 1
+    },
+    {
+      "scenario": "super-mario-bros",
+      "model": "gpt-5.6-sol",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 108.32,
+      "provider": "OpenAI",
+      "usage": {
+        "prompt_tokens": 441,
+        "completion_tokens": 9326,
+        "total_tokens": 9767,
+        "cost": 0.094142,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.094142,
+          "upstream_inference_prompt_cost": 0.000882,
+          "upstream_inference_completions_cost": 0.09326
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 2161,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 17744,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 8,
+        "js_parses": true
+      },
+      "path": "/runs/super-mario-bros/gpt-5.6-sol.html",
+      "generated_at": "2026-09-05T11:14:02.188089+00:00",
+      "attempt": 1
+    },
+    {
+      "scenario": "super-mario-bros",
+      "model": "muse-spark-1.3",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 129.04,
+      "provider": "Meta",
+      "usage": {
+        "prompt_tokens": 443,
+        "completion_tokens": 15548,
+        "total_tokens": 15991,
+        "cost": 0.06663275,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.06663275,
+          "upstream_inference_prompt_cost": 0.00055375,
+          "upstream_inference_completions_cost": 0.066079
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 6310,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 22571,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9,
+        "js_parses": true
+      },
+      "path": "/runs/super-mario-bros/muse-spark-1.3.html",
+      "generated_at": "2026-09-05T11:16:11.233642+00:00",
       "attempt": 1
     }
   ],

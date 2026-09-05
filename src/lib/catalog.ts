@@ -7,13 +7,16 @@ type RawScenario = (typeof raw.scenarios)[keyof typeof raw.scenarios];
 type PublicScenario = Omit<RawScenario, "prompt">;
 
 function withoutPrompt(scenarios: typeof raw.scenarios) {
-  return Object.fromEntries(
-    Object.entries(scenarios).map(([key, value]) => {
-      const rest = { ...(value as RawScenario & { prompt?: string }) };
-      delete rest.prompt;
-      return [key, rest];
-    }),
-  ) as { [K in keyof typeof raw.scenarios]: PublicScenario };
+  const next = {} as { [K in keyof typeof raw.scenarios]: PublicScenario };
+  for (const key of Object.keys(scenarios) as Array<keyof typeof raw.scenarios>) {
+    const scenario = scenarios[key];
+    next[key] = {
+      name: scenario.name,
+      icon: scenario.icon,
+      capability: scenario.capability,
+    };
+  }
+  return next;
 }
 
 export const data = {

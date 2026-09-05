@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matrix Digital Rain</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+        }
+        canvas {
+            display: block;
+        }
+        .crt {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .crt::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+            background-size: 100% 4px;
+        }
+        .crt::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.6) 100%);
+        }
+    </style>
+</head>
+<body>
+    <div class="crt"></div>
+    <canvas id="matrix"></canvas>
+    <script>
+        const canvas = document.getElementById('matrix');
+        const ctx = canvas.getContext('2d');
+        
+        let columns = [];
+        let fontSize, spacing, width, height, rows, cols;
+
+        const chars = 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:."=*+-<>¦|_╌';
+        
+        function getRandomChar() {
+            return {
+                char: chars[Math.floor(Math.random() * chars.length)],
+                flipped: Math.random() < 0.5
+            };
+        }
+
+        class Column {
+            constructor(x) {
+                this.colIndex = x;
+                this.reset(true);
+            }
+
+            reset(initial = false) {
+                this.y = initial ? (Math.random() * -rows) : (Math.random() * -20 - 5);
+                this.speed = Math.random() * 15 + 5;
+                this.trailLength = Math.floor(Math.random() * 25) + 10;
+                this.chars = [];
+                this.lastRow = Math.floor(this.y);
+            }
+
+            update(dt) {
+                this.y += this.speed * (dt / 1000);
+                let currentRow = Math.floor(this.y);
+                
+                if (currentRow > this.lastRow) {
+                    let steps = currentRow - this.lastRow;
+                    for (let i = 0; i < steps; i++) {
+                        this.chars.push(getRandomChar());
+                        if (this.chars.length > this.trailLength) {
+                            this.chars.shift();
+                        }
+                    }
+                    this.lastRow = currentRow;
+                }
+
+                let mutationChance = 1.0 * (dt / 1000);
+                for (let i = 0; i < this.chars.length; i++) {
+                    if (Math.random() < mutationChance) {
+                        this.chars[i] = getRandomChar();
+                    }
+                }
+
+                if (this.lastRow - this.chars.length > rows) {
+                    this.reset();
+                }
+            }
+
+            draw(ctx, fontSize, spacing) {
+                ctx.shadowBlur = 0;
+                
+                for (let i = 0; i < this.chars.length - 1; i++) {
+                    let charYFloat = this.y - (this.chars.length - 1 - i);
+                    if (charYFloat < -2 || charYFloat > rows + 2) continue;
+
+                    let xPos = this.colIndex * spacing;
+                    let yPos = charYFloat * fontSize;
+
+                    let fadeRatio = i / (this.chars.length - 1);
+                    let g = Math.floor(Math.pow(fadeRatio, 1.5) * 255);
+                    ctx.fillStyle = `rgb(0, ${g}, 0)`;
+
+                    let charObj = this.chars[i];
+                    if (charObj.flipped) {
+                        ctx.save();
+                        ctx.translate(xPos + spacing / 2, yPos + fontSize / 2);
+                        ctx.scale(-1, 1);
+                        ctx.fillText(charObj.char, 0, 0);
+                        ctx.restore();
+                    } else {
+                        ctx.fillText(charObj.char, xPos + spacing / 2, yPos + fontSize / 2);
+                    }
+                }
+
+                if (this.chars.length > 0) {
+                    let i = this.chars.length - 1;
+                    let charYFloat = this.y;
+                    if (charYFloat >= -2 && charYFloat <= rows + 2) {
+                        let xPos = this.colIndex * spacing;
+                        let yPos = charYFloat * fontSize;
+
+                        ctx.fillStyle = '#e0ffe0';
+                        ctx.shadowColor = '#fff';
+                        ctx.shadowBlur = 10;
+
+                        let charObj = this.chars[i];
+                        if (charObj.flipped) {
+                            ctx.save();
+                            ctx.translate(xPos + spacing / 2, yPos + fontSize / 2);
+                            ctx.scale(-1, 1);
+                            ctx.fillText(charObj.char, 0, 0);
+                            ctx.fillText(charObj.char, 0, 0);
+                            ctx.restore();
+                        } else {
+                            ctx.fillText(charObj.char, xPos + spacing / 2, yPos + fontSize / 2);
+                            ctx.fillText(charObj.char, xPos + spacing / 2, yPos + fontSize / 2);
+                        }
+                        ctx.shadowBlur = 0;
+                    }
+                }
+            }
+        }
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            
+            let dpr = window.devicePixelRatio || 1;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.scale(dpr, dpr);
+            
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+
+            fontSize = Math.max(12, Math.min(24, Math.floor(width / 60)));
+            spacing = fontSize * 0.75;
+            cols = Math.ceil(width / spacing);
+            rows = Math.ceil(height / fontSize);
+
+            ctx.font = 'bold ' + fontSize + 'px "Courier New", Courier, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            columns = [];
+            for (let i = 0; i < cols; i++) {
+                let col = new Column(i);
+                let warmupTime = Math.random() * 10000;
+                let step = 16;
+                for (let t = 0; t < warmupTime; t += step) {
+                    col.update(step);
+                }
+                columns.push(col);
+            }
+        }
+
+        let lastTime = 0;
+        function animate(time) {
+            if (!lastTime) lastTime = time;
+            let dt = time - lastTime;
+            lastTime = time;
+            
+            if (dt > 100) dt = 16;
+
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, width, height);
+
+            for (let col of columns) {
+                col.update(dt);
+                col.draw(ctx, fontSize, spacing);
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>

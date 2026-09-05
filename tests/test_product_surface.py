@@ -45,3 +45,13 @@ class ProductSurfaceTests(unittest.TestCase):
         self.assertIn('SITE_URL = "https://www.benchviz.com"', catalog)
         self.assertNotIn("realbench-delta.vercel.app", catalog)
         self.assertIn("SITE_URL", robots)
+
+    def test_public_brand_is_benchviz(self) -> None:
+        catalog = (ROOT / "src/lib/catalog.ts").read_text(encoding="utf-8")
+        shell = (ROOT / "src/components/SiteShell.tsx").read_text(encoding="utf-8")
+        icon = (ROOT / "src/app/icon.tsx").read_text(encoding="utf-8")
+        self.assertIn('SITE_NAME = "BenchViz"', catalog)
+        self.assertIn("BenchViz", shell)
+        self.assertIn("BV", icon)
+        self.assertNotIn(">RB<", icon)
+        self.assertNotIn("RealBench home", shell)

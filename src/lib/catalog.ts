@@ -1,7 +1,7 @@
 import raw from "@/data/results.json";
 
 export const SITE_URL = "https://www.benchviz.com";
-export const SITE_NAME = "RealBench";
+export const SITE_NAME = "BenchViz";
 
 type RawScenario = (typeof raw.scenarios)[keyof typeof raw.scenarios];
 type PublicScenario = Omit<RawScenario, "prompt">;

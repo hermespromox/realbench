@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Digital Rain</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #000;
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+  }
+  .scan {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.28) 0px,
+      rgba(0, 0, 0, 0.28) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    animation: flick 3.7s steps(48) infinite;
+  }
+  .vig {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0) 52%, rgba(0,0,0,0.6) 100%);
+  }
+  @keyframes flick {
+    0%, 100% { opacity: 0.85; }
+    50%      { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="scan"></div>
+<div class="vig"></div>
+<script>
+(function () {
+  'use strict';
+
+  var cv = document.getElementById('c');
+  var ctx = cv.getContext('2d');
+
+  var W = 0, H = 0;
+
+  // Glyph set: katakana + digits + symbols
+  var CHARS = (function () {
+    var s = '';
+    for (var i = 0x30A1; i <= 0x30F6; i++) s += String.fromCharCode(i);
+    s += '0123456789';
+    s += '<>+-*:=|';
+    return s;
+  })();
+  var NCHARS = CHARS.length;
+  function randChar() { return CHARS[(Math.random() * NCHARS) | 0]; }
+
+  // Precomputed fade color ramps (bright green -> dark green -> black-ish)
+  var LEVELS = 48;
+  function makeColors(dim) {
+    var arr = new Array(LEVELS);
+    for (var l = 0; l < LEVELS; l++) {
+      var inten = Math.pow(1 - l / (LEVELS - 1), 1.5) * dim;
+      var g = Math.round(20 + 235 * inten);
+      var r = Math.round(g * 0.22);
+      var b = Math.round(g * 0.30);
+      var a = (0.10 + 0.90 * inten).toFixed(3);
+      arr[l] = 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+    }
+    return arr;
+  }
+  var COLORS_FRONT = makeColors(1.0);
+  var COLORS_BACK  = makeColors(0.38);
+  var HEAD_FRONT = '#eaffef';
+  var HEAD_BACK  = 'rgba(150,225,170,0.5)';
+
+  var cols = [];
+
+  function makeColumn(x, L, initial) {
+    var len = L.lMin + ((Math.random() * (L.lMax - L.lMin)) | 0);
+    var chars = new Array(len);
+    for (var i = 0; i < len; i++) chars[i] = randChar();
+    return {
+      x: x,
+      y: initial ? (Math.random() * H * 1.6 - H * 0.8)
+                 : (-Math.random() * H * 0.3 - len * L.size * 0.2),
+      speed: L.sMin + Math.random() * (L.sMax - L.sMin),
+      size: L.size,
+      len: len,
+      chars: chars,
+      acc: Math.random() * L.size,
+      colors: L.colors,
+      head: L.head,
+      shadow: L.shadow,
+      L: L
+    };
+  }
+
+  function build() {
+    cols.length = 0;
+    // Back layer first (drawn underneath), then front layer.
+    var layers = [
+      { size: 13, colors: COLORS_BACK,  head: HEAD_BACK,  sMin: 40,  sMax: 130, lMin: 10, lMax: 32, shadow: 0 },
+      { size: 17, colors: COLORS_FRONT, head: HEAD_FRONT, sMin: 90,  sMax: 330, lMin: 8,  lMax: 24, shadow: 9 }
+    ];
+    for (var k = 0; k < layers.length; k++) {
+      var L = layers[k];
+      var step = L.size;
+      for (var x = -step; x < W + step; x += step) {
+        cols.push(makeColumn(x, L, true));
+      }
+    }
+  }
+
+  function resize() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    cv.width = Math.round(W * dpr);
+    cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    build();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  var last = performance.now();
+
+  function frame(now) {
+    var dt = (now - last) / 1000;
+    last = now;
+    if (dt > 0.05) dt = 0.05;
+    if (dt < 0) dt = 0;
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    ctx.textBaseline = 'top';
+
+    for (var c = 0; c < cols.length; c++) {
+      var col = cols[c];
+      var size = col.size;
+
+      col.y += col.speed * dt;
+      col.acc += col.speed * dt;
+      while (col.acc >= size) {
+        col.acc -= size;
+        col.chars.pop();
+        col.chars.unshift(randChar());
+      }
+
+      // Column fully below viewport -> respawn above with new parameters
+      if (col.y - col.len * size > H) {
+        cols[c] = col = makeColumn(col.x, col.L, false);
+        size = col.size;
+      }
+
+      // Constant glyph mutation (flicker within the trail + head)
+      if (Math.random() < 0.14 && col.chars.length > 1) {
+        col.chars[1 + ((Math.random() * (col.chars.length - 1)) | 0)] = randChar();
+      }
+      if (Math.random() < 0.35) {
+        col.chars[0] = randChar();
+      }
+
+      ctx.font = size + 'px monospace';
+      var inv = 1 / col.len;
+      var chars = col.chars;
+      var y = col.y;
+
+      for (var i = chars.length - 1; i >= 0; i--) {
+        var gy = y - i * size;
+        if (gy < -size) continue;   // still above screen
+        if (gy > H) break;          // below screen, rest are lower
+
+        if (i === 0) {
+          if (col.shadow) {
+            ctx.shadowColor = 'rgba(70,255,130,0.9)';
+            ctx.shadowBlur = col.shadow;
+          }
+          ctx.fillStyle = col.head;
+          ctx.fillText(chars[0], col.x, gy);
+          if (col.shadow) ctx.shadowBlur = 0;
+        } else {
+          var l = ((i * inv) * (LEVELS - 1)) | 0;
+          ctx.fillStyle = col.colors[l];
+          ctx.fillText(chars[i], col.x, gy);
+        }
+      }
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

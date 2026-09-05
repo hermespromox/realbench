@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title></title>
+<style>
+  html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+  }
+  canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    background: #000;
+  }
+</style>
+</head>
+<body>
+<canvas id="matrix"></canvas>
+<script>
+(() => {
+  const canvas = document.getElementById("matrix");
+  const ctx = canvas.getContext("2d", { alpha: false });
+  const glyphs = Array.from(
+    "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<>+-*/=※∆◊◇○●"
+  );
+
+  let width = 0, height = 0, dpr = 1, step = 17;
+  let columns = [];
+  let last = performance.now();
+  let time = 0;
+
+  function randomGlyph() {
+    return glyphs[(Math.random() * glyphs.length) | 0];
+  }
+
+  function makeColumn(x, initial) {
+    const length = 8 + ((Math.random() * 25) | 0);
+    const chars = [];
+    for (let i = 0; i < length + 2; i++) chars.push(randomGlyph());
+    return {
+      x,
+      length,
+      chars,
+      speed: 105 + Math.random() * 250,
+      head: initial ? Math.random() * (height + length * step) - length * step : -step,
+      phase: Math.random() * 100,
+      change: 0.03 + Math.random() * 0.12
+    };
+  }
+
+  function resize() {
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    step = Math.max(14, Math.min(19, width / 105));
+    columns = [];
+    const count = Math.ceil(width / step) + 2;
+    for (let i = 0; i < count; i++) {
+      columns.push(makeColumn(i * step + step * 0.5, true));
+    }
+  }
+
+  function draw(now) {
+    const dt = Math.min(0.045, (now - last) / 1000);
+    last = now;
+    time += dt;
+
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.font = `bold ${Math.floor(step * 1.02)}px "Courier New", monospace`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    for (const col of columns) {
+      col.head += col.speed * dt;
+      if (Math.random() < col.change) {
+        col.chars[(Math.random() * col.chars.length) | 0] = randomGlyph();
+      }
+
+      if (col.head - col.length * step > height + step * 2) {
+        col.head = -Math.random() * height * 0.25 - step;
+        col.speed = 100 + Math.random() * 270;
+        col.length = 8 + ((Math.random() * 25) | 0);
+        while (col.chars.length < col.length + 2) col.chars.push(randomGlyph());
+      }
+
+      const visibleStart = Math.max(0, Math.floor((col.head - height) / step));
+      const visibleEnd = Math.min(col.length, Math.ceil(col.head / step) + 2);
+
+      for (let i = visibleStart; i <= visibleEnd; i++) {
+        const y = col.head - i * step;
+        if (y < -step || y > height + step) continue;
+
+        const ratio = i / Math.max(1, col.length);
+        let alpha = Math.pow(1 - ratio, 1.7) * 0.92;
+        if (i === 0) alpha = 1;
+
+        const flicker = 0.88 + Math.sin(time * 11 + col.phase + i * 2.7) * 0.12;
+        alpha *= flicker;
+        const ch = col.chars[(i + ((time * 3 + col.phase) | 0)) % col.chars.length];
+
+        if (i === 0) {
+          ctx.shadowColor = "rgba(70,255,150,.95)";
+          ctx.shadowBlur = 10;
+          ctx.fillStyle = `rgba(220,255,226,${alpha})`;
+          ctx.fillText(ch, col.x, y);
+          ctx.shadowBlur = 0;
+        } else {
+          const green = Math.floor(175 - ratio * 145);
+          ctx.fillStyle = `rgba(0,${green},${Math.floor(green * 0.48)},${alpha})`;
+          ctx.fillText(ch, col.x, y);
+        }
+      }
+    }
+
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = "rgba(0,0,0,.12)";
+    for (let y = 0; y < height; y += 4) ctx.fillRect(0, y, width, 1);
+
+    requestAnimationFrame(draw);
+  }
+
+  window.addEventListener("resize", resize, { passive: true });
+  resize();
+  requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>

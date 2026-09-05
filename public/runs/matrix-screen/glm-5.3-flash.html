@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ﾏﾄﾘｯｸｽ</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #000;
+    overflow: hidden;
+  }
+  #rain {
+    position: fixed; inset: 0;
+    width: 100vw; height: 100vh;
+    display: block;
+    background: #000;
+  }
+  .fx {
+    position: fixed; inset: 0;
+    pointer-events: none;
+  }
+  /* CRT vignette — darkens corners like a phosphor tube */
+  #vig {
+    background: radial-gradient(ellipse 120% 95% at 50% 46%,
+      rgba(0,0,0,0) 55%,
+      rgba(0,0,0,0.40) 82%,
+      rgba(0,0,0,0.58) 100%);
+  }
+  /* fine scanlines */
+  #scan {
+    background: repeating-linear-gradient(to bottom,
+      rgba(0,0,0,0) 0px,
+      rgba(0,0,0,0) 2px,
+      rgba(0,0,0,0.26) 2px,
+      rgba(0,0,0,0.26) 3px);
+    opacity: 0.5;
+  }
+</style>
+</head>
+<body>
+<canvas id="rain"></canvas>
+<div class="fx" id="vig"></div>
+<div class="fx" id="scan"></div>
+
+<script>
+(() => {
+'use strict';
+
+const canvas = document.getElementById('rain');
+const ctx = canvas.getContext('2d', { alpha: false });
+
+/* Glyph set: half-width katakana + digits + a few symbols (no readable words) */
+const CHARS = 'ｦｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝｰ･0123456789:=*+-<>';
+const NG = CHARS.length;
+
+/* Brightness ramp: level 0 = white-hot head, level 9 = almost black.
+   Glow (baked halo) only on the hottest levels. */
+const PAL = [
+  [216,255,229],[173,255,203],[118,255,171],[ 64,248,127],
+  [ 30,215, 99],[ 13,171, 77],[  7,127, 58],[  4, 89, 41],
+  [  3, 57, 27],[  2, 33, 16]
+];
+const GLOW = [0.55, 0.34, 0.18, 0, 0, 0, 0, 0, 0, 0];
+const NLEV = PAL.length;
+
+let W = 0, H = 0, dpr = 1;
+let fs = 18, colW = 12, rowH = 18, rowCount = 0;
+let cols = [];
+let SPR = [], META = [];
+
+const rnd = Math.random;
+const randGlyph = () => (rnd() * NG) | 0;
+
+/* Pre-render every glyph at every brightness level into tiny sprites.
+   One-time cost; the per-frame loop is pure drawImage, so it stays fast. */
+function bakeSprites() {
+  SPR = []; META = [];
+  const padG = Math.ceil(fs * 0.6);                 // room for the baked halo
+  const tW = Math.ceil(colW) + 4, tH = Math.ceil(rowH) + 4;
+  const gW = tW + padG * 2, gH = tH + padG * 2;
+  for (let l = 0; l < NLEV; l++) {
+    const glow = GLOW[l];
+    const w = glow > 0 ? gW : tW;
+    const h = glow > 0 ? gH : tH;
+    const meta = { w: w, h: h };
+    const col = 'rgb(' + PAL[l][0] + ',' + PAL[l][1] + ',' + PAL[l][2] + ')';
+    const set = new Array(NG);
+    for (let g = 0; g < NG; g++) {
+      const cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.ceil(w * dpr));
+      cv.height = Math.max(1, Math.ceil(h * dpr));
+      const c2 = cv.getContext('2d');
+      c2.scale(dpr, dpr);
+      c2.font = 'bold ' + fs + 'px monospace';
+      c2.textAlign = 'center';
+      c2.textBaseline = 'middle';
+      const ch = CHARS[g];
+      const adv = c2.measureText(ch).width || fs * 0.55;
+      // shrink any glyph that would not fit its cell (font-fallback safety)
+      const s = Math.min(1, (colW * 0.94) / Math.max(adv, 0.001), (rowH * 0.96) / fs);
+      c2.translate(w / 2, h / 2);
+      c2.scale(s, s);
+      c2.fillStyle = col;
+      if (glow > 0) {
+        c2.shadowColor = 'rgba(80,255,140,0.85)';
+        c2.shadowBlur = fs * glow * dpr;
+        c2.fillText(ch, 0, 0);
+        c2.shadowBlur = fs * glow * 0.5 * dpr;   // second pass = richer bloom
+        c2.fillText(ch, 0, 0);
+      } else {
+        c2.fillText(ch, 0, 0);
+      }
+      set[g] = cv;
+    }
+    SPR.push(set);
+    META.push(meta);
+  }
+}
+
+/* Per-column personality: speed, trail length, base brightness, shimmer rate */
+function styleCol(c) {
+  if (c.layer === 0) {                       // foreground rain
+    let sp = 5 + rnd() * rnd() * 13;         // mostly gentle, biased low
+    if (rnd() < 0.045) sp = 19 + rnd() * 12; // rare fast streaks
+    c.speed = sp;
+    c.trail = rnd() < 0.10
+      ? rowCount * (0.85 + rnd() * 0.5)      // occasional full-height curtain
+      : Math.max(5, rowCount * (0.13 + Math.pow(rnd(), 1.4) * 0.6));
+    c.dim = (1 - (0.62 + rnd() * 0.38)) * 3.4;
+    c.shimmer = 5 + rnd() * 14;              // glyph mutations per second
+  } else {                                   // dim background layer
+    c.speed = (3.5 + rnd() * rnd() * 10) * (0.7 + rnd() * 0.6);
+    c.trail = Math.max(8, rowCount * (0.3 + rnd() * 0.75));
+    c.dim = 4.6 + rnd() * 2.6;
+    c.shimmer = 3 + rnd() * 8;
+  }
+}
+
+function makeCol(x, layer, y) {
+  const c = {
+    x: x, layer: layer, y: y,
+    speed: 8, trail: 10, dim: 0, shimmer: 8,
+    flick: 0, lastRow: 0,
+    glyphs: new Uint8Array(rowCount)
+  };
+  styleCol(c);
+  c.lastRow = Math.floor(c.y / rowH);
+  for (let i = 0; i < rowCount; i++) c.glyphs[i] = randGlyph();
+  return c;
+}
+
+/* Recycle a column once its whole trail has slid off the bottom */
+function respawn(c) {
+  styleCol(c);
+  c.y = -(0.5 + rnd() * 5) * rowH;           // re-enter just above the top edge
+  c.flick = 0;
+  c.lastRow = Math.floor(c.y / rowH);
+  for (let i = 0; i < rowCount; i++) c.glyphs[i] = randGlyph();
+}
+
+function build() {
+  cols = [];
+  const n = Math.ceil(W / colW) + 1;         // +1 so both edges are covered
+  const bgP = W > 2400 ? 0.55 : 0.8;         // background column probability
+  for (let i = 0; i < n; i++) {
+    const x = i * colW;
+    cols.push(makeCol(x, 0, (rnd() * 1.9 - 0.45) * H));
+    if (rnd() < bgP) {
+      cols.push(makeCol(x + (rnd() - 0.5) * colW * 0.6, 1, (rnd() * 1.9 - 0.45) * H));
+    }
+  }
+  cols.sort(function (a, b) { return a.layer - b.layer; });  // dim layer first
+}
+
+function mutate(c, hr) {
+  const r = hr - ((rnd() * c.trail) | 0);
+  if (r >= 0 && r < rowCount) c.glyphs[r] = randGlyph();
+}
+
+function update(dt) {
+  for (let j = 0; j < cols.length; j++) {
+    const c = cols[j];
+    c.y += c.speed * rowH * dt;
+    const hr = Math.floor(c.y / rowH);
+    // fresh glyph wherever the head just arrived
+    if (hr > c.lastRow) {
+      for (let r = c.lastRow + 1; r <= hr; r++) {
+        if (r >= 0 && r < rowCount) c.glyphs[r] = randGlyph();
+      }
+      c.lastRow = hr;
+    }
+    // continuous shimmer: random trail glyphs flip to new characters
+    let m = c.shimmer * dt;
+    while (m >= 1) { mutate(c, hr); m -= 1; }
+    if (rnd() < m) mutate(c, hr);
+    // phosphor flicker on the hot head
+    if (c.flick > 0) c.flick = Math.max(0, c.flick - dt * 4.5);
+    else if (rnd() < dt * 0.55) c.flick = 0.5 + rnd() * 1.1;
+    // recycle once the tail has fully exited the bottom
+    if (c.y - c.trail * rowH > H + rowH * 2) respawn(c);
+  }
+}
+
+function draw() {
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+  const hw = colW * 0.5, hh = rowH * 0.5;
+  for (let j = 0; j < cols.length; j++) {
+    const c = cols[j];
+    const hr = Math.floor(c.y / rowH);
+    const tl = c.trail;
+    const comp = c.layer === 1 ? 0.55 : 1;   // background: compressed contrast
+    const dim = c.dim, flick = c.flick;
+    const cx = c.x + hw;
+    const g = c.glyphs;
+    for (let k = 0; k <= tl; k++) {          // k = distance behind the head
+      const row = hr - k;
+      if (row < 0) break;
+      if (row >= rowCount) continue;
+      let lv = Math.pow(k / tl, 0.55) * (NLEV - 1) * comp + dim;
+      if (k === 0) lv += flick; else if (k === 1) lv += flick * 0.5;
+      if (lv >= NLEV) continue;              // faded fully to black
+      const fl = lv | 0;
+      ctx.globalAlpha = 1 - (lv - fl);       // smooth between palette steps
+      const mt = META[fl];
+      ctx.drawImage(SPR[fl][g[row]],
+        cx - mt.w * 0.5,
+        row * rowH + hh - mt.h * 0.5,
+        mt.w, mt.h);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function setup() {
+  W = window.innerWidth;
+  H = window.innerHeight;
+  dpr = Math.min(window.devicePixelRatio || 1, W > 2200 ? 1.5 : 2);
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  fs = Math.round(Math.min(21, Math.max(15, W / 95)));
+  colW = fs * 0.66;                          // tight half-width packing
+  rowH = fs;
+  rowCount = Math.ceil(H / rowH) + 2;
+  bakeSprites();
+  build();
+  draw();                                    // first frame is already full rain
+}
+
+let last = performance.now();
+function frame(now) {
+  let dt = (now - last) / 1000;
+  last = now;
+  if (!(dt > 0)) dt = 0;
+  if (dt > 0.05) dt = 0.05;
+  update(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+
+let rt = 0;
+window.addEventListener('resize', function () {
+  clearTimeout(rt);
+  rt = setTimeout(setup, 150);
+});
+
+setup();
+requestAnimationFrame(function (t) { last = t; frame(t); });
+
+})();
+</script>
+</body>
+</html>

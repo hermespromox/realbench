@@ -15,7 +15,7 @@ const ibmMono = IBM_Plex_Mono({
   weight: ["400", "500", "600"],
 });
 
-const title = "RealBench — One-shot frontend capability benchmark";
+const title = "BenchViz — One-shot frontend capability benchmark";
 const description = "Compare identical one-shot HTML animations from frontier AI models. Browse by challenge or by model, then upvote the strongest builds.";
 
 export const metadata: Metadata = {
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     "Gemini",
     "one-shot coding",
   ],
-  authors: [{ name: "RealBench" }],
+  authors: [{ name: "BenchViz" }],
   alternates: { canonical: "/" },
   openGraph: {
     title,
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     url: "/",
     siteName: SITE_NAME,
     locale: "en_US",
-    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "RealBench arena" }],
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "BenchViz arena" }],
   },
   twitter: {
     card: "summary_large_image",
@@ -60,7 +60,7 @@ const jsonLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",
   name: SITE_NAME,
-  alternateName: "BenchViz",
+  alternateName: ["RealBench", "BenchViz"],
   url: SITE_URL,
   description,
 };

@@ -5,10 +5,10 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <header className={styles.nav}>
-        <Link className={styles.brand} href="/" aria-label="RealBench home">
-          <span className={styles.mark} aria-hidden="true">RB</span>
+        <Link className={styles.brand} href="/" aria-label="BenchViz home">
+          <span className={styles.mark} aria-hidden="true">BV</span>
           <span>
-            <strong>RealBench</strong>
+            <strong>BenchViz</strong>
             <small>Frontend capability benchmark</small>
           </span>
         </Link>
@@ -22,7 +22,7 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
       {children}
       <footer className={styles.footer}>
         <p>IBM Carbon-inspired visual system. One-shot HTML artifacts, published as generated.</p>
-        <p>© {new Date().getFullYear()} RealBench</p>
+        <p>© {new Date().getFullYear()} BenchViz</p>
       </footer>
     </>
   );

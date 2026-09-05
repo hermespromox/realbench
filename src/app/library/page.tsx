@@ -5,7 +5,7 @@ import styles from "../library.module.css";
 
 export const metadata: Metadata = {
   title: "Library",
-  description: "Browse RealBench artifacts by model or by use case. Each card is a one-shot HTML animation.",
+  description: "Browse BenchViz artifacts by model or by use case. Each card is a one-shot HTML animation.",
   alternates: { canonical: "/library" },
 };
 

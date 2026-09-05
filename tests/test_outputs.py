@@ -50,7 +50,7 @@ class GeneratedOutputIntegrityTests(unittest.TestCase):
     def test_all_benchmark_outputs_are_complete_html_documents(self) -> None:
         failures: list[str] = []
         files = sorted(RUNS.glob("*/*.html"))
-        self.assertEqual(len(EXPECTED_MODELS) * 6, len(files))
+        self.assertEqual(len(EXPECTED_MODELS) * 7, len(files))
         for path in files:
             text = path.read_text(encoding="utf-8")
             low = text.lower().rstrip()

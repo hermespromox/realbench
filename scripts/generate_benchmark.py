@@ -67,9 +67,15 @@ SCENARIOS = {
         "capability": "Autonomous platforming",
         "prompt": "Create a single self-contained HTML animation inspired by the original 1980s Super Mario Bros. 8-bit platformer.\n\nShow Mario automatically running from left to right through a classic side-scrolling platform level. Mario should run, jump over gaps, jump onto and over platforms, avoid obstacles, hit blocks from below, bounce on enemies, collect floating coins, and occasionally change vertical levels using pipes and elevated platforms.\n\nThe camera should smoothly scroll horizontally as Mario progresses through the level. Include animated enemies walking back and forth, moving coins, question-style blocks, brick platforms, pipes, clouds, hills, bushes, and a layered scrolling background.\n\nMario's movement should feel physically coherent: acceleration, gravity, jumping arcs, falling, landing, enemy collisions, and platform collisions should all visually make sense.\n\nThe animation must be completely autonomous. Mario should continuously progress through the level without any keyboard, mouse, touch, or user interaction.\n\nAfter reaching the end of the scene, automatically transition or restart so the animation can run indefinitely.\n\nUse a crisp retro pixel-art aesthetic with intentionally low-resolution shapes and frame-based character animation.\n\nDo not display any text, letters, numbers, scores, timers, labels, logos, captions, UI elements, written characters, or readable symbols anywhere in the animation.\n\nDo not include any menus or interface overlays.\n\nUse only HTML, CSS, SVG, Canvas, and vanilla JavaScript.\nEverything must be contained in one HTML file.\nNo external libraries, images, fonts, audio files, assets, APIs, or network requests.\nThe animation should fill the browser viewport and run smoothly.",
     },
+    "matrix-screen": {
+        "name": "Matrix Screen",
+        "icon": "▓",
+        "capability": "Digital rain / density",
+        "prompt": "Create a single self-contained HTML animation of the classic Matrix digital rain: a full-viewport black screen with many vertical columns of glowing green glyphs falling downward like rain.\n\nEach column should have its own speed, start offset, and trail length. The leading glyph in every column should be brightest white-green, with the trail fading from bright green to dark green to black. Glyphs should constantly change as they fall. Use a dense field of columns that covers the entire viewport, including the edges.\n\nThe look must immediately read as the Matrix code waterfall: high contrast, phosphor-green on pure black, slightly scanline or CRT feel is welcome but not required. Motion must be continuous, autonomous, and loop forever with no interaction.\n\nDo not display titles, captions, scores, UI, menus, logos, or readable English sentences. Falling code glyphs are the scene itself.\n\nUse only HTML, CSS, SVG, Canvas, and vanilla JavaScript.\nEverything must be contained in one HTML file.\nNo external libraries, images, fonts, audio files, assets, APIs, or network requests.\nThe animation should fill the browser viewport and run smoothly.",
+    },
 }
 
-SYSTEM = """You are participating in RealBench, a one-shot frontend animation benchmark.
+SYSTEM = """You are participating in BenchViz, a one-shot frontend animation benchmark.
 Return ONLY the complete self-contained HTML document, starting with <!DOCTYPE html>.
 Do not use markdown fences or explanations. Do not use external assets, libraries, fonts, URLs, fetch, or network requests.
 The animation must start automatically, run continuously for at least 15 seconds, and require no user input.
@@ -142,7 +148,7 @@ def call_one(item: tuple[str, dict, str, dict], api_key: str) -> dict:
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
             "HTTP-Referer": "https://www.benchviz.com",
-            "X-Title": "RealBench",
+            "X-Title": "BenchViz",
         },
         method="POST",
     )
@@ -203,7 +209,7 @@ def main() -> None:
         results = [f.result() for f in concurrent.futures.as_completed(futures)]
     results.sort(key=lambda x: (list(SCENARIOS).index(x["scenario"]), list(MODELS).index(x["model"])))
     manifest = {
-        "name": "RealBench",
+        "name": "BenchViz",
         "methodology": "One-shot, same prompt, no repair, self-contained HTML, no external assets",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "models": MODELS,

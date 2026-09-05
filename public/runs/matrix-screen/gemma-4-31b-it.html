@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matrix Digital Rain</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+        }
+        canvas {
+            display: block;
+        }
+        #crt-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.1) 50%
+            ), linear-gradient(
+                90deg, 
+                rgba(255, 0, 0, 0.02), 
+                rgba(0, 255, 0, 0.01), 
+                rgba(0, 0, 255, 0.02)
+            );
+            background-size: 100% 4px, 3px 100%;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div id="crt-overlay"></div>
+    <canvas id="matrixCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById('matrixCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let width, height, columns;
+        const fontSize = 16;
+        const glyphs = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$+-*/=%\"'#&_(),.;:<>?!@";
+        const drops = [];
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+
+            columns = Math.floor(width / fontSize);
+            drops.length = 0;
+            for (let i = 0; i < columns; i++) {
+                drops[i] = {
+                    x: i * fontSize,
+                    y: Math.random() * -height, // Start at random heights above the screen
+                    speed: 1 + Math.random() * 3,
+                    length: 5 + Math.random() * 20
+                };
+            }
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        function draw() {
+            // Semi-transparent black rectangle to create the trail fade effect
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.font = fontSize + 'px monospace';
+
+            for (let i = 0; i < drops.length; i++) {
+                const drop = drops[i];
+                
+                // Randomly change the character for each frame
+                const text = glyphs.charAt(Math.floor(Math.random() * glyphs.length));
+                
+                // Draw the "head" of the rain (Brightest)
+                ctx.fillStyle = '#e0f0ff'; // Near white
+                ctx.fillText(text, drop.x, drop.y);
+
+                // Draw a small trail behind the head to ensure density and glow
+                // Since we use a global alpha fade (fillRect), we just need to draw the head,
+                // but drawing a few characters behind adds a "solid" feel to the stream.
+                ctx.fillStyle = '#0f0'; // Classic Matrix Green
+                ctx.fillText(glyphs.charAt(Math.floor(Math.random() * glyphs.length)), drop.x, drop.y - fontSize);
+
+                // Move the drop down
+                drop.y += drop.speed;
+
+                // Reset drop to top if it goes off screen or randomly to create variance
+                if (drop.y > height && Math.random() > 0.95) {
+                    drop.y = -fontSize;
+                    drop.speed = 1 + Math.random() * 3;
+                }
+                
+                // Hard reset if completely gone
+                if (drop.y > height + (fontSize * 20)) {
+                    drop.y = -fontSize;
+                }
+            }
+
+            requestAnimationFrame(draw);
+        }
+
+        // To make the rain feel more organic, we'll use a slightly different approach for the trail.
+        // The standard "fillRect" method is great, but for a "high polish" look, 
+        // we can manually draw the trail segments with varying opacity.
+        
+        function drawHighPoly() {
+            // Fade the screen slightly
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+            ctx.fillRect(0, 0, width, height);
+
+            for (let i = 0; i < drops.length; i++) {
+                const drop = drops[i];
+                
+                // Random character
+                const char = glyphs.charAt(Math.floor(Math.random() * glyphs.length));
+                
+                // Leading glyph: Bright white-green
+                ctx.fillStyle = '#d4ffd4';
+                ctx.fillText(char, drop.x, drop.y);
+
+                // Trail: Bright green
+                ctx.fillStyle = '#00ff00';
+                ctx.fillText(glyphs.charAt(Math.floor(Math.random() * glyphs.length)), drop.x, drop.y - fontSize);
+                
+                // Further trail: Darker green
+                ctx.fillStyle = '#003300';
+                ctx.fillText(glyphs.charAt(Math.floor(Math.random() * glyphs.length)), drop.x, drop.y - (fontSize * 2));
+
+                drop.y += drop.speed;
+
+                if (drop.y > height + 100) {
+                    drop.y = -fontSize;
+                    drop.speed = 1 + Math.random() * 4;
+                }
+            }
+            requestAnimationFrame(drawHighPoly);
+        }
+
+        // Start the animation
+        drawHighPoly();
+    </script>
+</body>
+</html>

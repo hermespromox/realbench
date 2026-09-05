@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title></title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;background:#000;overflow:hidden}
+  body{position:fixed;inset:0;background:#000;cursor:none;user-select:none;-webkit-user-select:none}
+  #c{position:fixed;inset:0;width:100vw;height:100vh;display:block;background:#000;animation:crtFlicker 4s infinite steps(60)}
+  @keyframes crtFlicker{
+    0%,100%{opacity:1}
+    3%{opacity:.985}
+    5%{opacity:1}
+    27%{opacity:.99}
+    28%{opacity:1}
+    53%{opacity:.978}
+    54%{opacity:1}
+    78%{opacity:.992}
+    79%{opacity:1}
+  }
+  .scan{position:fixed;inset:0;pointer-events:none;z-index:3;
+    background:repeating-linear-gradient(to bottom, rgba(0,0,0,.28) 0px, rgba(0,0,0,.28) 1px, transparent 1px, transparent 3px);
+    opacity:.55}
+  .aperture{position:fixed;inset:0;pointer-events:none;z-index:4;opacity:.35;
+    background:repeating-linear-gradient(to right, rgba(0,0,0,.18) 0px, rgba(0,0,0,.18) 1px, transparent 1px, transparent 3px)}
+  .vig{position:fixed;inset:0;pointer-events:none;z-index:5;
+    background:radial-gradient(ellipse at center, transparent 52%, rgba(0,0,0,.38) 82%, rgba(0,0,0,.78) 100%)}
+  .glowwash{position:fixed;inset:0;pointer-events:none;z-index:2;opacity:.5;
+    background:radial-gradient(ellipse at 50% 45%, rgba(0,70,20,.18) 0%, transparent 62%)}
+  .flickwash{position:fixed;inset:0;pointer-events:none;z-index:6;background:rgba(120,255,150,.015);animation:wash 7s infinite alternate}
+  @keyframes wash{0%{opacity:.2}50%{opacity:1}100%{opacity:.4}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="glowwash"></div>
+<div class="scan"></div>
+<div class="aperture"></div>
+<div class="vig"></div>
+<div class="flickwash"></div>
+<script>
+(function(){
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d', {alpha:false});
+  let W=0,H=0,DPR=1,fontSize=18,colW=16,rows=0,cols=[];
+  const GLYPHS = 'アカサタナハマヤラワガザダバパイキシチニヒミリヰギジヂビピウクスツヌフムルグズヅブプエケセテネヘメレゲゼデベペオコソトノホモヨロヲゴゾドボポヴッン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$#*+-=<>|¦:・.+×÷∙·:≡≣∴$¥¢£§©®™°|/\\<>[]{}()';
+  const G = GLYPHS.split('');
+  const gLen = G.length;
+  function rndChar(){ return G[(Math.random()*gLen)|0]; }
+
+  function computeSize(){
+    DPR = Math.min(2, window.devicePixelRatio||1);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = Math.floor(W*DPR);
+    canvas.height = Math.floor(H*DPR);
+    canvas.style.width = W+'px';
+    canvas.style.height = H+'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    const base = Math.min(W,H);
+    fontSize = Math.max(14, Math.min(20, Math.round(base/48)));
+    if(W<500) fontSize = 14;
+    colW = fontSize*0.92;
+    rows = Math.ceil(H/fontSize)+2;
+    ctx.font = '700 '+fontSize+'px "Courier New",Courier,monospace';
+    ctx.textBaseline='top';
+    ctx.textAlign='center';
+  }
+
+  function makeColumn(x){
+    const trail = 8 + ((Math.random()*Math.random()*28)|0) + ((Math.random()*8)|0);
+    const speedRows = 2.5 + Math.pow(Math.random(),1.4)*14 + (Math.random()<0.08? 8+Math.random()*8:0);
+    const head = Math.random()*(rows+trail*2)-trail;
+    const chars = new Array(trail);
+    for(let i=0;i<trail;i++) chars[i]=rndChar();
+    return {
+      x:x,
+      y:head,
+      lastRow:Math.floor(head),
+      speed:speedRows,
+      trail:trail,
+      chars:chars,
+      bright:0.55+Math.random()*0.45,
+      flick:Math.random()*10,
+      boldHead:Math.random()<0.9
+    };
+  }
+
+  function build(){
+    cols=[];
+    const n = Math.ceil(W/colW)+2;
+    for(let i=0;i<n;i++){
+      const x = i*colW + colW*0.5 - colW*0.5;
+      cols.push(makeColumn(x));
+    }
+  }
+
+  function resetCol(c){
+    c.trail = 8 + ((Math.random()*Math.random()*28)|0) + ((Math.random()*8)|0);
+    c.speed = 2.5 + Math.pow(Math.random(),1.4)*14 + (Math.random()<0.08? 8+Math.random()*8:0);
+    c.chars = new Array(c.trail);
+    for(let i=0;i<c.trail;i++) c.chars[i]=rndChar();
+    c.y = -c.trail - Math.random()*rows*0.35;
+    c.lastRow = Math.floor(c.y);
+    c.bright = 0.55+Math.random()*0.45;
+  }
+
+  function init(){ computeSize(); build(); }
+  let rT=null;
+  window.addEventListener('resize',()=>{ clearTimeout(rT); rT=setTimeout(init,120); });
+
+  init();
+
+  let last = performance.now();
+  // precompute green ramp
+  function draw(dt, t){
+    ctx.fillStyle='#000000';
+    ctx.fillRect(0,0,W,H);
+
+    const fs = fontSize;
+    // slight global shimmer
+    const shimmer = 0.96 + 0.04*Math.sin(t*0.007);
+
+    for(let ci=0; ci<cols.length; ci++){
+      const c = cols[ci];
+      c.y += c.speed*dt;
+      let curRow = Math.floor(c.y);
+      let steps = curRow - c.lastRow;
+      if(steps>0){
+        if(steps>6) steps=6;
+        for(let s=0;s<steps;s++){
+          c.chars.pop();
+          c.chars.unshift(rndChar());
+        }
+        c.lastRow = curRow;
+        // recycle when fully below
+        if(c.y - c.trail > rows+1){
+          resetCol(c);
+          curRow = Math.floor(c.y);
+        }
+      } else if(steps<0){ c.lastRow=curRow; }
+
+      // mutate trail glyphs constantly
+      // head flickers fast, body slower
+      if(Math.random()<0.72) c.chars[0]=rndChar();
+      // mutate 1-2 random body chars
+      const mCount = (Math.random()*3)|0;
+      for(let m=0;m<mCount;m++){
+        const idx = 1+((Math.random()*(c.trail-1))|0);
+        if(Math.random()<0.35) c.chars[idx]=rndChar();
+      }
+
+      const b = c.bright*shimmer;
+      const headRow = curRow;
+      const x = c.x;
+
+      for(let i=0;i<c.trail;i++){
+        const row = headRow - i;
+        if(row<-1||row>rows) continue;
+        const y = row*fs;
+        if(y<-fs||y>H+fs) continue;
+        const ch = c.chars[i];
+        if(!ch) continue;
+
+        if(i===0){
+          ctx.shadowColor='rgba(160,255,190,0.95)';
+          ctx.shadowBlur=14;
+          ctx.fillStyle='rgba(235,255,238,1)';
+          ctx.font='700 '+fs+'px "Courier New",Courier,monospace';
+          ctx.fillText(ch,x,y);
+          // core white overlay for extra bloom
+          ctx.shadowBlur=0;
+          ctx.fillStyle='rgba(255,255,255,0.92)';
+          ctx.fillText(ch,x,y);
+        } else if(i===1){
+          ctx.shadowColor='rgba(80,255,130,0.9)';
+          ctx.shadowBlur=10;
+          const g = Math.floor(255*b);
+          ctx.fillStyle='rgb(150,'+g+',170)';
+          ctx.font='700 '+fs+'px "Courier New",Courier,monospace';
+          ctx.fillText(ch,x,y);
+          ctx.shadowBlur=0;
+        } else if(i<4){
+          ctx.shadowColor='rgba(0,255,90,0.7)';
+          ctx.shadowBlur=7;
+          const f = Math.pow(1-i/c.trail,1.6);
+          const gg = Math.floor((30+225*f)*b);
+          if(gg>255) ctx.fillStyle='rgb(120,255,150)';
+          else ctx.fillStyle='rgb('+Math.floor(gg*0.35)+','+gg+','+Math.floor(gg*0.42)+')';
+          ctx.font='700 '+fs+'px "Courier New",Courier,monospace';
+          ctx.fillText(ch,x,y);
+          ctx.shadowBlur=0;
+        } else {
+          ctx.shadowBlur=0;
+          const f = Math.pow(1-i/c.trail,2.1);
+          if(f<0.02) continue;
+          let gg = Math.floor((20+235*f)*b);
+          if(gg>255) gg=255;
+          if(gg<8) continue;
+          const r = Math.floor(gg*0.18);
+          const bb = Math.floor(gg*0.22);
+          ctx.fillStyle='rgb('+r+','+gg+','+bb+')';
+          // dimmer rows use normal weight for speed
+          if(i%5===0) ctx.font='400 '+fs+'px "Courier New",Courier,monospace';
+          else if(i===5) ctx.font='700 '+fs+'px "Courier New",Courier,monospace';
+          ctx.fillText(ch,x,y);
+        }
+      }
+    }
+    ctx.shadowBlur=0;
+    ctx.font='700 '+fontSize+'px "Courier New",Courier,monospace';
+  }
+
+  function loop(now){
+    let dt = (now-last)/1000;
+    last=now;
+    if(dt>0.05) dt=0.05;
+    if(dt<0) dt=0.016;
+    draw(dt, now);
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame((t)=>{last=t;requestAnimationFrame(loop);});
+})();
+</script>
+</body>
+</html>

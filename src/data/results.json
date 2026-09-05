@@ -1,7 +1,7 @@
 {
-  "name": "RealBench",
+  "name": "BenchViz",
   "methodology": "Same prompt; original one-shot responses archived. Truncated outputs regenerated once with a larger output budget and explicitly labeled repaired.",
-  "generated_at": "2026-09-05T12:16:54.818251+00:00",
+  "generated_at": "2026-09-05T13:18:24.945754+00:00",
   "models": {
     "grok-4.6": {
       "id": "x-ai/grok-4.6",
@@ -100,6 +100,12 @@
       "icon": "▣",
       "capability": "Autonomous platforming",
       "prompt": "Create a single self-contained HTML animation inspired by the original 1980s Super Mario Bros. 8-bit platformer.\n\nShow Mario automatically running from left to right through a classic side-scrolling platform level. Mario should run, jump over gaps, jump onto and over platforms, avoid obstacles, hit blocks from below, bounce on enemies, collect floating coins, and occasionally change vertical levels using pipes and elevated platforms.\n\nThe camera should smoothly scroll horizontally as Mario progresses through the level. Include animated enemies walking back and forth, moving coins, question-style blocks, brick platforms, pipes, clouds, hills, bushes, and a layered scrolling background.\n\nMario's movement should feel physically coherent: acceleration, gravity, jumping arcs, falling, landing, enemy collisions, and platform collisions should all visually make sense.\n\nThe animation must be completely autonomous. Mario should continuously progress through the level without any keyboard, mouse, touch, or user interaction.\n\nAfter reaching the end of the scene, automatically transition or restart so the animation can run indefinitely.\n\nUse a crisp retro pixel-art aesthetic with intentionally low-resolution shapes and frame-based character animation.\n\nDo not display any text, letters, numbers, scores, timers, labels, logos, captions, UI elements, written characters, or readable symbols anywhere in the animation.\n\nDo not include any menus or interface overlays.\n\nUse only HTML, CSS, SVG, Canvas, and vanilla JavaScript.\nEverything must be contained in one HTML file.\nNo external libraries, images, fonts, audio files, assets, APIs, or network requests.\nThe animation should fill the browser viewport and run smoothly."
+    },
+    "matrix-screen": {
+      "name": "Matrix Screen",
+      "icon": "▓",
+      "capability": "Digital rain / density",
+      "prompt": "Create a single self-contained HTML animation of the classic Matrix digital rain: a full-viewport black screen with many vertical columns of glowing green glyphs falling downward like rain.\n\nEach column should have its own speed, start offset, and trail length. The leading glyph in every column should be brightest white-green, with the trail fading from bright green to dark green to black. Glyphs should constantly change as they fall. Use a dense field of columns that covers the entire viewport, including the edges.\n\nThe look must immediately read as the Matrix code waterfall: high contrast, phosphor-green on pure black, slightly scanline or CRT feel is welcome but not required. Motion must be continuous, autonomous, and loop forever with no interaction.\n\nDo not display titles, captions, scores, UI, menus, logos, or readable English sentences. Falling code glyphs are the scene itself.\n\nUse only HTML, CSS, SVG, Canvas, and vanilla JavaScript.\nEverything must be contained in one HTML file.\nNo external libraries, images, fonts, audio files, assets, APIs, or network requests.\nThe animation should fill the browser viewport and run smoothly."
     }
   },
   "results": [
@@ -2836,6 +2842,466 @@
       },
       "path": "/runs/super-mario-bros/gemma-4-31b-it.html",
       "generated_at": "2026-09-05T12:16:54.816290+00:00",
+      "attempt": 1
+    },
+    {
+      "scenario": "matrix-screen",
+      "model": "grok-4.6",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 102.36,
+      "provider": "xAI",
+      "usage": {
+        "prompt_tokens": 557,
+        "completion_tokens": 6064,
+        "total_tokens": 6621,
+        "cost": 0.037498,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.037498,
+          "upstream_inference_prompt_cost": 0.001114,
+          "upstream_inference_completions_cost": 0.036384
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 4230,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 5180,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 11,
+        "js_parses": true
+      },
+      "path": "/runs/matrix-screen/grok-4.6.html",
+      "generated_at": "2026-09-05T13:03:13.623640+00:00",
+      "attempt": 1
+    },
+    {
+      "scenario": "matrix-screen",
+      "model": "gpt-5.6-luna",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 15.47,
+      "provider": "OpenAI",
+      "usage": {
+        "prompt_tokens": 351,
+        "completion_tokens": 1840,
+        "total_tokens": 2191,
+        "cost": 0.0022782,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.0022782,
+          "upstream_inference_prompt_cost": 7.02e-05,
+          "upstream_inference_completions_cost": 0.002208
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 516,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 4223,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9,
+        "js_parses": true
+      },
+      "path": "/runs/matrix-screen/gpt-5.6-luna.html",
+      "generated_at": "2026-09-05T13:01:46.729440+00:00",
+      "attempt": 1
+    },
+    {
+      "scenario": "matrix-screen",
+      "model": "gemini-3.8-flash",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 30.68,
+      "provider": "Google",
+      "usage": {
+        "prompt_tokens": 358,
+        "completion_tokens": 4961,
+        "total_tokens": 5319,
+        "cost": 0.01887225,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.01887225,
+          "upstream_inference_prompt_cost": 0.0002685,
+          "upstream_inference_completions_cost": 0.01860375
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 2287,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 8756,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 3,
+        "dom_nodes_approx": 9,
+        "js_parses": true
+      },
+      "path": "/runs/matrix-screen/gemini-3.8-flash.html",
+      "generated_at": "2026-09-05T13:02:01.942517+00:00",
+      "attempt": 1
+    },
+    {
+      "scenario": "matrix-screen",
+      "model": "glm-5.3-flash",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 1013.68,
+      "provider": "Z.AI",
+      "usage": {
+        "prompt_tokens": 352,
+        "completion_tokens": 35528,
+        "total_tokens": 35880,
+        "cost": 0.0089084,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.0089084,
+          "upstream_inference_prompt_cost": 2.64e-05,
+          "upstream_inference_completions_cost": 0.008882
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 31983,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 8817,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 11,
+        "js_parses": true
+      },
+      "path": "/runs/matrix-screen/glm-5.3-flash.html",
+      "generated_at": "2026-09-05T13:18:24.943818+00:00",
+      "attempt": 1
+    },
+    {
+      "scenario": "matrix-screen",
+      "model": "hy4-preview",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 299.96,
+      "provider": "Tencent",
+      "usage": {
+        "prompt_tokens": 364,
+        "completion_tokens": 21577,
+        "total_tokens": 21941,
+        "cost": 0.054267653,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.054267653,
+          "upstream_inference_prompt_cost": 0.000303576,
+          "upstream_inference_completions_cost": 0.053964077
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 19668,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 7538,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 3,
+        "dom_nodes_approx": 10,
+        "js_parses": true
+      },
+      "path": "/runs/matrix-screen/hy4-preview.html",
+      "generated_at": "2026-09-05T13:06:46.692261+00:00",
+      "attempt": 1
+    },
+    {
+      "scenario": "matrix-screen",
+      "model": "deepseek-v4-flash-0731",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 252.59,
+      "provider": "Baidu",
+      "usage": {
+        "prompt_tokens": 432,
+        "completion_tokens": 45375,
+        "total_tokens": 45807,
+        "cost": 0.00455727636,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00455727636,
+          "upstream_inference_prompt_cost": 2.159136e-05,
+          "upstream_inference_completions_cost": 0.004535685
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 43137,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 9572,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 10,
+        "js_parses": true
+      },
+      "path": "/runs/matrix-screen/deepseek-v4-flash-0731.html",
+      "generated_at": "2026-09-05T13:06:14.529980+00:00",
+      "attempt": 1
+    },
+    {
+      "scenario": "matrix-screen",
+      "model": "kimi-k3",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 270.0,
+      "provider": "Parasail",
+      "usage": {
+        "prompt_tokens": 439,
+        "completion_tokens": 6064,
+        "total_tokens": 6503,
+        "cost": 0.092277,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.092277,
+          "upstream_inference_prompt_cost": 0.001317,
+          "upstream_inference_completions_cost": 0.09096
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 4227,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 5607,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": true,
+        "uses_raf": true,
+        "animation_signals": 3,
+        "dom_nodes_approx": 11,
+        "js_parses": true
+      },
+      "path": "/runs/matrix-screen/kimi-k3.html",
+      "generated_at": "2026-09-05T13:07:43.626402+00:00",
+      "attempt": 1
+    },
+    {
+      "scenario": "matrix-screen",
+      "model": "gpt-5.6-sol",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 46.53,
+      "provider": "OpenAI",
+      "usage": {
+        "prompt_tokens": 351,
+        "completion_tokens": 3965,
+        "total_tokens": 4316,
+        "cost": 0.040352,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.040352,
+          "upstream_inference_prompt_cost": 0.000702,
+          "upstream_inference_completions_cost": 0.03965
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 1639,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 7375,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 9,
+        "js_parses": true
+      },
+      "path": "/runs/matrix-screen/gpt-5.6-sol.html",
+      "generated_at": "2026-09-05T13:07:01.063326+00:00",
+      "attempt": 1
+    },
+    {
+      "scenario": "matrix-screen",
+      "model": "muse-spark-1.3",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 56.83,
+      "provider": "Meta",
+      "usage": {
+        "prompt_tokens": 353,
+        "completion_tokens": 5667,
+        "total_tokens": 6020,
+        "cost": 0.024526,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.024526,
+          "upstream_inference_prompt_cost": 0.00044125,
+          "upstream_inference_completions_cost": 0.02408475
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 2938,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 8148,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": true,
+        "uses_raf": true,
+        "animation_signals": 5,
+        "dom_nodes_approx": 14,
+        "js_parses": true
+      },
+      "path": "/runs/matrix-screen/muse-spark-1.3.html",
+      "generated_at": "2026-09-05T13:07:43.525637+00:00",
+      "attempt": 1
+    },
+    {
+      "scenario": "matrix-screen",
+      "model": "gemma-4-31b-it",
+      "status": "ok",
+      "error": null,
+      "duration_seconds": 33.44,
+      "provider": "DeepInfra",
+      "usage": {
+        "prompt_tokens": 377,
+        "completion_tokens": 1491,
+        "total_tokens": 1868,
+        "cost": 0.00054087,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00054087,
+          "upstream_inference_prompt_cost": 3.393e-05,
+          "upstream_inference_completions_cost": 0.00050694
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "metrics": {
+        "valid_html": true,
+        "self_contained": true,
+        "bytes": 5461,
+        "uses_canvas": true,
+        "uses_svg": false,
+        "uses_css_animation": false,
+        "uses_raf": true,
+        "animation_signals": 2,
+        "dom_nodes_approx": 10,
+        "js_parses": true
+      },
+      "path": "/runs/matrix-screen/gemma-4-31b-it.html",
+      "generated_at": "2026-09-05T13:07:34.504018+00:00",
       "attempt": 1
     }
   ],

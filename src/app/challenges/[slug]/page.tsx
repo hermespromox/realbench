@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const scenario = data.scenarios[slug as ScenarioKey];
   if (!scenario) return {};
   const title = `${scenario.name} challenge`;
-  const description = `Compare ${modelOrder.length} one-shot HTML builds for the RealBench ${scenario.name} challenge: ${scenario.capability}.`;
+  const description = `Compare ${modelOrder.length} one-shot HTML builds for the BenchViz ${scenario.name} challenge: ${scenario.capability}.`;
   return {
     title,
     description,
@@ -41,8 +41,8 @@ export default async function ChallengePage({ params }: Props) {
           __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "CollectionPage",
-            name: `${scenario.name} · RealBench`,
-            description: `Compare ${modelOrder.length} one-shot HTML builds for the RealBench ${scenario.name} challenge: ${scenario.capability}.`,
+            name: `${scenario.name} · BenchViz`,
+            description: `Compare ${modelOrder.length} one-shot HTML builds for the BenchViz ${scenario.name} challenge: ${scenario.capability}.`,
           }),
         }}
       />

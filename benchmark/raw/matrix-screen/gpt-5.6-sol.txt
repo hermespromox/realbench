@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title></title>
+<style>
+  html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: #000;
+  }
+
+  body {
+    position: relative;
+  }
+
+  canvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    background: #000;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse at center, transparent 48%, rgba(0, 8, 2, 0.17) 78%, rgba(0, 0, 0, 0.5) 100%);
+  }
+
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0.18;
+    background:
+      repeating-linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0) 0,
+        rgba(0, 0, 0, 0) 2px,
+        rgba(0, 0, 0, 0.33) 3px,
+        rgba(0, 30, 8, 0.04) 4px
+      );
+    mix-blend-mode: multiply;
+  }
+</style>
+</head>
+<body>
+<canvas id="matrix"></canvas>
+<script>
+(() => {
+  "use strict";
+
+  const canvas = document.getElementById("matrix");
+  const ctx = canvas.getContext("2d", { alpha: false });
+
+  const glyphs = Array.from(
+    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
+    "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ" +
+    "日月火水木金土上下左右大小中川山田口目耳手力王正生年時" +
+    "ｦｧｨｩｪｫｬｭｮｯｰ¦:・.=*+<>"
+  );
+
+  let width = 0;
+  let height = 0;
+  let dpr = 1;
+  let columns = [];
+  let lastTime = performance.now();
+  let globalTime = 0;
+
+  const random = (min, max) => min + Math.random() * (max - min);
+  const randomGlyph = () => glyphs[(Math.random() * glyphs.length) | 0];
+
+  function makeColumn(x, index) {
+    const fontSize = random(12.5, 18.5);
+    const step = fontSize * random(0.92, 1.08);
+    const trailLength = Math.floor(random(15, 49));
+    const chars = new Array(trailLength);
+
+    for (let i = 0; i < trailLength; i++) {
+      chars[i] = randomGlyph();
+    }
+
+    return {
+      x,
+      y: random(-trailLength * step, height + trailLength * step),
+      speed: random(55, 205) * (Math.random() < 0.13 ? random(1.15, 1.5) : 1),
+      fontSize,
+      step,
+      trailLength,
+      chars,
+      mutation: random(0, 0.12),
+      mutationRate: random(0.025, 0.085),
+      sway: random(0.05, 0.42),
+      swayPhase: random(0, Math.PI * 2),
+      swaySpeed: random(0.4, 1.35),
+      opacity: random(0.72, 1),
+      dropoutSeed: Math.random() * 1000,
+      index
+    };
+  }
+
+  function rebuild() {
+    const oldWidth = width || innerWidth;
+    const oldHeight = height || innerHeight;
+
+    width = Math.max(1, innerWidth);
+    height = Math.max(1, innerHeight);
+    dpr = Math.min(2, Math.max(1, devicePixelRatio || 1));
+
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    canvas.style.width = width + "px";
+    canvas.style.height = height + "px";
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.imageSmoothingEnabled = false;
+
+    const next = [];
+    let x = -8;
+    let index = 0;
+
+    while (x <= width + 10) {
+      const column = makeColumn(x, index++);
+      if (columns.length) {
+        const old = columns[Math.min(columns.length - 1, Math.floor((x / Math.max(1, width)) * columns.length))];
+        if (old) {
+          column.y = old.y * (height / oldHeight);
+        }
+      }
+      next.push(column);
+      x += random(11, 17);
+    }
+
+    columns = next;
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  function mutateColumn(column, dt) {
+    column.mutation -= dt;
+    if (column.mutation > 0) return;
+
+    column.mutation = random(column.mutationRate * 0.45, column.mutationRate * 1.65);
+    const changes = Math.random() < 0.18 ? 3 : (Math.random() < 0.48 ? 2 : 1);
+
+    for (let n = 0; n < changes; n++) {
+      const weighted = Math.pow(Math.random(), 1.6);
+      const slot = Math.min(column.trailLength - 1, Math.floor(weighted * column.trailLength));
+      column.chars[slot] = randomGlyph();
+    }
+
+    if (Math.random() < 0.09) {
+      column.chars[0] = randomGlyph();
+    }
+  }
+
+  function drawColumn(column, dt) {
+    column.y += column.speed * dt;
+    mutateColumn(column, dt);
+
+    const tailPixels = column.trailLength * column.step;
+    if (column.y - tailPixels > height + column.step) {
+      column.y = -random(column.step, Math.min(height * 0.42, tailPixels * 0.9));
+      column.speed *= random(0.88, 1.12);
+      column.speed = Math.max(50, Math.min(260, column.speed));
+
+      if (Math.random() < 0.28) {
+        column.trailLength = Math.floor(random(15, 49));
+        column.chars.length = column.trailLength;
+        for (let i = 0; i < column.trailLength; i++) {
+          if (!column.chars[i]) column.chars[i] = randomGlyph();
+        }
+      }
+    }
+
+    const x = column.x + Math.sin(globalTime * column.swaySpeed + column.swayPhase) * column.sway;
+    ctx.font = `500 ${column.fontSize}px ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace`;
+
+    for (let i = column.trailLength - 1; i >= 1; i--) {
+      const y = column.y - i * column.step;
+      if (y < -column.step || y > height + column.step) continue;
+
+      const t = i / Math.max(1, column.trailLength - 1);
+      const falloff = Math.pow(1 - t, 1.75);
+      const flicker = 0.86 + 0.14 * Math.sin(
+        globalTime * (4.5 + (column.index % 7) * 0.31) +
+        i * 2.17 +
+        column.dropoutSeed
+      );
+
+      if (
+        i > 4 &&
+        Math.sin(i * 17.31 + column.dropoutSeed) > 0.89 &&
+        Math.sin(globalTime * 1.7 + i) > -0.25
+      ) {
+        continue;
+      }
+
+      const green = Math.round(65 + 190 * falloff);
+      const red = Math.round(2 + 24 * falloff);
+      const blue = Math.round(12 + 76 * falloff);
+      const alpha = (0.035 + 0.9 * falloff) * flicker * column.opacity;
+
+      ctx.fillStyle = `rgba(${red},${green},${blue},${alpha})`;
+      ctx.fillText(column.chars[i], x, y);
+    }
+
+    if (column.y > -column.step && column.y < height + column.step) {
+      if (Math.random() < 0.055) column.chars[0] = randomGlyph();
+
+      ctx.save();
+      ctx.shadowColor = "rgba(110,255,155,0.95)";
+      ctx.shadowBlur = 11;
+      ctx.fillStyle = "rgba(205,255,218,0.88)";
+      ctx.fillText(column.chars[0], x, column.y);
+      ctx.shadowBlur = 3;
+      ctx.fillStyle = "#effff1";
+      ctx.fillText(column.chars[0], x, column.y);
+      ctx.restore();
+
+      if (column.y - column.step > 0) {
+        ctx.fillStyle = "rgba(85,255,125,0.2)";
+        ctx.fillText(column.chars[1] || randomGlyph(), x, column.y - column.step);
+      }
+    }
+  }
+
+  function frame(now) {
+    let dt = (now - lastTime) / 1000;
+    lastTime = now;
+    dt = Math.min(0.05, Math.max(0.001, dt));
+    globalTime += dt;
+
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, width, height);
+
+    for (let i = 0; i < columns.length; i++) {
+      drawColumn(columns[i], dt);
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  addEventListener("resize", rebuild, { passive: true });
+  rebuild();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title></title>
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+}
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+.scan {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0) 0px,
+      rgba(0, 0, 0, 0) 2px,
+      rgba(0, 8, 0, 0.18) 2px,
+      rgba(0, 8, 0, 0.18) 3px
+    ),
+    radial-gradient(ellipse at center, rgba(0, 20, 0, 0) 40%, rgba(0, 0, 0, 0.45) 100%);
+  mix-blend-mode: multiply;
+}
+.glow {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 0%, rgba(0, 40, 10, 0.12), transparent 55%);
+}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="glow"></div>
+<div class="scan"></div>
+<script>
+(function () {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d", { alpha: false });
+  const CHARSET =
+    "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝｦｧｨｩｪｫｯｬｭｮ0123456789<>*+-=|:";
+
+  let w = 0;
+  let h = 0;
+  let dpr = 1;
+  let fontSize = 16;
+  let columns = [];
+
+  function randChar() {
+    return CHARSET[(Math.random() * CHARSET.length) | 0];
+  }
+
+  function makeStream(x, scattered) {
+    const trail = 8 + ((Math.random() * 32) | 0);
+    const chars = new Array(trail);
+    for (let i = 0; i < trail; i++) chars[i] = randChar();
+    const rows = Math.ceil(h / fontSize) + 8;
+    const y = scattered
+      ? Math.random() * (rows + trail) - trail
+      : -Math.random() * (rows * 0.6) - trail;
+    return {
+      x: x,
+      y: y,
+      speed: 0.18 + Math.random() * 0.72 + (Math.random() < 0.12 ? 0.55 : 0),
+      trail: trail,
+      chars: chars,
+      prevInt: Math.floor(y)
+    };
+  }
+
+  function rebuild() {
+    w = window.innerWidth;
+    h = window.innerHeight;
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = (w * dpr) | 0;
+    canvas.height = (h * dpr) | 0;
+    canvas.style.width = w + "px";
+    canvas.style.height = h + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    fontSize = w < 640 ? 13 : w < 1200 ? 15 : 16;
+    const n = Math.ceil(w / fontSize) + 1;
+    columns = [];
+    for (let i = 0; i < n; i++) {
+      columns.push(makeStream(i * fontSize, true));
+    }
+    const extras = (n * 0.28) | 0;
+    for (let i = 0; i < extras; i++) {
+      const xi = (Math.random() * n) | 0;
+      columns.push(makeStream(xi * fontSize, true));
+    }
+  }
+
+  function stepStream(col, rowsVisible) {
+    col.y += col.speed;
+    const hi = Math.floor(col.y);
+    if (hi !== col.prevInt) {
+      let steps = hi - col.prevInt;
+      if (steps > 8) steps = 8;
+      if (steps > 0) {
+        for (let s = 0; s < steps; s++) {
+          col.chars.unshift(randChar());
+          if (col.chars.length > col.trail) col.chars.pop();
+        }
+      }
+      col.prevInt = hi;
+    }
+    if (Math.random() < 0.55) col.chars[0] = randChar();
+    const len = col.chars.length;
+    for (let i = 1; i < len; i++) {
+      if (Math.random() < 0.035) col.chars[i] = randChar();
+    }
+    if (col.y - col.trail > rowsVisible + 6) {
+      const nx = col.x;
+      const fresh = makeStream(nx, false);
+      col.y = fresh.y;
+      col.speed = fresh.speed;
+      col.trail = fresh.trail;
+      col.chars = fresh.chars;
+      col.prevInt = fresh.prevInt;
+    }
+  }
+
+  function drawStream(col) {
+    const fs = fontSize;
+    const len = col.chars.length;
+    const head = Math.floor(col.y);
+    for (let i = len - 1; i >= 0; i--) {
+      const py = (head - i) * fs;
+      if (py < -fs || py > h) continue;
+      const ch = col.chars[i];
+      const x = col.x;
+      if (i === 0) {
+        ctx.shadowColor = "rgba(170,255,190,0.95)";
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = "#f3fff6";
+        ctx.fillText(ch, x, py);
+        ctx.shadowBlur = 0;
+      } else if (i === 1) {
+        ctx.fillStyle = "#b8ffc8";
+        ctx.fillText(ch, x, py);
+      } else if (i === 2) {
+        ctx.fillStyle = "#5dff7a";
+        ctx.fillText(ch, x, py);
+      } else {
+        const t = i / (len - 1);
+        const g = (20 + 235 * (1 - t * 0.82)) | 0;
+        const a = Math.max(0, 1 - t * 1.08);
+        const b = (18 * (1 - t)) | 0;
+        ctx.fillStyle = "rgba(0," + g + "," + b + "," + a + ")";
+        ctx.fillText(ch, x, py);
+      }
+    }
+  }
+
+  function frame() {
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, w, h);
+    ctx.font = fsFont();
+    ctx.textBaseline = "top";
+    ctx.textAlign = "left";
+    const rowsVisible = h / fontSize;
+    const n = columns.length;
+    for (let i = 0; i < n; i++) stepStream(columns[i], rowsVisible);
+    for (let i = 0; i < n; i++) drawStream(columns[i]);
+    requestAnimationFrame(frame);
+  }
+
+  function fsFont() {
+    return "bold " + fontSize + "px monospace";
+  }
+
+  window.addEventListener("resize", rebuild);
+  rebuild();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

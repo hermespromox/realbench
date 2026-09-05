@@ -1,6 +1,7 @@
-# RealBench
+# BenchViz
 
 A transparent, one-shot benchmark for frontend animation capability.
+Live: https://www.benchviz.com
 
 ## Methodology
 
@@ -24,6 +25,7 @@ Models:
 - `moonshotai/kimi-k3`
 - `openai/gpt-5.6-sol`
 - `meta/muse-spark-1.3`
+- `google/gemma-4-31b-it`
 
 Challenges:
 1. Solar System — geometry and depth
@@ -32,6 +34,7 @@ Challenges:
 4. Rube Goldberg — visual causality
 5. Future Factory — systems coordination
 6. Super Mario Bros — autonomous 8-bit platforming
+7. Matrix Screen — digital rain / density
 
 ## Development
 

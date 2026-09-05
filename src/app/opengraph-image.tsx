@@ -3,7 +3,7 @@ import { modelOrder, scenarioOrder } from "@/lib/catalog";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "RealBench: one-shot frontend capability benchmark";
+export const alt = "BenchViz: one-shot frontend capability benchmark";
 
 export default function OpengraphImage() {
   return new ImageResponse(
@@ -22,12 +22,12 @@ export default function OpengraphImage() {
         }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 24 }}>
-          <span style={{ background: "#0f62fe", color: "#fff", padding: "8px 16px" }}>RB</span>
+          <span style={{ background: "#0f62fe", color: "#fff", padding: "8px 16px" }}>BV</span>
           <span>{modelOrder.length} models · {scenarioOrder.length} challenges</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div style={{ fontSize: 72, lineHeight: 1.05, maxWidth: 900 }}>See what models can actually build.</div>
-          <div style={{ marginTop: 24, fontSize: 28, color: "#525252" }}>One-shot HTML arena. Vote the strongest artifact.</div>
+          <div style={{ marginTop: 24, fontSize: 28, color: "#525252" }}>BenchViz — one-shot HTML arena. Vote the strongest artifact.</div>
         </div>
       </div>
     ),

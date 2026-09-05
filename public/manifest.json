@@ -1,10 +1,10 @@
 {
-  "name": "RealBench",
-  "short_name": "RealBench",
+  "name": "BenchViz",
+  "short_name": "BenchViz",
   "description": "One-shot frontend capability benchmark for frontier AI models.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f4f4f4",
   "theme_color": "#0f62fe",
-  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+  "icons": [{ "src": "/icon", "sizes": "32x32", "type": "image/png" }]
 }
